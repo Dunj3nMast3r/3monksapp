@@ -197,9 +197,9 @@ jobs:
         run: |
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             cd ${{ env.APP_DIR }}
-            if docker compose -f ${{ env.COMPOSE_FILE }} ps --quiet 2>/dev/null | grep -q .; then
+            if sudo docker compose -f ${{ env.COMPOSE_FILE }} ps --quiet 2>/dev/null | grep -q .; then
               echo '── Stopping existing containers ──'
-              docker compose -f ${{ env.COMPOSE_FILE }} down --timeout 30
+              sudo docker compose -f ${{ env.COMPOSE_FILE }} down --timeout 30
               echo '── Containers stopped ──'
             else
               echo '── No running containers to stop ──'
@@ -211,7 +211,7 @@ jobs:
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             cd ${{ env.APP_DIR }}
             echo '── Building images ──'
-            docker compose -f ${{ env.COMPOSE_FILE }} build --no-cache
+            sudo docker compose -f ${{ env.COMPOSE_FILE }} build --no-cache
             echo '── Build complete ──'
           "
 
@@ -220,16 +220,16 @@ jobs:
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             cd ${{ env.APP_DIR }}
             echo '── Starting services ──'
-            docker compose -f ${{ env.COMPOSE_FILE }} up -d
+            sudo docker compose -f ${{ env.COMPOSE_FILE }} up -d
             echo '── Services started ──'
-            docker compose -f ${{ env.COMPOSE_FILE }} ps
+            sudo docker compose -f ${{ env.COMPOSE_FILE }} ps
           "
 
       - name: Cleanup unused images
         run: |
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             echo '── Pruning dangling images ──'
-            docker image prune -f
+            sudo docker image prune -f
             echo '── Cleanup done ──'
           "
 
@@ -269,15 +269,15 @@ jobs:
         run: |
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             echo '── Container Status ──'
-            docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps
+            sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps
             echo ''
-            RUNNING=\$(docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps --status running --quiet | wc -l)
+            RUNNING=\$(sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps --status running --quiet | wc -l)
             EXPECTED=3
             if [ \"\$RUNNING\" -ge \"\$EXPECTED\" ]; then
               echo \"✓ All \$RUNNING/\$EXPECTED containers running\"
             else
               echo \"✗ Only \$RUNNING/\$EXPECTED containers running\"
-              docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps
+              sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps
               exit 1
             fi
           "
@@ -290,7 +290,7 @@ jobs:
               echo '✓ Frontend healthy (HTTP '\$HTTP_STATUS')'
             else
               echo '✗ Frontend unhealthy (HTTP '\$HTTP_STATUS')'
-              docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 frontend
+              sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 frontend
               exit 1
             fi
           "
@@ -303,7 +303,7 @@ jobs:
               echo '✓ Backend reachable (HTTP '\$API_STATUS')'
             else
               echo '✗ Backend unreachable (HTTP '\$API_STATUS')'
-              docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 backend
+              sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 backend
               exit 1
             fi
           "
@@ -312,7 +312,7 @@ jobs:
         run: |
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             echo '── Resource Usage ──'
-            docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}' 2>/dev/null || true
+            sudo docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}' 2>/dev/null || true
             echo ''
             echo '── Disk Usage ──'
             df -h / | tail -1
@@ -353,22 +353,22 @@ jobs:
           echo "══════════════════════════════════════════"
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             echo '── Container Status ──'
-            docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps 2>/dev/null || echo 'compose ps failed'
+            sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps 2>/dev/null || echo 'compose ps failed'
             echo ''
             echo '── Backend Logs (last 50 lines) ──'
-            docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=50 backend 2>/dev/null || echo 'no backend logs'
+            sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=50 backend 2>/dev/null || echo 'no backend logs'
             echo ''
             echo '── Frontend Logs (last 50 lines) ──'
-            docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=50 frontend 2>/dev/null || echo 'no frontend logs'
+            sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=50 frontend 2>/dev/null || echo 'no frontend logs'
             echo ''
             echo '── Postgres Logs (last 30 lines) ──'
-            docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 postgres 2>/dev/null || echo 'no postgres logs'
+            sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 postgres 2>/dev/null || echo 'no postgres logs'
             echo ''
             echo '── Disk Space ──'
             df -h /
             echo ''
             echo '── Docker Disk Usage ──'
-            docker system df 2>/dev/null || true
+            sudo docker system df 2>/dev/null || true
           "
 
       - name: Deployment failure summary
