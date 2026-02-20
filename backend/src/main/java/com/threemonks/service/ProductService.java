@@ -27,8 +27,7 @@ public class ProductService {
     private final FruitRepository fruitRepository;
 
     private static final List<String> ALLOWED_IMAGE_TYPES = List.of(
-            "image/jpeg", "image/png", "image/gif", "image/webp"
-    );
+            "image/jpeg", "image/png", "image/gif", "image/webp");
 
     public List<ProductResponse> getAllProducts() {
         return productRepository.findAll().stream()
@@ -55,10 +54,12 @@ public class ProductService {
     @Transactional
     public ProductResponse createProduct(ProductRequest request) {
         // Validate fruit rules per category
-        if (request.getCategory() == ProductCategory.CURATED_BLEND && request.getFruitIds() != null && request.getFruitIds().size() > 2) {
+        if (request.getCategory() == ProductCategory.CURATED_BLEND && request.getFruitIds() != null
+                && request.getFruitIds().size() > 2) {
             throw new BadRequestException("Curated Blend can have maximum 2 fruits");
         }
-        if (request.getCategory() == ProductCategory.CREAMY_BLEND && request.getFruitIds() != null && request.getFruitIds().size() > 1) {
+        if (request.getCategory() == ProductCategory.CREAMY_BLEND && request.getFruitIds() != null
+                && request.getFruitIds().size() > 1) {
             throw new BadRequestException("Creamy Blend can have maximum 1 fruit");
         }
 
@@ -83,10 +84,12 @@ public class ProductService {
     public ProductResponse updateProduct(Long id, ProductRequest request) {
         Product product = findProductById(id);
 
-        if (request.getCategory() == ProductCategory.CURATED_BLEND && request.getFruitIds() != null && request.getFruitIds().size() > 2) {
+        if (request.getCategory() == ProductCategory.CURATED_BLEND && request.getFruitIds() != null
+                && request.getFruitIds().size() > 2) {
             throw new BadRequestException("Curated Blend can have maximum 2 fruits");
         }
-        if (request.getCategory() == ProductCategory.CREAMY_BLEND && request.getFruitIds() != null && request.getFruitIds().size() > 1) {
+        if (request.getCategory() == ProductCategory.CREAMY_BLEND && request.getFruitIds() != null
+                && request.getFruitIds().size() > 1) {
             throw new BadRequestException("Creamy Blend can have maximum 1 fruit");
         }
 

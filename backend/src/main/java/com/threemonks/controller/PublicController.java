@@ -36,12 +36,14 @@ public class PublicController {
 
     @GetMapping("/menu/creamy-blends")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getCreamyBlends() {
-        return ResponseEntity.ok(ApiResponse.success(productService.getProductsByCategory(ProductCategory.CREAMY_BLEND)));
+        return ResponseEntity
+                .ok(ApiResponse.success(productService.getProductsByCategory(ProductCategory.CREAMY_BLEND)));
     }
 
     @GetMapping("/menu/curated-blends")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getCuratedBlends() {
-        return ResponseEntity.ok(ApiResponse.success(productService.getProductsByCategory(ProductCategory.CURATED_BLEND)));
+        return ResponseEntity
+                .ok(ApiResponse.success(productService.getProductsByCategory(ProductCategory.CURATED_BLEND)));
     }
 
     @GetMapping("/fruits")

@@ -10,7 +10,11 @@ import java.util.List;
 
 @Entity
 @Table(name = "products")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Product {
 
     @Id
@@ -37,11 +41,7 @@ public class Product {
     private BigDecimal price;
 
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "product_fruits",
-        joinColumns = @JoinColumn(name = "product_id"),
-        inverseJoinColumns = @JoinColumn(name = "fruit_id")
-    )
+    @JoinTable(name = "product_fruits", joinColumns = @JoinColumn(name = "product_id"), inverseJoinColumns = @JoinColumn(name = "fruit_id"))
     @Builder.Default
     private List<Fruit> fruits = new ArrayList<>();
 

@@ -58,7 +58,8 @@ public class EmployeeService {
     @Transactional
     public EmployeeResponse createEmployee(EmployeeRequest request) {
         if (employeeRepository.existsByUserId(request.getUserId())) {
-            throw new BadRequestException("This user is already registered as an employee. Please select a different user.");
+            throw new BadRequestException(
+                    "This user is already registered as an employee. Please select a different user.");
         }
 
         User user = userRepository.findById(request.getUserId())
@@ -77,7 +78,8 @@ public class EmployeeService {
                 .user(user)
                 .shop(shop)
                 .salary(request.getSalary())
-                .incentivePercentage(request.getIncentivePercentage() != null ? request.getIncentivePercentage() : BigDecimal.ZERO)
+                .incentivePercentage(
+                        request.getIncentivePercentage() != null ? request.getIncentivePercentage() : BigDecimal.ZERO)
                 .active(true)
                 .build();
 
@@ -116,16 +118,18 @@ public class EmployeeService {
         List<SalarySheetResponse> sheets = employees.stream().map(emp -> {
             // Get total sales handled by this employee in the month
             BigDecimal totalSales = Optional.ofNullable(
-                    orderRepository.getTotalSalesByUserAndDateRange(emp.getUser().getId(), monthStart, monthEnd)
-            ).orElse(BigDecimal.ZERO);
+                    orderRepository.getTotalSalesByUserAndDateRange(emp.getUser().getId(), monthStart, monthEnd))
+                    .orElse(BigDecimal.ZERO);
 
             Long totalOrders = Optional.ofNullable(
-                    orderRepository.getOrderCountByUserAndDateRange(emp.getUser().getId(), monthStart, monthEnd)
-            ).orElse(0L);
+                    orderRepository.getOrderCountByUserAndDateRange(emp.getUser().getId(), monthStart, monthEnd))
+                    .orElse(0L);
 
             // Incentive = Total Sales * Incentive %
-            BigDecimal incentiveRate = emp.getIncentivePercentage() != null ? emp.getIncentivePercentage() : BigDecimal.ZERO;
-            BigDecimal incentiveAmount = totalSales.multiply(incentiveRate).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            BigDecimal incentiveRate = emp.getIncentivePercentage() != null ? emp.getIncentivePercentage()
+                    : BigDecimal.ZERO;
+            BigDecimal incentiveAmount = totalSales.multiply(incentiveRate).divide(BigDecimal.valueOf(100), 2,
+                    RoundingMode.HALF_UP);
 
             // Total Pay = Salary + Incentive
             BigDecimal totalPay = emp.getSalary().add(incentiveAmount);
@@ -144,8 +148,10 @@ public class EmployeeService {
                     .build();
         }).collect(Collectors.toList());
 
-        BigDecimal totalSalaries = sheets.stream().map(SalarySheetResponse::getBaseSalary).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalIncentives = sheets.stream().map(SalarySheetResponse::getIncentiveAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalSalaries = sheets.stream().map(SalarySheetResponse::getBaseSalary).reduce(BigDecimal.ZERO,
+                BigDecimal::add);
+        BigDecimal totalIncentives = sheets.stream().map(SalarySheetResponse::getIncentiveAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return SalarySheetResponse.MonthlySummary.builder()
                 .month(monthStr)

@@ -40,7 +40,8 @@ public class AdminController {
     }
 
     @PutMapping("/shops/{id}")
-    public ResponseEntity<ApiResponse<ShopResponse>> updateShop(@PathVariable Long id, @Valid @RequestBody ShopRequest request) {
+    public ResponseEntity<ApiResponse<ShopResponse>> updateShop(@PathVariable Long id,
+            @Valid @RequestBody ShopRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Shop updated", shopService.updateShop(id, request)));
     }
 
@@ -76,7 +77,8 @@ public class AdminController {
     }
 
     @PutMapping("/fruits/{id}")
-    public ResponseEntity<ApiResponse<FruitResponse>> updateFruit(@PathVariable Long id, @Valid @RequestBody FruitRequest request) {
+    public ResponseEntity<ApiResponse<FruitResponse>> updateFruit(@PathVariable Long id,
+            @Valid @RequestBody FruitRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Fruit updated", fruitService.updateFruit(id, request)));
     }
 
@@ -98,7 +100,8 @@ public class AdminController {
     }
 
     @PutMapping("/products/{id}")
-    public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
+    public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(@PathVariable Long id,
+            @Valid @RequestBody ProductRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Product updated", productService.updateProduct(id, request)));
     }
 
@@ -129,13 +132,17 @@ public class AdminController {
     }
 
     @PostMapping("/raw-materials")
-    public ResponseEntity<ApiResponse<RawMaterialResponse>> createRawMaterial(@Valid @RequestBody RawMaterialRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Raw material created", rawMaterialService.createRawMaterial(request)));
+    public ResponseEntity<ApiResponse<RawMaterialResponse>> createRawMaterial(
+            @Valid @RequestBody RawMaterialRequest request) {
+        return ResponseEntity
+                .ok(ApiResponse.success("Raw material created", rawMaterialService.createRawMaterial(request)));
     }
 
     @PutMapping("/raw-materials/{id}")
-    public ResponseEntity<ApiResponse<RawMaterialResponse>> updateRawMaterial(@PathVariable Long id, @Valid @RequestBody RawMaterialRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Raw material updated", rawMaterialService.updateRawMaterial(id, request)));
+    public ResponseEntity<ApiResponse<RawMaterialResponse>> updateRawMaterial(@PathVariable Long id,
+            @Valid @RequestBody RawMaterialRequest request) {
+        return ResponseEntity
+                .ok(ApiResponse.success("Raw material updated", rawMaterialService.updateRawMaterial(id, request)));
     }
 
     @PatchMapping("/raw-materials/{id}/toggle")
@@ -161,7 +168,8 @@ public class AdminController {
     }
 
     @PutMapping("/recipes/{id}")
-    public ResponseEntity<ApiResponse<RecipeResponse>> updateRecipe(@PathVariable Long id, @Valid @RequestBody RecipeRequest request) {
+    public ResponseEntity<ApiResponse<RecipeResponse>> updateRecipe(@PathVariable Long id,
+            @Valid @RequestBody RecipeRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Recipe updated", recipeService.updateRecipe(id, request)));
     }
 
@@ -193,7 +201,8 @@ public class AdminController {
     }
 
     @PutMapping("/employees/{id}")
-    public ResponseEntity<ApiResponse<EmployeeResponse>> updateEmployee(@PathVariable Long id, @Valid @RequestBody EmployeeRequest request) {
+    public ResponseEntity<ApiResponse<EmployeeResponse>> updateEmployee(@PathVariable Long id,
+            @Valid @RequestBody EmployeeRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Employee updated", employeeService.updateEmployee(id, request)));
     }
 
