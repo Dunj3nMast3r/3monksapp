@@ -87,8 +87,8 @@ jobs:
       # ── 4. Build & start containers on the server ────────
       - name: Build and deploy
         run: |
-          # Write .env file on server
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "\
+            sudo chown -R \$(whoami):\$(whoami) /opt/threemonks && \
             cd /opt/threemonks && \
             printf 'DB_NAME=threemonks\nDB_USERNAME=postgres\nDB_PASSWORD=${{ secrets.DB_PASSWORD }}\nJWT_SECRET=${{ secrets.JWT_SECRET }}\nCORS_ORIGINS=${{ secrets.CORS_ORIGINS }}\n' > .env && \
             echo '▶ Building and starting containers...' && \
