@@ -38,7 +38,6 @@ env:
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 jobs:
-
   # ──────────────────────────────────────────────────────────
   # Stage 1 — Validate
   # ──────────────────────────────────────────────────────────
@@ -72,7 +71,10 @@ jobs:
           [ $errors -eq 0 ] && echo "── Structure valid ──" || { echo "── $errors error(s) found ──"; exit 1; }
 
       - name: Validate Docker Compose config
-        run: docker compose -f docker-compose.prod.yml config --quiet
+        run: |
+          # Supply dummy values for required env vars so compose can parse the file
+          export DB_PASSWORD=dummy JWT_SECRET=dummy CORS_ORIGINS=http://localhost
+          docker compose -f docker-compose.prod.yml config --quiet
 
       - name: Validate Dockerfiles
         run: |
