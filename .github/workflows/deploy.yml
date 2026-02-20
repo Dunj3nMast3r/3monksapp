@@ -1,0 +1,117 @@
+# ==========================================================
+# 3Monks — Deploy to AWS Lightsail
+# ==========================================================
+# Builds and deploys the full stack (Postgres + Spring Boot + React/Nginx)
+# on an AWS Lightsail instance via Docker Compose.
+#
+# Required GitHub Secrets:
+#   LIGHTSAIL_HOST      — Public IP or hostname of the Lightsail instance
+#   LIGHTSAIL_USER      — SSH username (usually "ubuntu")
+#   LIGHTSAIL_SSH_KEY   — Private SSH key (PEM) for the instance
+#   DB_PASSWORD         — PostgreSQL password
+#   JWT_SECRET          — JWT signing secret
+#   CORS_ORIGINS        — Allowed CORS origins (e.g. http://YOUR_IP)
+# ==========================================================
+
+name: Deploy to AWS Lightsail
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:                       # Allow manual trigger
+
+env:
+  APP_DIR: /opt/threemonks
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Copy project files to Lightsail ───────────────
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          source: "backend/,frontend/,docker-compose.prod.yml"
+          target: ${{ env.APP_DIR }}
+          overwrite: true
+
+      # ── 3. Build & start containers on the server ────────
+      - name: Build and deploy
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          envs: DB_PASSWORD,JWT_SECRET,CORS_ORIGINS
+          command_timeout: 10m
+          script: |
+            set -e
+            cd ${{ env.APP_DIR }}
+
+            # ── Write / update .env ──
+            cat > .env <<EOF
+            DB_NAME=threemonks
+            DB_USERNAME=postgres
+            DB_PASSWORD=${DB_PASSWORD}
+            JWT_SECRET=${JWT_SECRET}
+            CORS_ORIGINS=${CORS_ORIGINS}
+            EOF
+
+            # ── Build and start ──
+            echo "▶ Building and starting containers..."
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            # ── Clean up dangling images ──
+            docker image prune -f
+
+            # ── Show status ──
+            echo ""
+            echo "════════════════════════════════════════"
+            echo " Deployment complete!"
+            echo "════════════════════════════════════════"
+            docker compose -f docker-compose.prod.yml ps
+
+      # ── 4. Health check ──────────────────────────────────
+      - name: Health check
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          script: |
+            set -e
+            echo "Waiting 30s for services to start..."
+            sleep 30
+
+            # Check frontend (nginx on port 80)
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost || echo "000")
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "✓ Frontend is up (HTTP $HTTP_STATUS)"
+            else
+              echo "✗ Frontend returned HTTP $HTTP_STATUS"
+              docker compose -f /opt/threemonks/docker-compose.prod.yml logs --tail=30 frontend
+              exit 1
+            fi
+
+            # Check backend health via API
+            API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/api/auth/health 2>/dev/null || echo "000")
+            if [ "$API_STATUS" = "200" ] || [ "$API_STATUS" = "404" ]; then
+              echo "✓ Backend is reachable (HTTP $API_STATUS)"
+            else
+              echo "⚠ Backend returned HTTP $API_STATUS — may still be starting"
+              docker compose -f /opt/threemonks/docker-compose.prod.yml logs --tail=30 backend
+            fi
