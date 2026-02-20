@@ -35,25 +35,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── 2. Copy project files to Lightsail ───────────────
-      - name: Copy files to server
-        run: |
-          # Write SSH key
-          mkdir -p ~/.ssh
-          echo "${{ secrets.LIGHTSAIL_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
+      # ── 2. Setup SSH agent ───────────────────────────────
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
 
-          # Disable strict host key checking
+      - name: Disable host key checking
+        run: |
+          mkdir -p ~/.ssh
           echo "StrictHostKeyChecking no" >> ~/.ssh/config
           echo "UserKnownHostsFile /dev/null" >> ~/.ssh/config
+          chmod 644 ~/.ssh/config
 
+      # ── 3. Copy project files to Lightsail ───────────────
+      - name: Copy files to server
+        run: |
           # Ensure target directory exists
-          ssh -i ~/.ssh/deploy_key ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} \
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} \
             "sudo mkdir -p ${{ env.APP_DIR }} && sudo chown ${{ secrets.LIGHTSAIL_USER }}:${{ secrets.LIGHTSAIL_USER }} ${{ env.APP_DIR }}"
 
           # Rsync project files
           rsync -avz --delete \
-            -e "ssh -i ~/.ssh/deploy_key" \
             --include='backend/***' \
             --include='frontend/***' \
             --include='docker-compose.prod.yml' \
@@ -63,7 +66,7 @@ jobs:
       # ── 3. Build & start containers on the server ────────
       - name: Build and deploy
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'REMOTE_SCRIPT'
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'REMOTE_SCRIPT'
             set -e
             cd /opt/threemonks
 
@@ -96,7 +99,7 @@ jobs:
         run: |
           echo "Waiting 30s for services to start..."
           sleep 30
-          ssh -i ~/.ssh/deploy_key ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'REMOTE_SCRIPT'
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'REMOTE_SCRIPT'
             set -e
 
             # Check frontend (nginx on port 80)
