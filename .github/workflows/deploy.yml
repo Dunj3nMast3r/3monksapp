@@ -230,6 +230,33 @@ jobs:
             sudo docker compose -f ${{ env.COMPOSE_FILE }} ps
           "
 
+      - name: Provision SSL certificates (if needed)
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            cd ${{ env.APP_DIR }}
+            echo '── Checking SSL certificate status ──'
+            # Check if certbot-managed renewal config exists (indicates real certs)
+            CERT_EXISTS=\$(sudo docker compose -f ${{ env.COMPOSE_FILE }} exec -T proxy \
+              sh -c 'test -f /etc/letsencrypt/renewal/3monks.co.in.conf && echo yes || echo no')
+            if [ \"\$CERT_EXISTS\" = 'yes' ]; then
+              echo '✓ Let'\''s Encrypt certificates already provisioned'
+            else
+              echo '── Requesting Let'\''s Encrypt certificates ──'
+              sudo docker compose -f ${{ env.COMPOSE_FILE }} run --rm certbot \
+                certbot certonly \
+                --webroot \
+                --webroot-path=/var/www/certbot \
+                --email admin@3monks.co.in \
+                --agree-tos \
+                --no-eff-email \
+                -d 3monks.co.in \
+                -d www.3monks.co.in \
+                --non-interactive || echo '⚠ Certbot failed — site will use self-signed certs until resolved'
+              echo '── Reloading nginx to pick up new certificates ──'
+              sudo docker compose -f ${{ env.COMPOSE_FILE }} exec -T proxy nginx -s reload || true
+            fi
+          "
+
       - name: Cleanup unused images
         run: |
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
