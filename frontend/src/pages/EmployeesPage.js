@@ -13,6 +13,7 @@ const EmployeesPage = () => {
     const [showSalary, setShowSalary] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ userId: '', shopId: '', salary: '', incentivePercentage: '' });
+    const [errors, setErrors] = useState({});
     const [salaryMonth, setSalaryMonth] = useState(new Date().toISOString().slice(0, 7));
     const [salarySheet, setSalarySheet] = useState(null);
 
@@ -35,17 +36,33 @@ const EmployeesPage = () => {
     const openAdd = () => {
         setEditing(null);
         setForm({ userId: '', shopId: '', salary: '', incentivePercentage: '' });
+        setErrors({});
         setShowModal(true);
     };
 
     const openEdit = (e) => {
         setEditing(e);
         setForm({ userId: e.userId, shopId: e.shopId, salary: e.salary || '', incentivePercentage: e.incentivePercentage || '' });
+        setErrors({});
         setShowModal(true);
+    };
+
+    const validateForm = () => {
+        const errs = {};
+        if (!editing && !form.userId) errs.userId = 'Please select a user';
+        if (!editing && !form.shopId) errs.shopId = 'Please select a shop';
+        if (!form.salary) errs.salary = 'Salary is required';
+        else if (isNaN(form.salary) || parseFloat(form.salary) < 1) errs.salary = 'Salary must be at least ₹1';
+        else if (parseFloat(form.salary) > 9999999.99) errs.salary = 'Salary cannot exceed ₹99,99,999.99';
+        if (form.incentivePercentage && (isNaN(form.incentivePercentage) || parseFloat(form.incentivePercentage) < 0)) errs.incentivePercentage = 'Incentive cannot be negative';
+        if (form.incentivePercentage && parseFloat(form.incentivePercentage) > 100) errs.incentivePercentage = 'Incentive cannot exceed 100%';
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
     };
 
     const handleSubmit = async (ev) => {
         ev.preventDefault();
+        if (!validateForm()) return;
         try {
             const data = {
                 userId: parseInt(form.userId),
@@ -56,7 +73,17 @@ const EmployeesPage = () => {
             if (editing) { await adminService.updateEmployee(editing.id, data); toast.success('Employee updated'); }
             else { await adminService.createEmployee(data); toast.success('Employee created'); }
             setShowModal(false); fetchAll();
-        } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+        } catch (err) {
+            const resp = err.response?.data;
+            if (resp?.data && typeof resp.data === 'object' && resp.message === 'Validation failed') {
+                // Field-level validation errors from backend
+                setErrors(resp.data);
+                const firstError = Object.values(resp.data)[0];
+                toast.error(firstError || 'Please fix the errors below');
+            } else {
+                toast.error(resp?.message || 'Failed to save employee');
+            }
+        }
     };
 
     const handleToggle = async (id) => {
@@ -113,29 +140,38 @@ const EmployeesPage = () => {
 
             {/* Add/Edit Modal */}
             <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit Employee' : 'Add Employee'}>
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                     {!editing && (
-                        <div className="form-group"><label>User *</label>
-                            <select className="form-control" value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })} required>
+                        <div className="form-group">
+                            <label>User *</label>
+                            <select className={`form-control${errors.userId ? ' input-error' : ''}`} value={form.userId} onChange={e => { setForm({ ...form, userId: e.target.value }); setErrors(prev => ({ ...prev, userId: '' })); }}>
                                 <option value="">Select user...</option>
                                 {availableUsers.filter(u => u.active).map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.role})</option>)}
                             </select>
+                            {errors.userId && <span className="field-error">{errors.userId}</span>}
+                            {availableUsers.filter(u => u.active).length === 0 && <span className="field-hint">No available users. Create a user first.</span>}
                         </div>
                     )}
                     {!editing && (
-                        <div className="form-group"><label>Shop *</label>
-                            <select className="form-control" value={form.shopId} onChange={e => setForm({ ...form, shopId: e.target.value })} required>
+                        <div className="form-group">
+                            <label>Shop *</label>
+                            <select className={`form-control${errors.shopId ? ' input-error' : ''}`} value={form.shopId} onChange={e => { setForm({ ...form, shopId: e.target.value }); setErrors(prev => ({ ...prev, shopId: '' })); }}>
                                 <option value="">Select shop...</option>
                                 {shops.filter(s => s.active).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
+                            {errors.shopId && <span className="field-error">{errors.shopId}</span>}
                         </div>
                     )}
                     <div className="grid-2">
-                        <div className="form-group"><label>Monthly Salary (₹) *</label>
-                            <input className="form-control" type="number" step="0.01" value={form.salary} onChange={e => setForm({ ...form, salary: e.target.value })} required />
+                        <div className="form-group">
+                            <label>Monthly Salary (₹) *</label>
+                            <input className={`form-control${errors.salary ? ' input-error' : ''}`} type="number" step="0.01" min="1" max="9999999.99" value={form.salary} onChange={e => { setForm({ ...form, salary: e.target.value }); setErrors(prev => ({ ...prev, salary: '' })); }} placeholder="e.g. 15000" />
+                            {errors.salary && <span className="field-error">{errors.salary}</span>}
                         </div>
-                        <div className="form-group"><label>Incentive %</label>
-                            <input className="form-control" type="number" step="0.01" value={form.incentivePercentage} onChange={e => setForm({ ...form, incentivePercentage: e.target.value })} placeholder="e.g. 2" />
+                        <div className="form-group">
+                            <label>Incentive %</label>
+                            <input className={`form-control${errors.incentivePercentage ? ' input-error' : ''}`} type="number" step="0.01" min="0" max="100" value={form.incentivePercentage} onChange={e => { setForm({ ...form, incentivePercentage: e.target.value }); setErrors(prev => ({ ...prev, incentivePercentage: '' })); }} placeholder="e.g. 2" />
+                            {errors.incentivePercentage && <span className="field-error">{errors.incentivePercentage}</span>}
                         </div>
                     </div>
                     <div className="modal-actions"><button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button><button type="submit" className="btn btn-primary">Save</button></div>

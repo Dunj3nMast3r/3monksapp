@@ -58,13 +58,20 @@ public class EmployeeService {
     @Transactional
     public EmployeeResponse createEmployee(EmployeeRequest request) {
         if (employeeRepository.existsByUserId(request.getUserId())) {
-            throw new BadRequestException("Employee record already exists for this user");
+            throw new BadRequestException("This user is already registered as an employee. Please select a different user.");
         }
 
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
+                .orElseThrow(() -> new BadRequestException("Selected user not found. Please refresh and try again."));
         Shop shop = shopRepository.findById(request.getShopId())
-                .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", request.getShopId()));
+                .orElseThrow(() -> new BadRequestException("Selected shop not found. Please refresh and try again."));
+
+        if (!user.getActive()) {
+            throw new BadRequestException("Cannot add inactive user as employee. Please activate the user first.");
+        }
+        if (!shop.getActive()) {
+            throw new BadRequestException("Cannot assign employee to an inactive shop. Please select an active shop.");
+        }
 
         Employee employee = Employee.builder()
                 .user(user)
