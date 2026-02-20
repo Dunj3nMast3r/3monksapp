@@ -27,6 +27,7 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
+    environment: prod
     timeout-minutes: 15
 
     steps:
