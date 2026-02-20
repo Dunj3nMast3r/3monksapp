@@ -198,7 +198,16 @@ jobs:
             ./ ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:${{ env.APP_DIR }}/
           echo "── Sync complete ──"
 
-      - name: Stop existing containers
+      - name: Build Docker images
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            cd ${{ env.APP_DIR }}
+            echo '── Building images (existing containers still serving traffic) ──'
+            sudo docker compose -f ${{ env.COMPOSE_FILE }} build --no-cache
+            echo '── Build complete ──'
+          "
+
+      - name: Stop existing containers and start with new images
         run: |
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             cd ${{ env.APP_DIR }}
@@ -209,22 +218,7 @@ jobs:
             else
               echo '── No running containers to stop ──'
             fi
-          "
-
-      - name: Build Docker images
-        run: |
-          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
-            cd ${{ env.APP_DIR }}
-            echo '── Building images ──'
-            sudo docker compose -f ${{ env.COMPOSE_FILE }} build --no-cache
-            echo '── Build complete ──'
-          "
-
-      - name: Start services
-        run: |
-          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
-            cd ${{ env.APP_DIR }}
-            echo '── Starting services ──'
+            echo '── Starting services with updated images ──'
             sudo docker compose -f ${{ env.COMPOSE_FILE }} up -d
             echo '── Services started ──'
             sudo docker compose -f ${{ env.COMPOSE_FILE }} ps
@@ -242,8 +236,13 @@ jobs:
               echo '✓ Let'\''s Encrypt certificates already provisioned'
             else
               echo '── Requesting Let'\''s Encrypt certificates ──'
-              sudo docker compose -f ${{ env.COMPOSE_FILE }} run --rm certbot \
-                certbot certonly \
+              CONF_VOL=\$(sudo docker volume ls --format '{{.Name}}' | grep certbot-conf)
+              WWW_VOL=\$(sudo docker volume ls --format '{{.Name}}' | grep certbot-www)
+              sudo docker run --rm \
+                -v \$CONF_VOL:/etc/letsencrypt \
+                -v \$WWW_VOL:/var/www/certbot \
+                certbot/certbot \
+                certonly \
                 --webroot \
                 --webroot-path=/var/www/certbot \
                 --email admin@3monks.co.in \
