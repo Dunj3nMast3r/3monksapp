@@ -6,9 +6,11 @@ import toast from 'react-hot-toast';
 const ShopsPage = () => {
     const [shops, setShops] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', address: '', phone: '', gstNumber: '' });
+    const [form, setForm] = useState({ name: '', address: '', phone: '', email: '', gstNumber: '' });
+    const [errors, setErrors] = useState({});
 
     useEffect(() => { fetchShops(); }, []);
 
@@ -20,16 +22,39 @@ const ShopsPage = () => {
         finally { setLoading(false); }
     };
 
-    const openAdd = () => { setEditing(null); setForm({ name: '', address: '', phone: '', gstNumber: '' }); setShowModal(true); };
-    const openEdit = (shop) => { setEditing(shop); setForm({ name: shop.name, address: shop.address || '', phone: shop.phone || '', gstNumber: shop.gstNumber || '' }); setShowModal(true); };
+    const openAdd = () => { setEditing(null); setForm({ name: '', address: '', phone: '', email: '', gstNumber: '' }); setErrors({}); setShowModal(true); };
+    const openEdit = (shop) => { setEditing(shop); setForm({ name: shop.name, address: shop.address || '', phone: shop.phone || '', email: shop.email || '', gstNumber: shop.gstNumber || '' }); setErrors({}); setShowModal(true); };
+
+    const validateForm = () => {
+        const errs = {};
+        if (!form.name || form.name.trim().length < 2) errs.name = 'Shop name must be at least 2 characters';
+        if (form.name && form.name.length > 100) errs.name = 'Shop name cannot exceed 100 characters';
+        if (!form.address || form.address.trim().length < 5) errs.address = 'Address must be at least 5 characters';
+        if (form.address && form.address.length > 500) errs.address = 'Address cannot exceed 500 characters';
+        if (form.phone && !/^[0-9]{10}$/.test(form.phone)) errs.phone = 'Phone number must be exactly 10 digits';
+        if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Please enter a valid email address';
+        if (form.gstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(form.gstNumber)) errs.gstNumber = 'Please enter a valid 15-character GST number';
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!validateForm()) return;
+        setSubmitting(true);
         try {
             if (editing) { await adminService.updateShop(editing.id, form); toast.success('Shop updated'); }
             else { await adminService.createShop(form); toast.success('Shop created'); }
             setShowModal(false); fetchShops();
-        } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+        } catch (err) {
+            const resp = err.response?.data;
+            if (resp?.data && typeof resp.data === 'object' && resp.message === 'Validation failed') {
+                setErrors(resp.data);
+                toast.error(Object.values(resp.data)[0] || 'Please fix the errors below');
+            } else {
+                toast.error(resp?.message || 'Failed');
+            }
+        } finally { setSubmitting(false); }
     };
 
     const handleToggle = async (id) => {
@@ -61,12 +86,35 @@ const ShopsPage = () => {
                 </div></div>
             )}
             <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit Shop' : 'Add Shop'}>
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group"><label>Name *</label><input className="form-control" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
-                    <div className="form-group"><label>Address</label><input className="form-control" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></div>
-                    <div className="form-group"><label>Phone</label><input className="form-control" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
-                    <div className="form-group"><label>GST Number</label><input className="form-control" value={form.gstNumber} onChange={e => setForm({ ...form, gstNumber: e.target.value })} /></div>
-                    <div className="modal-actions"><button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button><button type="submit" className="btn btn-primary">Save</button></div>
+                <form onSubmit={handleSubmit} noValidate>
+                    <div className="form-group"><label>Name *</label>
+                        <input className={`form-control${errors.name ? ' input-error' : ''}`} value={form.name} onChange={e => { setForm({ ...form, name: e.target.value }); setErrors(prev => ({ ...prev, name: '' })); }} />
+                        {errors.name && <span className="field-error">{errors.name}</span>}
+                    </div>
+                    <div className="form-group"><label>Address *</label>
+                        <input className={`form-control${errors.address ? ' input-error' : ''}`} value={form.address} onChange={e => { setForm({ ...form, address: e.target.value }); setErrors(prev => ({ ...prev, address: '' })); }} />
+                        {errors.address && <span className="field-error">{errors.address}</span>}
+                    </div>
+                    <div className="grid-2">
+                        <div className="form-group"><label>Phone</label>
+                            <input className={`form-control${errors.phone ? ' input-error' : ''}`} value={form.phone} onChange={e => { setForm({ ...form, phone: e.target.value }); setErrors(prev => ({ ...prev, phone: '' })); }} placeholder="10 digits" />
+                            {errors.phone && <span className="field-error">{errors.phone}</span>}
+                        </div>
+                        <div className="form-group"><label>Email</label>
+                            <input className={`form-control${errors.email ? ' input-error' : ''}`} type="email" value={form.email} onChange={e => { setForm({ ...form, email: e.target.value }); setErrors(prev => ({ ...prev, email: '' })); }} />
+                            {errors.email && <span className="field-error">{errors.email}</span>}
+                        </div>
+                    </div>
+                    <div className="form-group"><label>GST Number</label>
+                        <input className={`form-control${errors.gstNumber ? ' input-error' : ''}`} value={form.gstNumber} onChange={e => { setForm({ ...form, gstNumber: e.target.value.toUpperCase() }); setErrors(prev => ({ ...prev, gstNumber: '' })); }} placeholder="e.g. 22AAAAA0000A1Z5" />
+                        {errors.gstNumber && <span className="field-error">{errors.gstNumber}</span>}
+                    </div>
+                    <div className="modal-actions">
+                        <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+                        <button type="submit" className="btn btn-primary" disabled={submitting}>
+                            {submitting ? <><span className="btn-spinner"></span> Saving...</> : 'Save'}
+                        </button>
+                    </div>
                 </form>
             </Modal>
         </div>

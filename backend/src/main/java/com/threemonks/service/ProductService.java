@@ -13,7 +13,9 @@ import com.threemonks.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,6 +25,10 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final FruitRepository fruitRepository;
+
+    private static final List<String> ALLOWED_IMAGE_TYPES = List.of(
+            "image/jpeg", "image/png", "image/gif", "image/webp"
+    );
 
     public List<ProductResponse> getAllProducts() {
         return productRepository.findAll().stream()
@@ -99,6 +105,37 @@ public class ProductService {
     }
 
     @Transactional
+    public void uploadProductImage(Long id, MultipartFile file) {
+        Product product = findProductById(id);
+
+        if (file.isEmpty()) {
+            throw new BadRequestException("Image file is empty");
+        }
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new BadRequestException("Image size must not exceed 5MB");
+        }
+        if (!ALLOWED_IMAGE_TYPES.contains(file.getContentType())) {
+            throw new BadRequestException("Only JPEG, PNG, GIF, and WebP images are allowed");
+        }
+
+        try {
+            product.setImage(file.getBytes());
+            product.setImageContentType(file.getContentType());
+            productRepository.save(product);
+        } catch (IOException e) {
+            throw new BadRequestException("Failed to process image file");
+        }
+    }
+
+    @Transactional
+    public void deleteProductImage(Long id) {
+        Product product = findProductById(id);
+        product.setImage(null);
+        product.setImageContentType(null);
+        productRepository.save(product);
+    }
+
+    @Transactional
     public void toggleProductStatus(Long id) {
         Product product = findProductById(id);
         product.setActive(!product.getActive());
@@ -125,6 +162,7 @@ public class ProductService {
                 .name(product.getName())
                 .description(product.getDescription())
                 .imageUrl(product.getImageUrl())
+                .hasImage(product.getImage() != null && product.getImage().length > 0)
                 .category(product.getCategory())
                 .price(product.getPrice())
                 .fruits(fruitResponses)

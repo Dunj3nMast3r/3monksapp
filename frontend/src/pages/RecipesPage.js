@@ -9,7 +9,9 @@ const RecipesPage = () => {
     const [materials, setMaterials] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [form, setForm] = useState({ productId: '', rawMaterialId: '', quantityRequired: '' });
+    const [errors, setErrors] = useState({});
 
     useEffect(() => { fetchAll(); }, []);
 
@@ -27,8 +29,21 @@ const RecipesPage = () => {
         finally { setLoading(false); }
     };
 
+    const validateForm = () => {
+        const errs = {};
+        if (!form.productId) errs.productId = 'Please select a product';
+        if (!form.rawMaterialId) errs.rawMaterialId = 'Please select a raw material';
+        if (!form.quantityRequired) errs.quantityRequired = 'Quantity is required';
+        else if (isNaN(form.quantityRequired) || parseFloat(form.quantityRequired) < 0.01) errs.quantityRequired = 'Quantity must be at least 0.01';
+        else if (parseFloat(form.quantityRequired) > 99999.99) errs.quantityRequired = 'Quantity cannot exceed 99,999.99';
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
     const handleCreate = async (e) => {
         e.preventDefault();
+        if (!validateForm()) return;
+        setSubmitting(true);
         try {
             await adminService.createRecipe({
                 productId: parseInt(form.productId),
@@ -39,7 +54,15 @@ const RecipesPage = () => {
             setShowModal(false);
             setForm({ productId: '', rawMaterialId: '', quantityRequired: '' });
             fetchAll();
-        } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+        } catch (err) {
+            const resp = err.response?.data;
+            if (resp?.data && typeof resp.data === 'object' && resp.message === 'Validation failed') {
+                setErrors(resp.data);
+                toast.error(Object.values(resp.data)[0] || 'Please fix the errors below');
+            } else {
+                toast.error(resp?.message || 'Failed');
+            }
+        } finally { setSubmitting(false); }
     };
 
     const handleDelete = async (id) => {
@@ -82,24 +105,32 @@ const RecipesPage = () => {
                 ))
             )}
 
-            <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add Recipe Entry">
-                <form onSubmit={handleCreate}>
+            <Modal isOpen={showModal} onClose={() => { setShowModal(false); setErrors({}); }} title="Add Recipe Entry">
+                <form onSubmit={handleCreate} noValidate>
                     <div className="form-group"><label>Product *</label>
-                        <select className="form-control" value={form.productId} onChange={e => setForm({ ...form, productId: e.target.value })} required>
+                        <select className={`form-control${errors.productId ? ' input-error' : ''}`} value={form.productId} onChange={e => { setForm({ ...form, productId: e.target.value }); setErrors(prev => ({ ...prev, productId: '' })); }}>
                             <option value="">Select product...</option>
                             {products.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{p.name} ({p.category})</option>)}
                         </select>
+                        {errors.productId && <span className="field-error">{errors.productId}</span>}
                     </div>
                     <div className="form-group"><label>Raw Material *</label>
-                        <select className="form-control" value={form.rawMaterialId} onChange={e => setForm({ ...form, rawMaterialId: e.target.value })} required>
+                        <select className={`form-control${errors.rawMaterialId ? ' input-error' : ''}`} value={form.rawMaterialId} onChange={e => { setForm({ ...form, rawMaterialId: e.target.value }); setErrors(prev => ({ ...prev, rawMaterialId: '' })); }}>
                             <option value="">Select material...</option>
                             {materials.filter(m => m.active).map(m => <option key={m.id} value={m.id}>{m.name} ({m.unitType})</option>)}
                         </select>
+                        {errors.rawMaterialId && <span className="field-error">{errors.rawMaterialId}</span>}
                     </div>
                     <div className="form-group"><label>Quantity Required *</label>
-                        <input className="form-control" type="number" step="0.01" value={form.quantityRequired} onChange={e => setForm({ ...form, quantityRequired: e.target.value })} required placeholder="e.g. 150 (in material's unit)" />
+                        <input className={`form-control${errors.quantityRequired ? ' input-error' : ''}`} type="number" step="0.01" value={form.quantityRequired} onChange={e => { setForm({ ...form, quantityRequired: e.target.value }); setErrors(prev => ({ ...prev, quantityRequired: '' })); }} placeholder="e.g. 150 (in material's unit)" />
+                        {errors.quantityRequired && <span className="field-error">{errors.quantityRequired}</span>}
                     </div>
-                    <div className="modal-actions"><button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button><button type="submit" className="btn btn-primary">Save</button></div>
+                    <div className="modal-actions">
+                        <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+                        <button type="submit" className="btn btn-primary" disabled={submitting}>
+                            {submitting ? <><span className="btn-spinner"></span> Saving...</> : 'Save'}
+                        </button>
+                    </div>
                 </form>
             </Modal>
         </div>

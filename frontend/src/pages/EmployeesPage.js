@@ -12,6 +12,7 @@ const EmployeesPage = () => {
     const [showModal, setShowModal] = useState(false);
     const [showSalary, setShowSalary] = useState(false);
     const [editing, setEditing] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
     const [form, setForm] = useState({ userId: '', shopId: '', salary: '', incentivePercentage: '' });
     const [errors, setErrors] = useState({});
     const [salaryMonth, setSalaryMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -63,6 +64,7 @@ const EmployeesPage = () => {
     const handleSubmit = async (ev) => {
         ev.preventDefault();
         if (!validateForm()) return;
+        setSubmitting(true);
         try {
             const data = {
                 userId: parseInt(form.userId),
@@ -76,14 +78,13 @@ const EmployeesPage = () => {
         } catch (err) {
             const resp = err.response?.data;
             if (resp?.data && typeof resp.data === 'object' && resp.message === 'Validation failed') {
-                // Field-level validation errors from backend
                 setErrors(resp.data);
                 const firstError = Object.values(resp.data)[0];
                 toast.error(firstError || 'Please fix the errors below');
             } else {
                 toast.error(resp?.message || 'Failed to save employee');
             }
-        }
+        } finally { setSubmitting(false); }
     };
 
     const handleToggle = async (id) => {
@@ -174,7 +175,12 @@ const EmployeesPage = () => {
                             {errors.incentivePercentage && <span className="field-error">{errors.incentivePercentage}</span>}
                         </div>
                     </div>
-                    <div className="modal-actions"><button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button><button type="submit" className="btn btn-primary">Save</button></div>
+                    <div className="modal-actions">
+                        <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+                        <button type="submit" className="btn btn-primary" disabled={submitting}>
+                            {submitting ? <><span className="btn-spinner"></span> Saving...</> : 'Save'}
+                        </button>
+                    </div>
                 </form>
             </Modal>
 

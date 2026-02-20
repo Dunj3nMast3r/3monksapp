@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -105,6 +106,20 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> toggleProduct(@PathVariable Long id) {
         productService.toggleProductStatus(id);
         return ResponseEntity.ok(ApiResponse.success("Product status toggled", null));
+    }
+
+    @PostMapping("/products/{id}/image")
+    public ResponseEntity<ApiResponse<Void>> uploadProductImage(
+            @PathVariable Long id,
+            @RequestParam("image") MultipartFile image) {
+        productService.uploadProductImage(id, image);
+        return ResponseEntity.ok(ApiResponse.success("Product image uploaded", null));
+    }
+
+    @DeleteMapping("/products/{id}/image")
+    public ResponseEntity<ApiResponse<Void>> deleteProductImage(@PathVariable Long id) {
+        productService.deleteProductImage(id);
+        return ResponseEntity.ok(ApiResponse.success("Product image deleted", null));
     }
 
     // Raw Material management

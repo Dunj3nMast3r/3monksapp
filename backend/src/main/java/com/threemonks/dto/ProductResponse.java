@@ -14,6 +14,7 @@ public class ProductResponse {
     private String name;
     private String description;
     private String imageUrl;
+    private Boolean hasImage;
     private ProductCategory category;
     private BigDecimal price;
     private List<FruitResponse> fruits;

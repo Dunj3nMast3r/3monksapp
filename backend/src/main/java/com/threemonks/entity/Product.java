@@ -23,6 +23,12 @@ public class Product {
     private String description;
     private String imageUrl;
 
+    @Lob
+    @Column(columnDefinition = "BYTEA")
+    private byte[] image;
+
+    private String imageContentType;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ProductCategory category;

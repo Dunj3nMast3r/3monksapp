@@ -31,6 +31,8 @@ const Counter = ({ end, suffix = '', duration = 2000 }) => {
     return <span ref={ref}>{count}{suffix}</span>;
 };
 
+const API_BASE = process.env.REACT_APP_API_URL || '';
+
 const LandingPage = () => {
     const [products, setProducts] = useState([]);
     const [scrolled, setScrolled] = useState(false);
@@ -204,7 +206,11 @@ const LandingPage = () => {
                         ].filter(p => activeCategory === 'ALL' || p.category === activeCategory)).map((product, i) => (
                             <div key={product.id} className="lp-product" style={{ '--delay': `${i * 0.06}s` }}>
                                 <div className="lp-product__img">
-                                    <span>{fruitImages[i % fruitImages.length]}</span>
+                                    {product.hasImage ? (
+                                        <img src={`${API_BASE}/api/public/products/${product.id}/image`} alt={product.name} className="lp-product__image" />
+                                    ) : (
+                                        <span>{fruitImages[i % fruitImages.length]}</span>
+                                    )}
                                     <div className="lp-product__badge">{catLabels[product.category] || product.category?.replace('_', ' ')}</div>
                                 </div>
                                 <div className="lp-product__body">

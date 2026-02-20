@@ -33,6 +33,14 @@ export const adminService = {
     createProduct: (data) => api.post('/api/admin/products', data),
     updateProduct: (id, data) => api.put(`/api/admin/products/${id}`, data),
     toggleProduct: (id) => api.patch(`/api/admin/products/${id}/toggle`),
+    uploadProductImage: (id, file) => {
+        const formData = new FormData();
+        formData.append('image', file);
+        return api.post(`/api/admin/products/${id}/image`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
+    deleteProductImage: (id) => api.delete(`/api/admin/products/${id}/image`),
     // Raw Materials
     getRawMaterials: () => api.get('/api/admin/raw-materials'),
     createRawMaterial: (data) => api.post('/api/admin/raw-materials', data),

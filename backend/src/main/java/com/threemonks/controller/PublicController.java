@@ -1,15 +1,19 @@
 package com.threemonks.controller;
 
 import com.threemonks.dto.*;
+import com.threemonks.entity.Product;
 import com.threemonks.service.FruitService;
 import com.threemonks.service.ProductService;
 import com.threemonks.service.ShopService;
 import com.threemonks.enums.ProductCategory;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/public")
@@ -48,5 +52,17 @@ public class PublicController {
     @GetMapping("/shops")
     public ResponseEntity<ApiResponse<List<ShopResponse>>> getShops() {
         return ResponseEntity.ok(ApiResponse.success(shopService.getActiveShops()));
+    }
+
+    @GetMapping("/products/{id}/image")
+    public ResponseEntity<byte[]> getProductImage(@PathVariable Long id) {
+        Product product = productService.findProductById(id);
+        if (product.getImage() == null || product.getImage().length == 0) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(product.getImageContentType()))
+                .cacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic())
+                .body(product.getImage());
     }
 }

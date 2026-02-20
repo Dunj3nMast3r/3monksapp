@@ -8,8 +8,10 @@ const UsersPage = () => {
     const [users, setUsers] = useState([]);
     const [shops, setShops] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
-    const [form, setForm] = useState({ fullName: '', username: '', password: '', role: 'SHOP_OPERATOR', shopId: '' });
+    const [form, setForm] = useState({ fullName: '', username: '', password: '', email: '', phone: '', role: 'SHOP_OPERATOR', shopId: '' });
+    const [errors, setErrors] = useState({});
 
     useEffect(() => {
         Promise.all([adminService.getUsers(), adminService.getShops()])
@@ -20,15 +22,47 @@ const UsersPage = () => {
 
     const fetchUsers = async () => { const res = await adminService.getUsers(); setUsers(res.data.data || []); };
 
+    const openAdd = () => {
+        setForm({ fullName: '', username: '', password: '', email: '', phone: '', role: 'SHOP_OPERATOR', shopId: '' });
+        setErrors({});
+        setShowModal(true);
+    };
+
+    const validateForm = () => {
+        const errs = {};
+        if (!form.fullName || form.fullName.trim().length < 2) errs.fullName = 'Full name must be at least 2 characters';
+        if (form.fullName && form.fullName.length > 100) errs.fullName = 'Full name cannot exceed 100 characters';
+        if (!form.username || form.username.trim().length < 3) errs.username = 'Username must be at least 3 characters';
+        if (form.username && form.username.length > 50) errs.username = 'Username cannot exceed 50 characters';
+        if (form.username && !/^[a-zA-Z0-9._-]+$/.test(form.username)) errs.username = 'Username can only contain letters, numbers, dots, hyphens, and underscores';
+        if (!form.password || form.password.length < 6) errs.password = 'Password must be at least 6 characters';
+        if (!form.email) errs.email = 'Email is required';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Please enter a valid email address';
+        if (form.phone && !/^[0-9]{10}$/.test(form.phone)) errs.phone = 'Phone number must be exactly 10 digits';
+        if (!form.role) errs.role = 'Role is required';
+        if (form.role !== 'SUPER_ADMIN' && !form.shopId) errs.shopId = 'Shop is required for non-admin users';
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!validateForm()) return;
+        setSubmitting(true);
         try {
             await adminService.createUser({ ...form, shopId: form.shopId ? parseInt(form.shopId) : null });
             toast.success('User created');
             setShowModal(false);
-            setForm({ fullName: '', username: '', password: '', role: 'SHOP_OPERATOR', shopId: '' });
             fetchUsers();
-        } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+        } catch (err) {
+            const resp = err.response?.data;
+            if (resp?.data && typeof resp.data === 'object' && resp.message === 'Validation failed') {
+                setErrors(resp.data);
+                toast.error(Object.values(resp.data)[0] || 'Please fix the errors below');
+            } else {
+                toast.error(resp?.message || 'Failed');
+            }
+        } finally { setSubmitting(false); }
     };
 
     const handleToggle = async (id) => {
@@ -38,7 +72,7 @@ const UsersPage = () => {
 
     return (
         <div>
-            <div className="page-header"><h1>Users</h1><button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Add User</button></div>
+            <div className="page-header"><h1>Users</h1><button className="btn btn-primary" onClick={openAdd}>+ Add User</button></div>
             {loading ? <div className="loading"><div className="spinner"></div></div> : (
                 <div className="card"><div className="table-wrapper">
                     <table>
@@ -59,26 +93,52 @@ const UsersPage = () => {
                 </div></div>
             )}
             <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add User">
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group"><label>Full Name *</label><input className="form-control" value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} required /></div>
+                <form onSubmit={handleSubmit} noValidate>
+                    <div className="form-group"><label>Full Name *</label>
+                        <input className={`form-control${errors.fullName ? ' input-error' : ''}`} value={form.fullName} onChange={e => { setForm({ ...form, fullName: e.target.value }); setErrors(prev => ({ ...prev, fullName: '' })); }} />
+                        {errors.fullName && <span className="field-error">{errors.fullName}</span>}
+                    </div>
                     <div className="grid-2">
-                        <div className="form-group"><label>Username *</label><input className="form-control" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} required /></div>
-                        <div className="form-group"><label>Password *</label><input className="form-control" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required /></div>
+                        <div className="form-group"><label>Username *</label>
+                            <input className={`form-control${errors.username ? ' input-error' : ''}`} value={form.username} onChange={e => { setForm({ ...form, username: e.target.value }); setErrors(prev => ({ ...prev, username: '' })); }} />
+                            {errors.username && <span className="field-error">{errors.username}</span>}
+                        </div>
+                        <div className="form-group"><label>Password *</label>
+                            <input className={`form-control${errors.password ? ' input-error' : ''}`} type="password" value={form.password} onChange={e => { setForm({ ...form, password: e.target.value }); setErrors(prev => ({ ...prev, password: '' })); }} />
+                            {errors.password && <span className="field-error">{errors.password}</span>}
+                        </div>
+                    </div>
+                    <div className="grid-2">
+                        <div className="form-group"><label>Email *</label>
+                            <input className={`form-control${errors.email ? ' input-error' : ''}`} type="email" value={form.email} onChange={e => { setForm({ ...form, email: e.target.value }); setErrors(prev => ({ ...prev, email: '' })); }} />
+                            {errors.email && <span className="field-error">{errors.email}</span>}
+                        </div>
+                        <div className="form-group"><label>Phone</label>
+                            <input className={`form-control${errors.phone ? ' input-error' : ''}`} value={form.phone} onChange={e => { setForm({ ...form, phone: e.target.value }); setErrors(prev => ({ ...prev, phone: '' })); }} placeholder="10 digits" />
+                            {errors.phone && <span className="field-error">{errors.phone}</span>}
+                        </div>
                     </div>
                     <div className="grid-2">
                         <div className="form-group"><label>Role *</label>
-                            <select className="form-control" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
+                            <select className={`form-control${errors.role ? ' input-error' : ''}`} value={form.role} onChange={e => { setForm({ ...form, role: e.target.value }); setErrors(prev => ({ ...prev, role: '', shopId: '' })); }}>
                                 <option value="SUPER_ADMIN">Super Admin</option><option value="SHOP_MANAGER">Shop Manager</option><option value="SHOP_OPERATOR">Shop Operator</option>
                             </select>
+                            {errors.role && <span className="field-error">{errors.role}</span>}
                         </div>
-                        <div className="form-group"><label>Shop</label>
-                            <select className="form-control" value={form.shopId} onChange={e => setForm({ ...form, shopId: e.target.value })}>
+                        <div className="form-group"><label>Shop {form.role !== 'SUPER_ADMIN' ? '*' : ''}</label>
+                            <select className={`form-control${errors.shopId ? ' input-error' : ''}`} value={form.shopId} onChange={e => { setForm({ ...form, shopId: e.target.value }); setErrors(prev => ({ ...prev, shopId: '' })); }}>
                                 <option value="">-- Select --</option>
                                 {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
+                            {errors.shopId && <span className="field-error">{errors.shopId}</span>}
                         </div>
                     </div>
-                    <div className="modal-actions"><button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button><button type="submit" className="btn btn-primary">Create User</button></div>
+                    <div className="modal-actions">
+                        <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
+                        <button type="submit" className="btn btn-primary" disabled={submitting}>
+                            {submitting ? <><span className="btn-spinner"></span> Creating...</> : 'Create User'}
+                        </button>
+                    </div>
                 </form>
             </Modal>
         </div>
