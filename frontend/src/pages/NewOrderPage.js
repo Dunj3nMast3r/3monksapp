@@ -115,21 +115,21 @@ const NewOrderPage = () => {
             <div className="grid-2">
                 {/* Menu Section */}
                 <div>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                    <div className="order-filter-bar">
                         {['ALL', 'CREAMY_BLEND', 'CURATED_BLEND', 'SHOT'].map(f => (
                             <button key={f} className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter(f)}>
                                 {f === 'ALL' ? 'All' : f === 'CREAMY_BLEND' ? '🍹 Creamy' : f === 'CURATED_BLEND' ? '🍸 Curated' : '🍊 Shots'}
                             </button>
                         ))}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                    <div className="order-product-grid">
                         {filteredProducts.map(product => (
-                            <div key={product.id} className="card" style={{ cursor: 'pointer', padding: '16px' }} onClick={() => addToCart(product)}>
+                            <div key={product.id} className="card order-product-card" onClick={() => addToCart(product)}>
                                 <span className="badge badge-info" style={{ marginBottom: '8px' }}>{product.category.replace(/_/g, ' ')}</span>
                                 <h4>{product.name}</h4>
-                                <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--primary)', marginTop: '4px' }}>{formatCurrency(product.price)}</div>
+                                <div className="order-product-price">{formatCurrency(product.price)}</div>
                                 {product.fruits?.length > 0 && (
-                                    <div style={{ marginTop: '4px', fontSize: '12px', color: 'var(--text-light)' }}>
+                                    <div className="order-product-fruits">
                                         {product.fruits.map(f => f.name).join(', ')}
                                     </div>
                                 )}
@@ -144,32 +144,32 @@ const NewOrderPage = () => {
                         <h3 style={{ marginBottom: '16px' }}>🛒 Cart ({cart.length} items)</h3>
 
                         {cart.length === 0 ? (
-                            <p style={{ color: 'var(--text-light)', textAlign: 'center', padding: '20px' }}>Tap products to add to cart</p>
+                            <p className="order-cart-empty">Tap products to add to cart</p>
                         ) : (
                             <>
                                 {cart.map(item => (
-                                    <div key={item.productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                                    <div key={item.productId} className="order-cart-item">
                                         <div>
                                             <div style={{ fontWeight: 500 }}>{item.productName}</div>
-                                            <div style={{ fontSize: '13px', color: 'var(--text-light)' }}>{formatCurrency(item.unitPrice)} each</div>
+                                            <div className="order-cart-item-price">{formatCurrency(item.unitPrice)} each</div>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div className="order-cart-item-controls">
                                             <button className="btn btn-sm btn-outline" onClick={() => updateQuantity(item.productId, item.quantity - 1)}>-</button>
-                                            <span style={{ fontWeight: 600, minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
+                                            <span className="order-cart-item-qty">{item.quantity}</span>
                                             <button className="btn btn-sm btn-outline" onClick={() => updateQuantity(item.productId, item.quantity + 1)}>+</button>
-                                            <span style={{ fontWeight: 600, minWidth: '70px', textAlign: 'right' }}>{formatCurrency(item.unitPrice * item.quantity)}</span>
+                                            <span className="order-cart-item-total">{formatCurrency(item.unitPrice * item.quantity)}</span>
                                         </div>
                                     </div>
                                 ))}
 
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', fontWeight: 700, fontSize: '20px' }}>
+                                <div className="order-cart-total">
                                     <span>Total</span>
                                     <span style={{ color: 'var(--primary)' }}>{formatCurrency(getTotal())}</span>
                                 </div>
                             </>
                         )}
 
-                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                        <div className="order-cart-form">
                             <div className="form-group">
                                 <label>Customer Name (optional)</label>
                                 <input className="form-control" value={customerName} onChange={e => setCustomerName(e.target.value)} />
@@ -180,17 +180,17 @@ const NewOrderPage = () => {
                             </div>
                             <div className="form-group">
                                 <label>Payment Mode</label>
-                                <div style={{ display: 'flex', gap: '8px' }}>
+                                <div className="order-payment-modes">
                                     {['CASH', 'UPI'].map(mode => (
-                                        <button key={mode} className={`btn ${paymentMode === mode ? 'btn-primary' : 'btn-outline'}`}
-                                            onClick={() => setPaymentMode(mode)} style={{ flex: 1, justifyContent: 'center' }}>
+                                        <button key={mode} className={`btn ${paymentMode === mode ? 'btn-primary' : 'btn-outline'} order-payment-btn`}
+                                            onClick={() => setPaymentMode(mode)}>
                                             {mode === 'CASH' ? '💵' : '📱'} {mode}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}
+                            <button className="btn btn-primary btn-lg order-submit-btn"
                                 onClick={handleSubmit} disabled={cart.length === 0 || loading}>
                                 {loading ? 'Processing...' : `Place Order • ${formatCurrency(getTotal())}`}
                             </button>
