@@ -48,6 +48,27 @@ jobs:
           echo "UserKnownHostsFile /dev/null" >> ~/.ssh/config
           chmod 644 ~/.ssh/config
 
+      # ── 2.5. Verify port 22 connectivity ─────────────────
+      - name: Check SSH port connectivity
+        run: |
+          echo "Testing TCP connectivity to ${{ secrets.LIGHTSAIL_HOST }}:22..."
+          for i in 1 2 3 4 5; do
+            if nc -z -w 5 ${{ secrets.LIGHTSAIL_HOST }} 22 2>/dev/null; then
+              echo "✓ Port 22 is reachable"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "✗ Cannot reach ${{ secrets.LIGHTSAIL_HOST }}:22 after 5 attempts"
+          echo "Check that port 22 (SSH) is open in Lightsail Networking firewall"
+          exit 1
+
+      - name: Test SSH authentication
+        run: |
+          echo "Testing SSH authentication..."
+          ssh -v ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo '✓ SSH connection successful' && whoami"
+
       # ── 3. Copy project files to Lightsail ───────────────
       - name: Copy files to server
         run: |
