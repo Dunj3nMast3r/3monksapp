@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { orderService } from '../services/dataService';
-import { formatCurrency, formatDateTime } from '../utils/helpers';
+import { orderService, exportService } from '../services/dataService';
+import { formatCurrency, formatDateTime, getISTDateString, getISTMonthString } from '../utils/helpers';
+import ConfirmDialog from '../components/ConfirmDialog';
 import toast from 'react-hot-toast';
 
 const OrderHistoryPage = () => {
@@ -9,6 +10,9 @@ const OrderHistoryPage = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState('today');
+    const [confirmCancel, setConfirmCancel] = useState(null);
+    const [cancelling, setCancelling] = useState(false);
+    const [downloading, setDownloading] = useState(false);
 
     useEffect(() => { fetchOrders(); }, [view]); // eslint-disable-line
 
@@ -29,14 +33,47 @@ const OrderHistoryPage = () => {
         }
     };
 
-    const handleCancel = async (orderId) => {
-        if (!window.confirm('Cancel this order?')) return;
+    const handleCancelClick = (order) => {
+        setConfirmCancel(order);
+    };
+
+    const handleCancelConfirm = async () => {
+        if (!confirmCancel) return;
+        setCancelling(true);
         try {
-            await orderService.cancelOrder(orderId);
-            toast.success('Order cancelled');
+            await orderService.cancelOrder(confirmCancel.id);
+            toast.success('Order cancelled — stock restored');
+            setConfirmCancel(null);
             fetchOrders();
         } catch (err) {
-            toast.error('Failed to cancel order');
+            toast.error(err.response?.data?.message || 'Failed to cancel order');
+        } finally {
+            setCancelling(false);
+        }
+    };
+
+    const handleDownload = async () => {
+        setDownloading(true);
+        try {
+            const today = getISTDateString();
+            const from = view === 'today' ? today : getISTMonthString() + '-01';
+            const res = await exportService.downloadOrders(from, today);
+            const blob = new Blob([res.data], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `orders_${from}_to_${today}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            toast.success('Excel downloaded');
+        } catch {
+            toast.error('Failed to download');
+        } finally {
+            setDownloading(false);
         }
     };
 
@@ -47,6 +84,11 @@ const OrderHistoryPage = () => {
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button className={`btn btn-sm ${view === 'today' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setView('today')}>Today</button>
                     <button className={`btn btn-sm ${view === 'all' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setView('all')}>All</button>
+                    {isAdmin() && (
+                        <button className="btn btn-sm btn-outline" onClick={handleDownload} disabled={downloading}>
+                            {downloading ? '⏳' : '📥'} Excel
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -86,7 +128,7 @@ const OrderHistoryPage = () => {
                                         <td>{formatDateTime(order.orderDate)}</td>
                                         <td>
                                             {order.status === 'COMPLETED' && (
-                                                <button className="btn btn-sm btn-danger" onClick={() => handleCancel(order.id)}>Cancel</button>
+                                                <button className="btn btn-sm btn-danger" onClick={() => handleCancelClick(order)}>Cancel</button>
                                             )}
                                         </td>
                                     </tr>
@@ -96,6 +138,23 @@ const OrderHistoryPage = () => {
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                isOpen={!!confirmCancel}
+                onClose={() => setConfirmCancel(null)}
+                onConfirm={handleCancelConfirm}
+                loading={cancelling}
+                title="Cancel Order"
+                message={`Cancel order ${confirmCancel?.orderNumber}?`}
+                details={[
+                    `Order total: ${formatCurrency(confirmCancel?.totalAmount)}`,
+                    `${confirmCancel?.items?.length || 0} product(s) — raw material stock will be restored`,
+                    `Payment mode: ${confirmCancel?.paymentMode}`,
+                    `Status will change from COMPLETED → CANCELLED`,
+                    `Items: ${confirmCancel?.items?.map(i => i.productName + ' x' + i.quantity).join(', ') || ''}`
+                ]}
+                confirmText="Cancel Order"
+            />
         </div>
     );
 };

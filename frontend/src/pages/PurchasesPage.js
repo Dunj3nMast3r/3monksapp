@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { managerService, adminService } from '../services/dataService';
-import { formatCurrency, formatDate } from '../utils/helpers';
+import { managerService, adminService, exportService } from '../services/dataService';
+import { formatCurrency, formatDate, getISTDateString, getISTMonthString } from '../utils/helpers';
 import Modal from '../components/Modal';
+import ConfirmDialog from '../components/ConfirmDialog';
 import toast from 'react-hot-toast';
 
 const PurchasesPage = () => {
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
     const [purchases, setPurchases] = useState([]);
     const [materials, setMaterials] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAdd, setShowAdd] = useState(false);
     const [form, setForm] = useState({ rawMaterialId: '', quantity: '', totalCost: '', vendorName: '', invoiceNumber: '', gstPercentage: '', gstAmount: '' });
+    const [confirmDelete, setConfirmDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
+    const [downloading, setDownloading] = useState(false);
 
     useEffect(() => { fetchPurchases(); fetchMaterials(); }, []); // eslint-disable-line
 
@@ -53,11 +57,62 @@ const PurchasesPage = () => {
         }
     };
 
+    const handleDeleteClick = (purchase) => {
+        setConfirmDelete(purchase);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!confirmDelete) return;
+        setDeleting(true);
+        try {
+            await adminService.deletePurchase(confirmDelete.id);
+            toast.success('Purchase deleted — stock adjusted');
+            setConfirmDelete(null);
+            fetchPurchases();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to delete purchase');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const handleDownload = async () => {
+        setDownloading(true);
+        try {
+            const today = getISTDateString();
+            const monthStart = getISTMonthString() + '-01';
+            const res = await exportService.downloadPurchases(monthStart, today);
+            const blob = new Blob([res.data], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `purchases_${monthStart}_to_${today}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            toast.success('Excel downloaded');
+        } catch {
+            toast.error('Failed to download');
+        } finally {
+            setDownloading(false);
+        }
+    };
+
     return (
         <div>
             <div className="page-header">
                 <h1>Purchases</h1>
-                <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ New Purchase</button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    {isAdmin() && (
+                        <button className="btn btn-outline" onClick={handleDownload} disabled={downloading}>
+                            {downloading ? '⏳' : '📥'} Excel
+                        </button>
+                    )}
+                    <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ New Purchase</button>
+                </div>
             </div>
 
             {loading ? (
@@ -68,7 +123,7 @@ const PurchasesPage = () => {
                 <div className="card">
                     <div className="table-wrapper">
                         <table>
-                            <thead><tr><th>Material</th><th>Qty</th><th>Cost</th><th>GST %</th><th>GST Amt</th><th>Vendor</th><th>Invoice</th><th>Date</th></tr></thead>
+                            <thead><tr><th>Material</th><th>Qty</th><th>Cost</th><th>GST %</th><th>GST Amt</th><th>Vendor</th><th>Invoice</th><th>Date</th>{isAdmin() && <th>Actions</th>}</tr></thead>
                             <tbody>
                                 {purchases.map(p => (
                                     <tr key={p.id}>
@@ -80,6 +135,11 @@ const PurchasesPage = () => {
                                         <td>{p.vendorName || '-'}</td>
                                         <td>{p.invoiceNumber || '-'}</td>
                                         <td>{formatDate(p.purchaseDate)}</td>
+                                        {isAdmin() && (
+                                            <td>
+                                                <button className="btn btn-sm btn-danger" onClick={() => handleDeleteClick(p)}>Delete</button>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
@@ -131,6 +191,23 @@ const PurchasesPage = () => {
                     </div>
                 </form>
             </Modal>
+
+            <ConfirmDialog
+                isOpen={!!confirmDelete}
+                onClose={() => setConfirmDelete(null)}
+                onConfirm={handleDeleteConfirm}
+                loading={deleting}
+                title="Delete Purchase"
+                message={`Delete purchase for ${confirmDelete?.rawMaterialName}?`}
+                details={[
+                    `${confirmDelete?.quantity} units of ${confirmDelete?.rawMaterialName} will be deducted from stock`,
+                    `Invoice: ${confirmDelete?.invoiceNumber || 'N/A'}`,
+                    `Amount: ${formatCurrency(confirmDelete?.totalCost)}`,
+                    `Vendor: ${confirmDelete?.vendorName || 'N/A'}`,
+                    `This purchase record will be permanently removed`
+                ]}
+                confirmText="Delete Purchase"
+            />
         </div>
     );
 };

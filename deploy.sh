@@ -55,7 +55,8 @@ DB_NAME=threemonks
 DB_USERNAME=postgres
 DB_PASSWORD=${DB_PASSWORD}
 JWT_SECRET=${JWT_SECRET}
-CORS_ORIGINS=http://${PUBLIC_IP}
+CORS_ORIGINS=https://3monks.co.in
+SSL_EMAIL=admin@3monks.co.in
 EOF
     echo "  .env created at $APP_DIR/.env"
     echo "  DB_PASSWORD and JWT_SECRET auto-generated"
@@ -74,12 +75,19 @@ echo "  1. Copy your project files to $APP_DIR/"
 echo "     From your local machine:"
 echo "       scp -r -i ~/.ssh/your-key.pem ./* ubuntu@<IP>:$APP_DIR/"
 echo ""
-echo "  2. SSH back in and start the app:"
+echo "  2. Point DNS records to this server:"
+echo "       A record: 3monks.co.in     → <your-server-ip>"
+echo "       A record: www.3monks.co.in → <your-server-ip>"
+echo ""
+echo "  3. Open ports 80 AND 443 in Lightsail Networking tab"
+echo ""
+echo "  4. SSH in and obtain SSL certificates (first time only):"
 echo "       cd $APP_DIR"
+echo "       sudo ./init-ssl.sh"
+echo ""
+echo "  5. Start the full stack with HTTPS:"
 echo "       docker compose -f docker-compose.prod.yml up -d --build"
 echo ""
-echo "  3. Open port 80 in Lightsail Networking tab"
-echo ""
-echo "  4. Visit: http://<your-lightsail-ip>"
+echo "  6. Visit: https://3monks.co.in"
 echo "     Login: admin / admin123"
 echo ""

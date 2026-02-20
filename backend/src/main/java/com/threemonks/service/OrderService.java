@@ -102,7 +102,8 @@ public class OrderService {
             for (Recipe recipe : recipes) {
                 BigDecimal consumeQty = recipe.getQuantityRequired().multiply(BigDecimal.valueOf(item.getQuantity()));
 
-                Stock stock = stockRepository.findByShopIdAndRawMaterialId(order.getShop().getId(), recipe.getRawMaterial().getId())
+                Stock stock = stockRepository
+                        .findByShopIdAndRawMaterialId(order.getShop().getId(), recipe.getRawMaterial().getId())
                         .orElse(null);
 
                 if (stock != null) {
@@ -120,7 +121,8 @@ public class OrderService {
                     stockHistoryRepository.save(history);
 
                     // Low stock warning
-                    if (stock.getMinimumThreshold() != null && stock.getQuantity().compareTo(stock.getMinimumThreshold()) <= 0) {
+                    if (stock.getMinimumThreshold() != null
+                            && stock.getQuantity().compareTo(stock.getMinimumThreshold()) <= 0) {
                         logger.warn("LOW STOCK ALERT: {} at {} - Current: {}, Threshold: {}",
                                 recipe.getRawMaterial().getName(), order.getShop().getName(),
                                 stock.getQuantity(), stock.getMinimumThreshold());
@@ -164,7 +166,8 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
-    public List<OrderResponse> getOrdersByDateRange(Long shopId, LocalDateTime start, LocalDateTime end, UserPrincipal currentUser) {
+    public List<OrderResponse> getOrdersByDateRange(Long shopId, LocalDateTime start, LocalDateTime end,
+            UserPrincipal currentUser) {
         if (shopId != null) {
             validateShopAccess(shopId, currentUser);
             return orderRepository.findByShopIdAndOrderDateBetween(shopId, start, end).stream()
@@ -184,15 +187,60 @@ public class OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", "id", id));
         validateShopAccess(order.getShop().getId(), currentUser);
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BadRequestException("Order is already cancelled");
+        }
+
         order.setStatus(OrderStatus.CANCELLED);
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+
+        // Restore stock when order is cancelled
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", currentUser.getId()));
+        restoreStockForOrder(saved, user);
+
+        return toResponse(saved);
+    }
+
+    private void restoreStockForOrder(Order order, User user) {
+        for (OrderItem item : order.getItems()) {
+            List<Recipe> recipes = recipeService.getRecipeEntitiesByProduct(item.getProduct().getId());
+            for (Recipe recipe : recipes) {
+                BigDecimal restoreQty = recipe.getQuantityRequired().multiply(BigDecimal.valueOf(item.getQuantity()));
+
+                Stock stock = stockRepository.findByShopIdAndRawMaterialId(
+                        order.getShop().getId(), recipe.getRawMaterial().getId())
+                        .orElse(null);
+
+                if (stock != null) {
+                    stock.setQuantity(stock.getQuantity().add(restoreQty));
+                    stockRepository.save(stock);
+
+                    StockHistory history = StockHistory.builder()
+                            .shop(order.getShop())
+                            .rawMaterial(recipe.getRawMaterial())
+                            .quantityChange(restoreQty)
+                            .changeType("RESTORED")
+                            .notes("Order cancelled: " + order.getOrderNumber() + " | Product: "
+                                    + item.getProduct().getName())
+                            .changedBy(user)
+                            .build();
+                    stockHistoryRepository.save(history);
+
+                    logger.info("STOCK RESTORED: {} +{} at {} (Order: {})",
+                            recipe.getRawMaterial().getName(), restoreQty,
+                            order.getShop().getName(), order.getOrderNumber());
+                }
+            }
+        }
     }
 
     private Long resolveShopId(Long requestShopId, UserPrincipal currentUser) {
         if (currentUser.getRole() == Role.SUPER_ADMIN) {
-            return requestShopId != null ? requestShopId : 
-                shopRepository.findByActiveTrue().stream().findFirst()
-                    .orElseThrow(() -> new BadRequestException("No active shops")).getId();
+            return requestShopId != null ? requestShopId
+                    : shopRepository.findByActiveTrue().stream().findFirst()
+                            .orElseThrow(() -> new BadRequestException("No active shops")).getId();
         }
         return currentUser.getShopId();
     }

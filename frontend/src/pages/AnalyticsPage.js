@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { dashboardService } from '../services/dataService';
-import { formatCurrency } from '../utils/helpers';
+import { formatCurrency, getISTDateString } from '../utils/helpers';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import toast from 'react-hot-toast';
 
@@ -8,10 +8,11 @@ const AnalyticsPage = () => {
     const [analytics, setAnalytics] = useState(null);
     const [loading, setLoading] = useState(true);
     const [from, setFrom] = useState(() => {
-        const d = new Date(); d.setMonth(d.getMonth() - 1);
-        return d.toISOString().split('T')[0];
+        const d = new Date();
+        d.setMonth(d.getMonth() - 1);
+        return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     });
-    const [to, setTo] = useState(() => new Date().toISOString().split('T')[0]);
+    const [to, setTo] = useState(() => getISTDateString());
 
     useEffect(() => { fetchAnalytics(); }, []); // eslint-disable-line
 

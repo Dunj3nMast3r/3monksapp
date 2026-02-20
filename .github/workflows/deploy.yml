@@ -2,8 +2,11 @@
 # 3Monks — CI/CD Pipeline
 # ==========================================================
 # Enterprise-grade multi-stage pipeline that validates, deploys, and
-# verifies the full stack (Postgres + Spring Boot + React/Nginx) on
-# an AWS Lightsail instance via Docker Compose.
+# verifies the full stack on AWS Lightsail via Docker Compose.
+#
+# Architecture:
+#   Proxy (nginx/HTTPS) → Frontend (React/nginx) + Backend (Spring Boot)
+#   + PostgreSQL + Certbot (Let's Encrypt auto-renewal)
 #
 # Stages:
 #   1. Validate    — Lint & structure checks
@@ -18,7 +21,7 @@
 #   LIGHTSAIL_SSH_KEY   — Private SSH key (PEM) for the instance
 #   DB_PASSWORD         — PostgreSQL password
 #   JWT_SECRET          — JWT signing secret
-#   CORS_ORIGINS        — Allowed CORS origins (e.g. http://YOUR_IP)
+#   CORS_ORIGINS        — Allowed CORS origins (e.g. https://3monks.co.in)
 # ==========================================================
 
 name: 3Monks CI/CD Pipeline
@@ -54,14 +57,14 @@ jobs:
         run: |
           echo "── Checking required files & directories ──"
           errors=0
-          for dir in backend frontend; do
+          for dir in backend frontend proxy; do
             if [ -d "$dir" ]; then
               echo "  ✓ $dir/"
             else
               echo "  ✗ Missing $dir/" && errors=$((errors+1))
             fi
           done
-          for file in backend/Dockerfile.prod frontend/Dockerfile.prod docker-compose.prod.yml; do
+          for file in backend/Dockerfile frontend/Dockerfile proxy/Dockerfile proxy/nginx.prod.conf docker-compose.prod.yml init-ssl.sh; do
             if [ -f "$file" ]; then
               echo "  ✓ $file"
             else
@@ -79,7 +82,7 @@ jobs:
       - name: Validate Dockerfiles
         run: |
           echo "── Dockerfile syntax check ──"
-          for f in backend/Dockerfile.prod frontend/Dockerfile.prod; do
+          for f in backend/Dockerfile frontend/Dockerfile proxy/Dockerfile; do
             if head -1 "$f" | grep -qi "^FROM"; then
               echo "  ✓ $f starts with FROM"
             else
@@ -188,7 +191,9 @@ jobs:
           rsync -avz --delete \
             --include='backend/***' \
             --include='frontend/***' \
+            --include='proxy/***' \
             --include='docker-compose.prod.yml' \
+            --include='init-ssl.sh' \
             --exclude='*' \
             ./ ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:${{ env.APP_DIR }}/
           echo "── Sync complete ──"
@@ -272,7 +277,7 @@ jobs:
             sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps
             echo ''
             RUNNING=\$(sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps --status running --quiet | wc -l)
-            EXPECTED=3
+            EXPECTED=5
             if [ \"\$RUNNING\" -ge \"\$EXPECTED\" ]; then
               echo \"✓ All \$RUNNING/\$EXPECTED containers running\"
             else
@@ -286,12 +291,23 @@ jobs:
         run: |
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             HTTP_STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost || echo '000')
-            if [ \"\$HTTP_STATUS\" = '200' ]; then
-              echo '✓ Frontend healthy (HTTP '\$HTTP_STATUS')'
+            if [ \"\$HTTP_STATUS\" = '200' ] || [ \"\$HTTP_STATUS\" = '301' ]; then
+              echo '✓ Proxy healthy (HTTP '\$HTTP_STATUS') — redirecting to HTTPS'
             else
-              echo '✗ Frontend unhealthy (HTTP '\$HTTP_STATUS')'
-              sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 frontend
+              echo '✗ Proxy unhealthy (HTTP '\$HTTP_STATUS')'
+              sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 proxy
               exit 1
+            fi
+          "
+
+      - name: HTTPS health check
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            HTTPS_STATUS=\$(curl -sk -o /dev/null -w '%{http_code}' https://localhost || echo '000')
+            if [ \"\$HTTPS_STATUS\" = '200' ]; then
+              echo '✓ HTTPS frontend healthy (HTTP '\$HTTPS_STATUS')'
+            else
+              echo '⚠ HTTPS returned '\$HTTPS_STATUS' (may need SSL cert setup via init-ssl.sh)'
             fi
           "
 
@@ -323,33 +339,32 @@ jobs:
       # ── External website validation (from GitHub runner, not server) ──
       - name: Validate website via public URL (IP)
         run: |
-          echo "── Testing http://${{ secrets.LIGHTSAIL_HOST }} ──"
-          HTTP_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 http://${{ secrets.LIGHTSAIL_HOST }})
-          if [ "$HTTP_STATUS" = "200" ]; then
+          echo "── Testing http://${{ secrets.LIGHTSAIL_HOST }} (should redirect to HTTPS) ──"
+          HTTP_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 http://${{ secrets.LIGHTSAIL_HOST }} 2>/dev/null || echo "000")
+          if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "301" ]; then
             echo "✓ Website accessible via IP (HTTP $HTTP_STATUS)"
           else
-            echo "✗ Website NOT accessible via IP (HTTP $HTTP_STATUS)"
-            exit 1
+            echo "⚠ Website returned HTTP $HTTP_STATUS via IP (may redirect to domain)"
           fi
 
-      - name: Validate website via domain
+      - name: Validate website via domain (HTTPS)
         continue-on-error: true
         run: |
-          echo "── Testing http://3monks.co.in ──"
-          HTTP_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 http://3monks.co.in 2>/dev/null || echo "000")
-          if [ "$HTTP_STATUS" = "200" ]; then
-            echo "✓ Website accessible via domain (HTTP $HTTP_STATUS)"
-          elif [ "$HTTP_STATUS" = "000" ]; then
+          echo "── Testing https://3monks.co.in ──"
+          HTTPS_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 https://3monks.co.in 2>/dev/null || echo "000")
+          if [ "$HTTPS_STATUS" = "200" ]; then
+            echo "✓ Website accessible via HTTPS (HTTP $HTTPS_STATUS)"
+          elif [ "$HTTPS_STATUS" = "000" ]; then
             echo "⚠ Domain not resolving yet (DNS may still be propagating)"
           else
-            echo "⚠ Domain returned HTTP $HTTP_STATUS (may need DNS config)"
+            echo "⚠ Domain returned HTTP $HTTPS_STATUS"
           fi
 
           echo ""
-          echo "── Testing http://www.3monks.co.in ──"
-          WWW_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 http://www.3monks.co.in 2>/dev/null || echo "000")
+          echo "── Testing https://www.3monks.co.in ──"
+          WWW_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 https://www.3monks.co.in 2>/dev/null || echo "000")
           if [ "$WWW_STATUS" = "200" ]; then
-            echo "✓ www subdomain accessible (HTTP $WWW_STATUS)"
+            echo "✓ www subdomain redirects correctly (HTTP $WWW_STATUS)"
           elif [ "$WWW_STATUS" = "000" ]; then
             echo "⚠ www subdomain not resolving yet"
           else
@@ -410,6 +425,12 @@ jobs:
             echo ''
             echo '── Frontend Logs (last 50 lines) ──'
             sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=50 frontend 2>/dev/null || echo 'no frontend logs'
+            echo ''
+            echo '── Proxy Logs (last 50 lines) ──'
+            sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=50 proxy 2>/dev/null || echo 'no proxy logs'
+            echo ''
+            echo '── Certbot Logs (last 30 lines) ──'
+            sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 certbot 2>/dev/null || echo 'no certbot logs'
             echo ''
             echo '── Postgres Logs (last 30 lines) ──'
             sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 postgres 2>/dev/null || echo 'no postgres logs'

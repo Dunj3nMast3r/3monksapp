@@ -20,6 +20,7 @@ services:
     build: ./backend
     container_name: threemonks-backend
     environment:
+      TZ: Asia/Kolkata
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: threemonks
@@ -27,8 +28,6 @@ services:
       DB_PASSWORD: postgres123
       JWT_SECRET: 3MonksSecretKey2024VeryLongSecretKeyForJWTSigning!!
       CORS_ORIGINS: http://localhost,http://localhost:3000
-    ports:
-      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,9 +36,17 @@ services:
   frontend:
     build: ./frontend
     container_name: threemonks-frontend
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  proxy:
+    build: ./proxy
+    container_name: threemonks-proxy
     ports:
       - "80:80"
     depends_on:
+      - frontend
       - backend
     restart: unless-stopped
 

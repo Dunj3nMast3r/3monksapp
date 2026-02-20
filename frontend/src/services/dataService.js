@@ -37,7 +37,7 @@ export const adminService = {
         const formData = new FormData();
         formData.append('image', file);
         return api.post(`/api/admin/products/${id}/image`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
+            headers: { 'Content-Type': undefined },
         });
     },
     deleteProductImage: (id) => api.delete(`/api/admin/products/${id}/image`),
@@ -60,6 +60,8 @@ export const adminService = {
     toggleEmployee: (id) => api.patch(`/api/admin/employees/${id}/toggle`),
     // Salary Sheet
     getSalarySheet: (shopId, month) => api.get('/api/admin/salary-sheet', { params: { shopId, month } }),
+    // Delete purchase (admin only)
+    deletePurchase: (id) => api.delete(`/api/admin/purchases/${id}`),
 };
 
 export const managerService = {
@@ -88,4 +90,15 @@ export const dashboardService = {
     getShopDashboard: (shopId, from, to) => api.get(`/api/dashboard/shop/${shopId}`, { params: { from, to } }),
     getProfitLoss: (shopId, from, to) => api.get('/api/dashboard/profit-loss', { params: { shopId, from, to } }),
     getAnalytics: (from, to) => api.get('/api/dashboard/analytics', { params: { from, to } }),
+};
+
+export const exportService = {
+    downloadOrders: (from, to) => api.get('/api/admin/export/orders', {
+        params: { from, to },
+        responseType: 'blob',
+    }),
+    downloadPurchases: (from, to) => api.get('/api/admin/export/purchases', {
+        params: { from, to },
+        responseType: 'blob',
+    }),
 };

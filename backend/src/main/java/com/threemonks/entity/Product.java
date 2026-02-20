@@ -27,7 +27,6 @@ public class Product {
     private String description;
     private String imageUrl;
 
-    @Lob
     @Column(columnDefinition = "BYTEA")
     private byte[] image;
 

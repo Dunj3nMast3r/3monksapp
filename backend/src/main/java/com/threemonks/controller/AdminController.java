@@ -27,6 +27,7 @@ public class AdminController {
     private final AuthService authService;
     private final RecipeService recipeService;
     private final EmployeeService employeeService;
+    private final StockService stockService;
 
     // Shop management
     @GetMapping("/shops")
@@ -217,5 +218,14 @@ public class AdminController {
             @RequestParam(required = false) Long shopId,
             @RequestParam String month) {
         return ResponseEntity.ok(ApiResponse.success(employeeService.getMonthlySalarySheet(shopId, month)));
+    }
+
+    // Purchase deletion (admin only)
+    @DeleteMapping("/purchases/{id}")
+    public ResponseEntity<ApiResponse<Void>> deletePurchase(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        stockService.deletePurchase(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Purchase deleted", null));
     }
 }

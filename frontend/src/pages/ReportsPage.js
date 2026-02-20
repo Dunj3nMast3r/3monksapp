@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { dashboardService } from '../services/dataService';
-import { formatCurrency } from '../utils/helpers';
+import { formatCurrency, getISTDateString, getISTMonthString } from '../utils/helpers';
 import toast from 'react-hot-toast';
 
 const ReportsPage = () => {
     const { user, isAdmin } = useAuth();
-    const [from, setFrom] = useState(new Date().toISOString().slice(0, 7) + '-01');
-    const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
+    const [from, setFrom] = useState(getISTMonthString() + '-01');
+    const [to, setTo] = useState(getISTDateString());
     const [profitLoss, setProfitLoss] = useState(null);
     const [loading, setLoading] = useState(false);
 

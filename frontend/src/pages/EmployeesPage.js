@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../services/dataService';
-import { formatCurrency } from '../utils/helpers';
+import { formatCurrency, getISTMonthString } from '../utils/helpers';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 
@@ -15,7 +15,7 @@ const EmployeesPage = () => {
     const [submitting, setSubmitting] = useState(false);
     const [form, setForm] = useState({ userId: '', shopId: '', salary: '', incentivePercentage: '' });
     const [errors, setErrors] = useState({});
-    const [salaryMonth, setSalaryMonth] = useState(new Date().toISOString().slice(0, 7));
+    const [salaryMonth, setSalaryMonth] = useState(getISTMonthString());
     const [salarySheet, setSalarySheet] = useState(null);
 
     useEffect(() => { fetchAll(); }, []);

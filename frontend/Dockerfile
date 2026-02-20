@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
+# Empty REACT_APP_API_URL → uses current origin, proxy routes /api/ to backend
+ENV REACT_APP_API_URL=
 RUN npm run build
 
 FROM nginx:alpine

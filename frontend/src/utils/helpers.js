@@ -12,6 +12,7 @@ export const formatDate = (date) => {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
+        timeZone: 'Asia/Kolkata',
     });
 };
 
@@ -23,7 +24,18 @@ export const formatDateTime = (date) => {
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: 'Asia/Kolkata',
     });
+};
+
+// Get current date string in IST (YYYY-MM-DD)
+export const getISTDateString = () => {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+};
+
+// Get current month string in IST (YYYY-MM)
+export const getISTMonthString = () => {
+    return getISTDateString().slice(0, 7);
 };
 
 export const getInitials = (name) => {
