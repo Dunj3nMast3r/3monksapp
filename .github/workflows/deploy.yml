@@ -1,10 +1,18 @@
 # ==========================================================
-# 3Monks — Deploy to AWS Lightsail
+# 3Monks — CI/CD Pipeline
 # ==========================================================
-# Builds and deploys the full stack (Postgres + Spring Boot + React/Nginx)
-# on an AWS Lightsail instance via Docker Compose.
+# Enterprise-grade multi-stage pipeline that validates, deploys, and
+# verifies the full stack (Postgres + Spring Boot + React/Nginx) on
+# an AWS Lightsail instance via Docker Compose.
 #
-# Required GitHub Secrets:
+# Stages:
+#   1. Validate    — Lint & structure checks
+#   2. Prepare     — Server connectivity, directories, environment config
+#   3. Deploy      — Sync code, build images, start services
+#   4. Verify      — Health checks & smoke tests
+#   5. Rollback    — Collect logs on failure (runs only if deploy/verify fail)
+#
+# Required GitHub Secrets (environment: prod):
 #   LIGHTSAIL_HOST      — Public IP or hostname of the Lightsail instance
 #   LIGHTSAIL_USER      — SSH username (usually "ubuntu")
 #   LIGHTSAIL_SSH_KEY   — Private SSH key (PEM) for the instance
@@ -13,110 +21,359 @@
 #   CORS_ORIGINS        — Allowed CORS origins (e.g. http://YOUR_IP)
 # ==========================================================
 
-name: Deploy to AWS Lightsail
+name: 3Monks CI/CD Pipeline
 
 on:
   push:
     branches: [dev]
-  workflow_dispatch:                       # Allow manual trigger
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   APP_DIR: /opt/threemonks
+  COMPOSE_FILE: docker-compose.prod.yml
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 jobs:
+
+  # ──────────────────────────────────────────────────────────
+  # Stage 1 — Validate
+  # ──────────────────────────────────────────────────────────
+  validate:
+    name: "1 · Validate"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify project structure
+        run: |
+          echo "── Checking required files & directories ──"
+          errors=0
+          for dir in backend frontend; do
+            if [ -d "$dir" ]; then
+              echo "  ✓ $dir/"
+            else
+              echo "  ✗ Missing $dir/" && errors=$((errors+1))
+            fi
+          done
+          for file in backend/Dockerfile.prod frontend/Dockerfile.prod docker-compose.prod.yml; do
+            if [ -f "$file" ]; then
+              echo "  ✓ $file"
+            else
+              echo "  ✗ Missing $file" && errors=$((errors+1))
+            fi
+          done
+          [ $errors -eq 0 ] && echo "── Structure valid ──" || { echo "── $errors error(s) found ──"; exit 1; }
+
+      - name: Validate Docker Compose config
+        run: docker compose -f docker-compose.prod.yml config --quiet
+
+      - name: Validate Dockerfiles
+        run: |
+          echo "── Dockerfile syntax check ──"
+          for f in backend/Dockerfile.prod frontend/Dockerfile.prod; do
+            if head -1 "$f" | grep -qi "^FROM"; then
+              echo "  ✓ $f starts with FROM"
+            else
+              echo "  ✗ $f does not start with FROM" && exit 1
+            fi
+          done
+          echo "── Dockerfiles valid ──"
+
+  # ──────────────────────────────────────────────────────────
+  # Stage 2 — Prepare Server
+  # ──────────────────────────────────────────────────────────
+  prepare:
+    name: "2 · Prepare Server"
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 5
+
+    steps:
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+
+      - name: Configure SSH client
+        run: |
+          mkdir -p ~/.ssh
+          cat >> ~/.ssh/config <<CFG
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            ServerAliveInterval 30
+            ServerAliveCountMax 3
+            ConnectTimeout 10
+          CFG
+          chmod 644 ~/.ssh/config
+
+      - name: Verify server connectivity
+        run: |
+          echo "── Testing TCP connectivity ──"
+          for i in 1 2 3; do
+            if nc -z -w 5 ${{ secrets.LIGHTSAIL_HOST }} 22 2>/dev/null; then
+              echo "  ✓ Port 22 reachable on attempt $i"
+              exit 0
+            fi
+            echo "  Attempt $i failed, retrying in 5s..." && sleep 5
+          done
+          echo "  ✗ Cannot reach ${{ secrets.LIGHTSAIL_HOST }}:22"
+          exit 1
+
+      - name: Verify SSH authentication
+        run: ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo '✓ SSH authenticated as $(whoami)'"
+
+      - name: Prepare application directory
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            sudo mkdir -p ${{ env.APP_DIR }}
+            sudo chown -R \$(whoami):\$(whoami) ${{ env.APP_DIR }}
+            echo '✓ ${{ env.APP_DIR }} ready'
+          "
+
+      - name: Write environment config
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo 'DB_NAME=threemonks' > ${{ env.APP_DIR }}/.env"
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo 'DB_USERNAME=postgres' >> ${{ env.APP_DIR }}/.env"
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> ${{ env.APP_DIR }}/.env"
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo 'JWT_SECRET=${{ secrets.JWT_SECRET }}' >> ${{ env.APP_DIR }}/.env"
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo 'CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}' >> ${{ env.APP_DIR }}/.env"
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo '✓ .env written ('\$(wc -l < ${{ env.APP_DIR }}/.env)' lines)'"
+
+  # ──────────────────────────────────────────────────────────
+  # Stage 3 — Deploy
+  # ──────────────────────────────────────────────────────────
   deploy:
-    name: Deploy
+    name: "3 · Deploy"
+    needs: prepare
     runs-on: ubuntu-latest
     environment: prod
     timeout-minutes: 15
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── 2. Setup SSH agent ───────────────────────────────
-      - name: Setup SSH
+      - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
 
-      - name: Disable host key checking
+      - name: Configure SSH client
         run: |
           mkdir -p ~/.ssh
-          echo "StrictHostKeyChecking no" >> ~/.ssh/config
-          echo "UserKnownHostsFile /dev/null" >> ~/.ssh/config
+          cat >> ~/.ssh/config <<CFG
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            ServerAliveInterval 30
+            ServerAliveCountMax 3
+            ConnectTimeout 10
+          CFG
           chmod 644 ~/.ssh/config
 
-      # ── 2.5. Verify port 22 connectivity ─────────────────
-      - name: Check SSH port connectivity
+      - name: Sync project files
         run: |
-          echo "Testing TCP connectivity to ${{ secrets.LIGHTSAIL_HOST }}:22..."
-          for i in 1 2 3 4 5; do
-            if nc -z -w 5 ${{ secrets.LIGHTSAIL_HOST }} 22 2>/dev/null; then
-              echo "✓ Port 22 is reachable"
-              exit 0
-            fi
-            echo "Attempt $i failed, retrying in 5s..."
-            sleep 5
-          done
-          echo "✗ Cannot reach ${{ secrets.LIGHTSAIL_HOST }}:22 after 5 attempts"
-          echo "Check that port 22 (SSH) is open in Lightsail Networking firewall"
-          exit 1
-
-      - name: Test SSH authentication
-        run: |
-          echo "Testing SSH authentication..."
-          ssh -v ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo '✓ SSH connection successful' && whoami"
-
-      # ── 3. Copy project files to Lightsail ───────────────
-      - name: Copy files to server
-        run: |
-          # Ensure target directory exists
-          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} \
-            "sudo mkdir -p ${{ env.APP_DIR }} && sudo chown ${{ secrets.LIGHTSAIL_USER }}:${{ secrets.LIGHTSAIL_USER }} ${{ env.APP_DIR }}"
-
-          # Rsync project files
+          echo "── Syncing files to ${{ env.APP_DIR }} ──"
           rsync -avz --delete \
             --include='backend/***' \
             --include='frontend/***' \
             --include='docker-compose.prod.yml' \
             --exclude='*' \
             ./ ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:${{ env.APP_DIR }}/
+          echo "── Sync complete ──"
 
-      # ── 4. Build & start containers on the server ────────
-      - name: Build and deploy
+      - name: Stop existing containers
         run: |
-          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "\
-            sudo chown -R \$(whoami):\$(whoami) /opt/threemonks && \
-            cd /opt/threemonks && \
-            printf 'DB_NAME=threemonks\nDB_USERNAME=postgres\nDB_PASSWORD=${{ secrets.DB_PASSWORD }}\nJWT_SECRET=${{ secrets.JWT_SECRET }}\nCORS_ORIGINS=${{ secrets.CORS_ORIGINS }}\n' > .env && \
-            echo '▶ Building and starting containers...' && \
-            docker compose -f docker-compose.prod.yml up -d --build && \
-            docker image prune -f && \
-            echo '' && \
-            echo 'Deployment complete!' && \
-            docker compose -f docker-compose.prod.yml ps"
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            cd ${{ env.APP_DIR }}
+            if docker compose -f ${{ env.COMPOSE_FILE }} ps --quiet 2>/dev/null | grep -q .; then
+              echo '── Stopping existing containers ──'
+              docker compose -f ${{ env.COMPOSE_FILE }} down --timeout 30
+              echo '── Containers stopped ──'
+            else
+              echo '── No running containers to stop ──'
+            fi
+          "
 
-      # ── 5. Health check ──────────────────────────────────
-      - name: Health check
+      - name: Build Docker images
         run: |
-          echo "Waiting 30s for services to start..."
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            cd ${{ env.APP_DIR }}
+            echo '── Building images ──'
+            docker compose -f ${{ env.COMPOSE_FILE }} build --no-cache
+            echo '── Build complete ──'
+          "
+
+      - name: Start services
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            cd ${{ env.APP_DIR }}
+            echo '── Starting services ──'
+            docker compose -f ${{ env.COMPOSE_FILE }} up -d
+            echo '── Services started ──'
+            docker compose -f ${{ env.COMPOSE_FILE }} ps
+          "
+
+      - name: Cleanup unused images
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            echo '── Pruning dangling images ──'
+            docker image prune -f
+            echo '── Cleanup done ──'
+          "
+
+  # ──────────────────────────────────────────────────────────
+  # Stage 4 — Verify
+  # ──────────────────────────────────────────────────────────
+  verify:
+    name: "4 · Verify"
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 5
+
+    steps:
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+
+      - name: Configure SSH client
+        run: |
+          mkdir -p ~/.ssh
+          cat >> ~/.ssh/config <<CFG
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            ConnectTimeout 10
+          CFG
+          chmod 644 ~/.ssh/config
+
+      - name: Wait for services to stabilize
+        run: |
+          echo "── Waiting 30s for services to start ──"
           sleep 30
+
+      - name: Check container health
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            echo '── Container Status ──'
+            docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps
+            echo ''
+            RUNNING=\$(docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps --status running --quiet | wc -l)
+            EXPECTED=3
+            if [ \"\$RUNNING\" -ge \"\$EXPECTED\" ]; then
+              echo \"✓ All \$RUNNING/\$EXPECTED containers running\"
+            else
+              echo \"✗ Only \$RUNNING/\$EXPECTED containers running\"
+              docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps
+              exit 1
+            fi
+          "
+
+      - name: Frontend health check
+        run: |
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             HTTP_STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost || echo '000')
             if [ \"\$HTTP_STATUS\" = '200' ]; then
-              echo '✓ Frontend is up (HTTP '\$HTTP_STATUS')'
+              echo '✓ Frontend healthy (HTTP '\$HTTP_STATUS')'
             else
-              echo '✗ Frontend returned HTTP '\$HTTP_STATUS
-              docker compose -f /opt/threemonks/docker-compose.prod.yml logs --tail=30 frontend
+              echo '✗ Frontend unhealthy (HTTP '\$HTTP_STATUS')'
+              docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 frontend
               exit 1
             fi
+          "
+
+      - name: Backend health check
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             API_STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/auth/health 2>/dev/null || echo '000')
             if [ \"\$API_STATUS\" = '200' ] || [ \"\$API_STATUS\" = '404' ]; then
-              echo '✓ Backend is reachable (HTTP '\$API_STATUS')'
+              echo '✓ Backend reachable (HTTP '\$API_STATUS')'
             else
-              echo '⚠ Backend returned HTTP '\$API_STATUS
-              docker compose -f /opt/threemonks/docker-compose.prod.yml logs --tail=30 backend
+              echo '✗ Backend unreachable (HTTP '\$API_STATUS')'
+              docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 backend
+              exit 1
             fi
           "
+
+      - name: Resource usage summary
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            echo '── Resource Usage ──'
+            docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}' 2>/dev/null || true
+            echo ''
+            echo '── Disk Usage ──'
+            df -h / | tail -1
+          "
+
+  # ──────────────────────────────────────────────────────────
+  # Stage 5 — Rollback / Diagnostics (runs only on failure)
+  # ──────────────────────────────────────────────────────────
+  rollback:
+    name: "5 · Diagnostics"
+    needs: [deploy, verify]
+    if: failure()
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 5
+
+    steps:
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+
+      - name: Configure SSH client
+        run: |
+          mkdir -p ~/.ssh
+          cat >> ~/.ssh/config <<CFG
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            ConnectTimeout 10
+          CFG
+          chmod 644 ~/.ssh/config
+
+      - name: Collect container logs
+        run: |
+          echo "══════════════════════════════════════════"
+          echo " DEPLOYMENT DIAGNOSTICS"
+          echo "══════════════════════════════════════════"
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            echo '── Container Status ──'
+            docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} ps 2>/dev/null || echo 'compose ps failed'
+            echo ''
+            echo '── Backend Logs (last 50 lines) ──'
+            docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=50 backend 2>/dev/null || echo 'no backend logs'
+            echo ''
+            echo '── Frontend Logs (last 50 lines) ──'
+            docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=50 frontend 2>/dev/null || echo 'no frontend logs'
+            echo ''
+            echo '── Postgres Logs (last 30 lines) ──'
+            docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 postgres 2>/dev/null || echo 'no postgres logs'
+            echo ''
+            echo '── Disk Space ──'
+            df -h /
+            echo ''
+            echo '── Docker Disk Usage ──'
+            docker system df 2>/dev/null || true
+          "
+
+      - name: Deployment failure summary
+        if: always()
+        run: |
+          echo "══════════════════════════════════════════"
+          echo " DEPLOYMENT FAILED"
+          echo " Review the diagnostics above."
+          echo " Manual intervention may be required."
+          echo "══════════════════════════════════════════"
