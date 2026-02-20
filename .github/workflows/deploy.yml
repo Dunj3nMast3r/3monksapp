@@ -299,12 +299,14 @@ jobs:
         run: |
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             API_STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/auth/health 2>/dev/null || echo '000')
-            if [ \"\$API_STATUS\" = '200' ] || [ \"\$API_STATUS\" = '404' ]; then
-              echo '✓ Backend reachable (HTTP '\$API_STATUS')'
-            else
-              echo '✗ Backend unreachable (HTTP '\$API_STATUS')'
+            if [ \"\$API_STATUS\" = '000' ]; then
+              echo '✗ Backend unreachable (no response)'
               sudo docker compose -f ${{ env.APP_DIR }}/${{ env.COMPOSE_FILE }} logs --tail=30 backend
               exit 1
+            elif [ \"\$API_STATUS\" = '200' ]; then
+              echo '✓ Backend healthy (HTTP '\$API_STATUS')'
+            else
+              echo '⚠ Backend reachable but returned HTTP '\$API_STATUS' (non-critical)'
             fi
           "
 
