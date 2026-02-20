@@ -320,6 +320,54 @@ jobs:
             df -h / | tail -1
           "
 
+      # ── External website validation (from GitHub runner, not server) ──
+      - name: Validate website via public URL (IP)
+        run: |
+          echo "── Testing http://${{ secrets.LIGHTSAIL_HOST }} ──"
+          HTTP_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 http://${{ secrets.LIGHTSAIL_HOST }})
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✓ Website accessible via IP (HTTP $HTTP_STATUS)"
+          else
+            echo "✗ Website NOT accessible via IP (HTTP $HTTP_STATUS)"
+            exit 1
+          fi
+
+      - name: Validate website via domain
+        continue-on-error: true
+        run: |
+          echo "── Testing http://3monks.co.in ──"
+          HTTP_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 http://3monks.co.in 2>/dev/null || echo "000")
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✓ Website accessible via domain (HTTP $HTTP_STATUS)"
+          elif [ "$HTTP_STATUS" = "000" ]; then
+            echo "⚠ Domain not resolving yet (DNS may still be propagating)"
+          else
+            echo "⚠ Domain returned HTTP $HTTP_STATUS (may need DNS config)"
+          fi
+
+          echo ""
+          echo "── Testing http://www.3monks.co.in ──"
+          WWW_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 http://www.3monks.co.in 2>/dev/null || echo "000")
+          if [ "$WWW_STATUS" = "200" ]; then
+            echo "✓ www subdomain accessible (HTTP $WWW_STATUS)"
+          elif [ "$WWW_STATUS" = "000" ]; then
+            echo "⚠ www subdomain not resolving yet"
+          else
+            echo "⚠ www subdomain returned HTTP $WWW_STATUS"
+          fi
+
+      - name: Validate page content
+        run: |
+          echo "── Checking page content ──"
+          BODY=$(curl -s -L --max-time 15 http://${{ secrets.LIGHTSAIL_HOST }} 2>/dev/null)
+          if echo "$BODY" | grep -qi "3monks\|3 monks\|juice\|<!DOCTYPE html>"; then
+            echo "✓ Page content looks correct (HTML returned)"
+          else
+            echo "✗ Unexpected page content"
+            echo "$BODY" | head -20
+            exit 1
+          fi
+
   # ──────────────────────────────────────────────────────────
   # Stage 5 — Rollback / Diagnostics (runs only on failure)
   # ──────────────────────────────────────────────────────────
