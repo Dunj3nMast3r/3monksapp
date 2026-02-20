@@ -37,39 +37,43 @@ jobs:
 
       # ── 2. Copy project files to Lightsail ───────────────
       - name: Copy files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.LIGHTSAIL_HOST }}
-          username: ${{ secrets.LIGHTSAIL_USER }}
-          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          source: "backend/,frontend/,docker-compose.prod.yml"
-          target: ${{ env.APP_DIR }}
-          overwrite: true
+        run: |
+          # Write SSH key
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LIGHTSAIL_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Disable strict host key checking
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+          echo "UserKnownHostsFile /dev/null" >> ~/.ssh/config
+
+          # Ensure target directory exists
+          ssh -i ~/.ssh/deploy_key ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} \
+            "sudo mkdir -p ${{ env.APP_DIR }} && sudo chown ${{ secrets.LIGHTSAIL_USER }}:${{ secrets.LIGHTSAIL_USER }} ${{ env.APP_DIR }}"
+
+          # Rsync project files
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            --include='backend/***' \
+            --include='frontend/***' \
+            --include='docker-compose.prod.yml' \
+            --exclude='*' \
+            ./ ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }}:${{ env.APP_DIR }}/
 
       # ── 3. Build & start containers on the server ────────
       - name: Build and deploy
-        uses: appleboy/ssh-action@v1.2.0
-        env:
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
-        with:
-          host: ${{ secrets.LIGHTSAIL_HOST }}
-          username: ${{ secrets.LIGHTSAIL_USER }}
-          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          envs: DB_PASSWORD,JWT_SECRET,CORS_ORIGINS
-          command_timeout: 10m
-          script: |
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'REMOTE_SCRIPT'
             set -e
-            cd ${{ env.APP_DIR }}
+            cd /opt/threemonks
 
             # ── Write / update .env ──
             cat > .env <<EOF
             DB_NAME=threemonks
             DB_USERNAME=postgres
-            DB_PASSWORD=${DB_PASSWORD}
-            JWT_SECRET=${JWT_SECRET}
-            CORS_ORIGINS=${CORS_ORIGINS}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
             EOF
 
             # ── Build and start ──
@@ -85,18 +89,15 @@ jobs:
             echo " Deployment complete!"
             echo "════════════════════════════════════════"
             docker compose -f docker-compose.prod.yml ps
+          REMOTE_SCRIPT
 
       # ── 4. Health check ──────────────────────────────────
       - name: Health check
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.LIGHTSAIL_HOST }}
-          username: ${{ secrets.LIGHTSAIL_USER }}
-          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          script: |
+        run: |
+          echo "Waiting 30s for services to start..."
+          sleep 30
+          ssh -i ~/.ssh/deploy_key ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} << 'REMOTE_SCRIPT'
             set -e
-            echo "Waiting 30s for services to start..."
-            sleep 30
 
             # Check frontend (nginx on port 80)
             HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost || echo "000")
@@ -116,3 +117,4 @@ jobs:
               echo "⚠ Backend returned HTTP $API_STATUS — may still be starting"
               docker compose -f /opt/threemonks/docker-compose.prod.yml logs --tail=30 backend
             fi
+          REMOTE_SCRIPT
