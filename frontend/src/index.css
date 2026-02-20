@@ -848,6 +848,18 @@ tr:last-child td {
     position: relative;
 }
 
+.main-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-wrapper .main-content {
+    margin-left: 280px;
+    flex: 1;
+}
+
 /* Subtle radial accents on main content */
 .main-content::before {
     content: '';
@@ -2634,7 +2646,7 @@ tr:last-child td {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 200;
+    z-index: 1000;
     animation: fadeIn 0.2s ease;
 }
 
@@ -3159,6 +3171,10 @@ tr:last-child td {
         margin-left: 0;
         padding: 20px 16px;
         padding-top: 16px;
+    }
+
+    .main-wrapper .main-content {
+        margin-left: 0;
     }
 
     .main-content::before,

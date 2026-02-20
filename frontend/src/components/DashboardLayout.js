@@ -14,20 +14,21 @@ const DashboardLayout = () => {
 
     return (
         <div className="app-layout">
-            {/* Mobile topbar */}
-            <div className="topbar">
-                <button className="topbar-menu-btn" onClick={() => setSidebarOpen(true)}>
-                    <FiMenu />
-                </button>
-                <div className="topbar-brand">
-                    <img src="/logo.svg" alt="3Monks" className="topbar-logo" />
-                    <span>3<span className="topbar-brand-highlight">Monks</span></span>
-                </div>
-            </div>
-
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <div className="main-content">
-                <Outlet />
+            <div className="main-wrapper">
+                {/* Mobile topbar */}
+                <div className="topbar">
+                    <button className="topbar-menu-btn" onClick={() => setSidebarOpen(true)}>
+                        <FiMenu />
+                    </button>
+                    <div className="topbar-brand">
+                        <img src="/logo.svg" alt="3Monks" className="topbar-logo" />
+                        <span>3<span className="topbar-brand-highlight">Monks</span></span>
+                    </div>
+                </div>
+                <div className="main-content">
+                    <Outlet />
+                </div>
             </div>
         </div>
     );

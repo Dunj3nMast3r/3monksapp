@@ -85,7 +85,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                     </button>
                 </div>
             </div>
-            );
+        </>
+    );
 };
 
-            export default Sidebar;
+export default Sidebar;
