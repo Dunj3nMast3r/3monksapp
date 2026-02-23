@@ -57,15 +57,25 @@ docker compose -f "$COMPOSE_FILE" up -d --build proxy
 echo "  Waiting for proxy to start..."
 sleep 5
 
-# ---- Step 3: Request certificates from Let's Encrypt ----
-echo "[3/4] Requesting SSL certificate from Let's Encrypt..."
-docker compose -f "$COMPOSE_FILE" run --rm certbot \
+# ---- Step 3: Clean up broken cert state & request new certificates ----
+echo "[3/4] Cleaning up broken cert state and requesting SSL certificate from Let's Encrypt..."
+
+# Remove any broken renewal configs, self-signed certs, and stale archive/live dirs
+docker compose -f "$COMPOSE_FILE" run --rm --entrypoint "" certbot \
+    sh -c "rm -rf /etc/letsencrypt/renewal/$DOMAIN.conf \
+           /etc/letsencrypt/live/$DOMAIN \
+           /etc/letsencrypt/archive/$DOMAIN \
+           2>/dev/null; echo 'Cleaned stale cert state'"
+
+# --entrypoint "" overrides the renewal-loop entrypoint so certbot certonly runs directly
+docker compose -f "$COMPOSE_FILE" run --rm --entrypoint "" certbot \
     certbot certonly \
     --webroot \
     --webroot-path=/var/www/certbot \
     --email "$EMAIL" \
     --agree-tos \
     --no-eff-email \
+    --force-renewal \
     -d "$DOMAIN" \
     -d "www.$DOMAIN"
 
