@@ -150,11 +150,6 @@ const LoginPage = () => {
                             )}
                         </button>
                     </form>
-
-                    <div className="lp-login__hint">
-                        <span className="lp-login__hint-icon">💡</span>
-                        <span>Demo: <strong>admin</strong> / <strong>admin123</strong></span>
-                    </div>
                 </div>
             </div>
         </div>
