@@ -11,6 +11,8 @@ export const publicService = {
     getCuratedBlends: () => api.get('/api/public/menu/curated-blends'),
     getFruits: () => api.get('/api/public/fruits'),
     getShops: () => api.get('/api/public/shops'),
+    submitFeedback: (data) => api.post('/api/public/feedback', data),
+    submitFranchiseEnquiry: (data) => api.post('/api/public/franchise-enquiry', data),
 };
 
 export const adminService = {

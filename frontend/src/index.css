@@ -2044,6 +2044,221 @@ tr:last-child td {
     }
 }
 
+/* ════════ FEEDBACK / REVIEW FORM ════════ */
+.lp-form-card {
+    max-width: 680px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 40px;
+    backdrop-filter: blur(12px);
+}
+
+.lp-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.lp-form__title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.lp-form__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.lp-form__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.lp-form__field label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.lp-form__field input,
+.lp-form__field textarea {
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: white;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+
+.lp-form__field input:focus,
+.lp-form__field textarea:focus {
+    border-color: #a855f7;
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+}
+
+.lp-form__field input::placeholder,
+.lp-form__field textarea::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.lp-form__field textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.lp-form__rating {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.lp-form__rating label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.lp-stars {
+    display: flex;
+    gap: 6px;
+}
+
+.lp-star {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.2);
+    transition: color 0.15s, transform 0.15s;
+    padding: 0;
+    line-height: 1;
+}
+
+.lp-star:hover {
+    transform: scale(1.2);
+}
+
+.lp-star--active {
+    color: #fbbf24;
+}
+
+.lp-form__submit {
+    align-self: center;
+    min-width: 200px;
+}
+
+.lp-form__error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.lp-form-success {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.lp-form-success__icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+}
+
+.lp-form-success h3 {
+    font-size: 1.5rem;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.lp-form-success p {
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+    .lp-form-card {
+        padding: 24px 16px;
+    }
+    .lp-form__row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ════════ FRANCHISE SECTION ════════ */
+.lp-section--franchise {
+    background: linear-gradient(180deg, #1a0a2e 0%, #2d1150 50%, #1a0a2e 100%);
+}
+
+.lp-franchise {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+}
+
+.lp-franchise__info {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.lp-franchise__card {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 24px;
+    transition: transform 0.3s, border-color 0.3s;
+}
+
+.lp-franchise__card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(168, 85, 247, 0.4);
+}
+
+.lp-franchise__icon {
+    font-size: 2rem;
+    margin-bottom: 12px;
+}
+
+.lp-franchise__card h3 {
+    font-size: 1.1rem;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.lp-franchise__card p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.lp-franchise .lp-form-card {
+    max-width: none;
+}
+
+@media (max-width: 768px) {
+    .lp-franchise {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ════════ FOOTER ════════ */
 .lp-footer {
     background: linear-gradient(180deg, #1e0636, #0f001f);

@@ -39,6 +39,15 @@ const LandingPage = () => {
     const [activeCategory, setActiveCategory] = useState('ALL');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+    /* ── Feedback form state ── */
+    const [feedbackForm, setFeedbackForm] = useState({ name: '', email: '', phone: '', rating: 5, message: '' });
+    const [feedbackStatus, setFeedbackStatus] = useState({ loading: false, success: '', error: '' });
+    const [hoveredStar, setHoveredStar] = useState(0);
+
+    /* ── Franchise enquiry form state ── */
+    const [franchiseForm, setFranchiseForm] = useState({ name: '', email: '', phone: '', city: '', message: '' });
+    const [franchiseStatus, setFranchiseStatus] = useState({ loading: false, success: '', error: '' });
+
     useEffect(() => {
         publicService.getMenu().then(res => setProducts(res.data.data || [])).catch(() => { });
     }, []);
@@ -52,12 +61,39 @@ const LandingPage = () => {
 
     const fruitImages = ['🥭', '🍓', '🍇', '🫐', '🥝', '🍋', '🥥', '🍍', '🍉', '🍌', '🍑', '🍒', '🍈', '🍐', '🥑'];
 
+    /* ── Submit handlers ── */
+    const handleFeedbackSubmit = async (e) => {
+        e.preventDefault();
+        setFeedbackStatus({ loading: true, success: '', error: '' });
+        try {
+            const res = await publicService.submitFeedback(feedbackForm);
+            setFeedbackStatus({ loading: false, success: res.data.message || 'Thank you for your feedback!', error: '' });
+            setFeedbackForm({ name: '', email: '', phone: '', rating: 5, message: '' });
+        } catch (err) {
+            setFeedbackStatus({ loading: false, success: '', error: err.response?.data?.message || 'Something went wrong. Please try again.' });
+        }
+    };
+
+    const handleFranchiseSubmit = async (e) => {
+        e.preventDefault();
+        setFranchiseStatus({ loading: true, success: '', error: '' });
+        try {
+            const res = await publicService.submitFranchiseEnquiry(franchiseForm);
+            setFranchiseStatus({ loading: false, success: res.data.message || 'Enquiry submitted! We\'ll contact you soon.', error: '' });
+            setFranchiseForm({ name: '', email: '', phone: '', city: '', message: '' });
+        } catch (err) {
+            setFranchiseStatus({ loading: false, success: '', error: err.response?.data?.message || 'Something went wrong. Please try again.' });
+        }
+    };
+
     /* reveal refs */
     const [featRef, featVis] = useReveal();
     const [statsRef, statsVis] = useReveal();
     const [menuRef, menuVis] = useReveal();
     const [aboutRef, aboutVis] = useReveal();
     const [ctaRef, ctaVis] = useReveal();
+    const [feedbackRef, feedbackVis] = useReveal();
+    const [franchiseRef, franchiseVis] = useReveal();
 
     return (
         <div className="lp">
@@ -72,6 +108,8 @@ const LandingPage = () => {
                         <a href="#features" onClick={() => setMobileMenuOpen(false)}>Why Us</a>
                         <a href="#menu" onClick={() => setMobileMenuOpen(false)}>Menu</a>
                         <a href="#about" onClick={() => setMobileMenuOpen(false)}>About</a>
+                        <a href="#feedback" onClick={() => setMobileMenuOpen(false)}>Feedback</a>
+                        <a href="#franchise" onClick={() => setMobileMenuOpen(false)}>Franchise</a>
                         <a href="#contact" onClick={() => setMobileMenuOpen(false)}>Contact</a>
                         <Link to="/login" className="lp-btn lp-btn--primary lp-btn--sm" onClick={() => setMobileMenuOpen(false)}>Login</Link>
                     </div>
@@ -291,6 +329,145 @@ const LandingPage = () => {
                 </div>
             </section>
 
+            {/* ═══ FEEDBACK / REVIEW ═══ */}
+            <section id="feedback" className="lp-section" ref={feedbackRef}>
+                <div className="lp-container">
+                    <div className={`lp-section__head${feedbackVis ? ' lp-reveal' : ''}`}>
+                        <span className="lp-section__tag">Your Voice Matters</span>
+                        <h2>Share Your <span className="lp-gradient-text">Experience</span></h2>
+                        <p>We'd love to hear what you think about our products</p>
+                    </div>
+                    <div className={`lp-form-card${feedbackVis ? ' lp-reveal' : ''}`}>
+                        {feedbackStatus.success ? (
+                            <div className="lp-form-success">
+                                <div className="lp-form-success__icon">🎉</div>
+                                <h3>Thank You!</h3>
+                                <p>{feedbackStatus.success}</p>
+                                <button className="lp-btn lp-btn--primary" onClick={() => setFeedbackStatus({ loading: false, success: '', error: '' })}>Submit Another</button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleFeedbackSubmit} className="lp-form">
+                                <div className="lp-form__rating">
+                                    <label>Your Rating</label>
+                                    <div className="lp-stars">
+                                        {[1, 2, 3, 4, 5].map(star => (
+                                            <button key={star} type="button" className={`lp-star${star <= (hoveredStar || feedbackForm.rating) ? ' lp-star--active' : ''}`}
+                                                onMouseEnter={() => setHoveredStar(star)} onMouseLeave={() => setHoveredStar(0)}
+                                                onClick={() => setFeedbackForm(f => ({ ...f, rating: star }))}>
+                                                ★
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="lp-form__row">
+                                    <div className="lp-form__field">
+                                        <label>Name *</label>
+                                        <input type="text" required placeholder="Your name" value={feedbackForm.name}
+                                            onChange={e => setFeedbackForm(f => ({ ...f, name: e.target.value }))} />
+                                    </div>
+                                    <div className="lp-form__field">
+                                        <label>Email</label>
+                                        <input type="email" placeholder="your@email.com" value={feedbackForm.email}
+                                            onChange={e => setFeedbackForm(f => ({ ...f, email: e.target.value }))} />
+                                    </div>
+                                </div>
+                                <div className="lp-form__field">
+                                    <label>Phone</label>
+                                    <input type="tel" placeholder="+91 99999 99999" value={feedbackForm.phone}
+                                        onChange={e => setFeedbackForm(f => ({ ...f, phone: e.target.value }))} />
+                                </div>
+                                <div className="lp-form__field">
+                                    <label>Your Feedback</label>
+                                    <textarea rows="4" placeholder="Tell us about your experience..." value={feedbackForm.message}
+                                        onChange={e => setFeedbackForm(f => ({ ...f, message: e.target.value }))} />
+                                </div>
+                                {feedbackStatus.error && <div className="lp-form__error">{feedbackStatus.error}</div>}
+                                <button type="submit" className="lp-btn lp-btn--primary lp-btn--lg lp-form__submit" disabled={feedbackStatus.loading}>
+                                    {feedbackStatus.loading ? 'Submitting...' : 'Submit Feedback'}
+                                </button>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══ FRANCHISE ENQUIRY ═══ */}
+            <section id="franchise" className="lp-section lp-section--franchise" ref={franchiseRef}>
+                <div className="lp-container">
+                    <div className={`lp-section__head${franchiseVis ? ' lp-reveal' : ''}`}>
+                        <span className="lp-section__tag">Grow With Us</span>
+                        <h2>Own a <span className="lp-gradient-text">3Monks</span> Franchise</h2>
+                        <p>Join the healthy revolution — become a 3Monks franchise partner today</p>
+                    </div>
+                    <div className={`lp-franchise${franchiseVis ? ' lp-reveal' : ''}`}>
+                        <div className="lp-franchise__info">
+                            <div className="lp-franchise__card">
+                                <div className="lp-franchise__icon">🏪</div>
+                                <h3>Low Setup Cost</h3>
+                                <p>Start with a compact store format — minimal investment, maximum returns.</p>
+                            </div>
+                            <div className="lp-franchise__card">
+                                <div className="lp-franchise__icon">📈</div>
+                                <h3>Proven Business Model</h3>
+                                <p>Backed by strong demand for healthy, real-fruit beverages.</p>
+                            </div>
+                            <div className="lp-franchise__card">
+                                <div className="lp-franchise__icon">🤝</div>
+                                <h3>Full Support</h3>
+                                <p>Training, branding, supply chain, and marketing — we've got you covered.</p>
+                            </div>
+                        </div>
+                        <div className="lp-form-card">
+                            {franchiseStatus.success ? (
+                                <div className="lp-form-success">
+                                    <div className="lp-form-success__icon">✅</div>
+                                    <h3>Enquiry Submitted!</h3>
+                                    <p>{franchiseStatus.success}</p>
+                                    <button className="lp-btn lp-btn--primary" onClick={() => setFranchiseStatus({ loading: false, success: '', error: '' })}>Submit Another</button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleFranchiseSubmit} className="lp-form">
+                                    <h3 className="lp-form__title">Franchise Enquiry</h3>
+                                    <div className="lp-form__row">
+                                        <div className="lp-form__field">
+                                            <label>Full Name *</label>
+                                            <input type="text" required placeholder="Your full name" value={franchiseForm.name}
+                                                onChange={e => setFranchiseForm(f => ({ ...f, name: e.target.value }))} />
+                                        </div>
+                                        <div className="lp-form__field">
+                                            <label>Email *</label>
+                                            <input type="email" required placeholder="your@email.com" value={franchiseForm.email}
+                                                onChange={e => setFranchiseForm(f => ({ ...f, email: e.target.value }))} />
+                                        </div>
+                                    </div>
+                                    <div className="lp-form__row">
+                                        <div className="lp-form__field">
+                                            <label>Phone *</label>
+                                            <input type="tel" required placeholder="+91 99999 99999" value={franchiseForm.phone}
+                                                onChange={e => setFranchiseForm(f => ({ ...f, phone: e.target.value }))} />
+                                        </div>
+                                        <div className="lp-form__field">
+                                            <label>City *</label>
+                                            <input type="text" required placeholder="Your city" value={franchiseForm.city}
+                                                onChange={e => setFranchiseForm(f => ({ ...f, city: e.target.value }))} />
+                                        </div>
+                                    </div>
+                                    <div className="lp-form__field">
+                                        <label>Message</label>
+                                        <textarea rows="4" placeholder="Tell us about your interest, budget, preferred location..." value={franchiseForm.message}
+                                            onChange={e => setFranchiseForm(f => ({ ...f, message: e.target.value }))} />
+                                    </div>
+                                    {franchiseStatus.error && <div className="lp-form__error">{franchiseStatus.error}</div>}
+                                    <button type="submit" className="lp-btn lp-btn--primary lp-btn--lg lp-form__submit" disabled={franchiseStatus.loading}>
+                                        {franchiseStatus.loading ? 'Submitting...' : 'Submit Enquiry'}
+                                    </button>
+                                </form>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* ═══ CONTACT ═══ */}
             <section id="contact" className="lp-section lp-section--alt">
                 <div className="lp-container">
@@ -337,6 +514,8 @@ const LandingPage = () => {
                             <a href="#menu">Menu</a>
                             <a href="#about">About</a>
                             <a href="#contact">Contact</a>
+                            <a href="#feedback">Feedback</a>
+                            <a href="#franchise">Franchise</a>
                             <Link to="/login">Dashboard</Link>
                         </div>
                         <div className="lp-footer__col">

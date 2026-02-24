@@ -81,6 +81,12 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Mail -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- Excel Export -->
         <dependency>
             <groupId>org.apache.poi</groupId>
