@@ -50,7 +50,7 @@ const LandingPage = () => {
     const catLabels = { ALL: 'All', CREAMY_BLEND: 'Creamy Blends', CURATED_BLEND: 'Curated Blends', SHOT: 'Shots' };
     const filtered = activeCategory === 'ALL' ? products : products.filter(p => p.category === activeCategory);
 
-    const fruitImages = ['🍊', '🍋', '🍎', '🍇', '🍓', '🥭', '🍍', '🍉', '🥝', '🍌', '🫐', '🍑', '🍒', '🥥', '🍈', '🍐', '🥑'];
+    const fruitImages = ['🥭', '🍓', '🍇', '🫐', '🥝', '🍋', '🥥', '🍍', '🍉', '🍌', '🍑', '🍒', '🍈', '🍐', '🥑'];
 
     /* reveal refs */
     const [featRef, featVis] = useReveal();
@@ -85,13 +85,13 @@ const LandingPage = () => {
             <section className="lp-hero">
                 {/* Floating fruit elements */}
                 <div className="lp-hero__floats">
-                    <span className="lp-float lp-float--1">🍊</span>
+                    <span className="lp-float lp-float--1">🥭</span>
                     <span className="lp-float lp-float--2">🍓</span>
-                    <span className="lp-float lp-float--3">🥭</span>
-                    <span className="lp-float lp-float--4">🍇</span>
+                    <span className="lp-float lp-float--3">🍇</span>
+                    <span className="lp-float lp-float--4">🫐</span>
                     <span className="lp-float lp-float--5">🍋</span>
                     <span className="lp-float lp-float--6">🥝</span>
-                    <span className="lp-float lp-float--7">🫐</span>
+                    <span className="lp-float lp-float--7">🥥</span>
                     <span className="lp-float lp-float--8">🍍</span>
                 </div>
 
@@ -157,7 +157,7 @@ const LandingPage = () => {
                     </div>
                     <div className={`lp-features${featVis ? ' lp-reveal' : ''}`}>
                         {[
-                            { icon: '🍊', title: '100% Real Fruit', desc: 'No artificial flavors, colors, or preservatives. Pure fruit from farm to glass.', color: '#ff922b' },
+                            { icon: '🥭', title: '100% Real Fruit', desc: 'No artificial flavors, colors, or preservatives. Pure fruit from farm to glass.', color: '#ff922b' },
                             { icon: '⚡', title: 'Power Shots', desc: 'Single-fruit energy shots packed with vitamins for an instant natural boost.', color: '#7c3aed' },
                             { icon: '🥤', title: 'Creamy Blends', desc: 'Rich, thick smoothies blended with milk for a satisfying creamy experience.', color: '#f59e0b' },
                             { icon: '🧪', title: 'Curated Combos', desc: 'Expert-crafted 2-fruit combos designed for the perfect flavor balance.', color: '#10b981' },
@@ -237,7 +237,7 @@ const LandingPage = () => {
                     <div className={`lp-about${aboutVis ? ' lp-reveal' : ''}`}>
                         <div className="lp-about__visual">
                             <div className="lp-about__circle">
-                                <span className="lp-about__emoji">🍊</span>
+                                <span className="lp-about__emoji">🥭</span>
                             </div>
                             <div className="lp-about__orbit">
                                 <span style={{ '--i': 0 }}>🍓</span>
@@ -272,10 +272,6 @@ const LandingPage = () => {
                                 </div>
                                 <div className="lp-highlight">
                                     <div className="lp-highlight__icon">✓</div>
-                                    <span>Farm Fresh Daily</span>
-                                </div>
-                                <div className="lp-highlight">
-                                    <div className="lp-highlight__icon">✓</div>
                                     <span>Made to Order</span>
                                 </div>
                             </div>
@@ -307,14 +303,13 @@ const LandingPage = () => {
                         <div className="lp-contact-card">
                             <div className="lp-contact-card__icon">📍</div>
                             <h3>Our Location</h3>
-                            <p>3Monks - Main Branch</p>
-                            <p>Main Street, City Center</p>
+                            <p>3Monks Shots and Creamy Blends</p>
+                            <p>Rudvi Food Park, Near Blue Ridge, Phase 1, Hinjawadi, Pimpri-Chinchwad, Maharashtra, 411057</p>
                         </div>
                         <div className="lp-contact-card">
                             <div className="lp-contact-card__icon">🕐</div>
                             <h3>Working Hours</h3>
-                            <p>Mon - Sat: 8AM - 9PM</p>
-                            <p>Sunday: 9AM - 8PM</p>
+                            <p>All Days: 3PM - 11:30PM</p>
                         </div>
                         <div className="lp-contact-card">
                             <div className="lp-contact-card__icon">📞</div>
@@ -352,8 +347,7 @@ const LandingPage = () => {
                         </div>
                         <div className="lp-footer__col">
                             <h4>Hours</h4>
-                            <p>Mon - Sat: 8AM - 9PM</p>
-                            <p>Sunday: 9AM - 8PM</p>
+                            <p>All Days: 3PM - 11:30PM</p>
                         </div>
                     </div>
                     <div className="lp-footer__bottom">
