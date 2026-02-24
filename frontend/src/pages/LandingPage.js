@@ -59,7 +59,7 @@ const LandingPage = () => {
     const catLabels = { ALL: 'All', CREAMY_BLEND: 'Creamy Blends', CURATED_BLEND: 'Curated Blends', SHOT: 'Shots' };
     const filtered = activeCategory === 'ALL' ? products : products.filter(p => p.category === activeCategory);
 
-    const fruitImages = ['🥭', '🍓', '🍇', '🫐', '🥝', '🍋', '🥥', '🍍', '🍉', '🍌', '🍑', '🍒', '🍈', '🍐', '🥑'];
+    const fruitImages = ['🥭', '🍓', '🍇', '🫐', '🥝', '🥥'];
 
     /* ── Submit handlers ── */
     const handleFeedbackSubmit = async (e) => {
@@ -127,10 +127,8 @@ const LandingPage = () => {
                     <span className="lp-float lp-float--2">🍓</span>
                     <span className="lp-float lp-float--3">🍇</span>
                     <span className="lp-float lp-float--4">🫐</span>
-                    <span className="lp-float lp-float--5">🍋</span>
-                    <span className="lp-float lp-float--6">🥝</span>
-                    <span className="lp-float lp-float--7">🥥</span>
-                    <span className="lp-float lp-float--8">🍍</span>
+                    <span className="lp-float lp-float--5">🥝</span>
+                    <span className="lp-float lp-float--6">🥥</span>
                 </div>
 
                 <div className="lp-container lp-hero__inner">
@@ -283,7 +281,7 @@ const LandingPage = () => {
                                 <span style={{ '--i': 2 }}>🍇</span>
                                 <span style={{ '--i': 3 }}>🥝</span>
                                 <span style={{ '--i': 4 }}>🫐</span>
-                                <span style={{ '--i': 5 }}>🍋</span>
+                                <span style={{ '--i': 5 }}>🥥</span>
                             </div>
                         </div>
                         <div className="lp-about__text">

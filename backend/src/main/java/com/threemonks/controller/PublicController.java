@@ -92,7 +92,8 @@ public class PublicController {
     }
 
     @PostMapping("/franchise-enquiry")
-    public ResponseEntity<ApiResponse<String>> submitFranchiseEnquiry(@Valid @RequestBody FranchiseEnquiryRequest request) {
+    public ResponseEntity<ApiResponse<String>> submitFranchiseEnquiry(
+            @Valid @RequestBody FranchiseEnquiryRequest request) {
         FranchiseEnquiry enquiry = FranchiseEnquiry.builder()
                 .name(request.getName())
                 .email(request.getEmail())
@@ -103,8 +104,8 @@ public class PublicController {
         franchiseEnquiryRepository.save(enquiry);
         emailService.sendFranchiseEnquiryEmail(
                 request.getName(), request.getEmail(), request.getPhone(),
-                request.getCity(), request.getMessage()
-        );
-        return ResponseEntity.ok(ApiResponse.success("Franchise enquiry submitted successfully! We'll get back to you soon.", null));
+                request.getCity(), request.getMessage());
+        return ResponseEntity
+                .ok(ApiResponse.success("Franchise enquiry submitted successfully! We'll get back to you soon.", null));
     }
 }

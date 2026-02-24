@@ -2196,6 +2196,7 @@ tr:last-child td {
     .lp-form-card {
         padding: 24px 16px;
     }
+
     .lp-form__row {
         grid-template-columns: 1fr;
     }

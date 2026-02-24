@@ -23,15 +23,14 @@ public class EmailService {
             mail.setTo(FRANCHISE_TO);
             mail.setSubject("New Franchise Enquiry from " + name);
             mail.setText(
-                "New Franchise Enquiry Received\n" +
-                "================================\n\n" +
-                "Name:    " + name + "\n" +
-                "Email:   " + email + "\n" +
-                "Phone:   " + phone + "\n" +
-                "City:    " + city + "\n\n" +
-                "Message:\n" + (message != null ? message : "N/A") + "\n\n" +
-                "---\nThis email was sent from 3Monks website."
-            );
+                    "New Franchise Enquiry Received\n" +
+                            "================================\n\n" +
+                            "Name:    " + name + "\n" +
+                            "Email:   " + email + "\n" +
+                            "Phone:   " + phone + "\n" +
+                            "City:    " + city + "\n\n" +
+                            "Message:\n" + (message != null ? message : "N/A") + "\n\n" +
+                            "---\nThis email was sent from 3Monks website.");
             mail.setFrom("3monks.official@gmail.com");
             mail.setReplyTo(email);
             mailSender.send(mail);
@@ -48,13 +47,12 @@ public class EmailService {
             mail.setTo(FRANCHISE_TO);
             mail.setSubject("New Customer Feedback - " + rating + "★ from " + name);
             mail.setText(
-                "New Customer Feedback Received\n" +
-                "================================\n\n" +
-                "Name:    " + name + "\n" +
-                "Rating:  " + "★".repeat(rating) + " (" + rating + "/5)\n\n" +
-                "Message:\n" + (message != null ? message : "N/A") + "\n\n" +
-                "---\nThis email was sent from 3Monks website."
-            );
+                    "New Customer Feedback Received\n" +
+                            "================================\n\n" +
+                            "Name:    " + name + "\n" +
+                            "Rating:  " + "★".repeat(rating) + " (" + rating + "/5)\n\n" +
+                            "Message:\n" + (message != null ? message : "N/A") + "\n\n" +
+                            "---\nThis email was sent from 3Monks website.");
             mail.setFrom("3monks.official@gmail.com");
             mailSender.send(mail);
             log.info("Feedback notification email sent for: {}", name);
