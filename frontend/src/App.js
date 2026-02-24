@@ -22,6 +22,8 @@ import UsersPage from './pages/UsersPage';
 import EmployeesPage from './pages/EmployeesPage';
 import RecipesPage from './pages/RecipesPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import FeedbacksPage from './pages/FeedbacksPage';
+import FranchiseEnquiriesPage from './pages/FranchiseEnquiriesPage';
 
 function App() {
     return (
@@ -78,6 +80,12 @@ function App() {
                         } />
                         <Route path="analytics" element={
                             <ProtectedRoute roles={['SUPER_ADMIN']}><AnalyticsPage /></ProtectedRoute>
+                        } />
+                        <Route path="feedbacks" element={
+                            <ProtectedRoute roles={['SUPER_ADMIN']}><FeedbacksPage /></ProtectedRoute>
+                        } />
+                        <Route path="franchise-enquiries" element={
+                            <ProtectedRoute roles={['SUPER_ADMIN']}><FranchiseEnquiriesPage /></ProtectedRoute>
                         } />
                     </Route>
 

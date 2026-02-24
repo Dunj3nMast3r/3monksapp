@@ -1,6 +1,10 @@
 package com.threemonks.controller;
 
 import com.threemonks.dto.*;
+import com.threemonks.entity.Feedback;
+import com.threemonks.entity.FranchiseEnquiry;
+import com.threemonks.repository.FeedbackRepository;
+import com.threemonks.repository.FranchiseEnquiryRepository;
 import com.threemonks.service.*;
 import com.threemonks.security.UserPrincipal;
 import jakarta.validation.Valid;
@@ -28,6 +32,8 @@ public class AdminController {
     private final RecipeService recipeService;
     private final EmployeeService employeeService;
     private final StockService stockService;
+    private final FeedbackRepository feedbackRepository;
+    private final FranchiseEnquiryRepository franchiseEnquiryRepository;
 
     // Shop management
     @GetMapping("/shops")
@@ -227,5 +233,29 @@ public class AdminController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
         stockService.deletePurchase(id, currentUser);
         return ResponseEntity.ok(ApiResponse.success("Purchase deleted", null));
+    }
+
+    // Feedbacks
+    @GetMapping("/feedbacks")
+    public ResponseEntity<ApiResponse<List<Feedback>>> getAllFeedbacks() {
+        return ResponseEntity.ok(ApiResponse.success(feedbackRepository.findAllByOrderByCreatedAtDesc()));
+    }
+
+    @DeleteMapping("/feedbacks/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteFeedback(@PathVariable Long id) {
+        feedbackRepository.deleteById(id);
+        return ResponseEntity.ok(ApiResponse.success("Feedback deleted", null));
+    }
+
+    // Franchise Enquiries
+    @GetMapping("/franchise-enquiries")
+    public ResponseEntity<ApiResponse<List<FranchiseEnquiry>>> getAllFranchiseEnquiries() {
+        return ResponseEntity.ok(ApiResponse.success(franchiseEnquiryRepository.findAllByOrderByCreatedAtDesc()));
+    }
+
+    @DeleteMapping("/franchise-enquiries/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteFranchiseEnquiry(@PathVariable Long id) {
+        franchiseEnquiryRepository.deleteById(id);
+        return ResponseEntity.ok(ApiResponse.success("Franchise enquiry deleted", null));
     }
 }

@@ -64,6 +64,12 @@ export const adminService = {
     getSalarySheet: (shopId, month) => api.get('/api/admin/salary-sheet', { params: { shopId, month } }),
     // Delete purchase (admin only)
     deletePurchase: (id) => api.delete(`/api/admin/purchases/${id}`),
+    // Feedbacks
+    getFeedbacks: () => api.get('/api/admin/feedbacks'),
+    deleteFeedback: (id) => api.delete(`/api/admin/feedbacks/${id}`),
+    // Franchise Enquiries
+    getFranchiseEnquiries: () => api.get('/api/admin/franchise-enquiries'),
+    deleteFranchiseEnquiry: (id) => api.delete(`/api/admin/franchise-enquiries/${id}`),
 };
 
 export const managerService = {
