@@ -1495,10 +1495,11 @@ tr:last-child td {
 /* ════════ SECTIONS ════════ */
 .lp-section {
     padding: 100px 0;
+    background: linear-gradient(180deg, #1a0a2e 0%, #2d1150 100%);
 }
 
 .lp-section--alt {
-    background: white;
+    background: linear-gradient(180deg, #0f0620 0%, #1a0a2e 100%);
 }
 
 .lp-section__head {
@@ -1513,8 +1514,8 @@ tr:last-child td {
 
 .lp-section__tag {
     display: inline-block;
-    background: linear-gradient(135deg, var(--purple-100), var(--purple-50));
-    color: var(--purple-700);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.1));
+    color: #c084fc;
     font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
@@ -1527,14 +1528,14 @@ tr:last-child td {
 .lp-section__head h2 {
     font-size: clamp(28px, 4vw, 42px);
     font-weight: 800;
-    color: var(--purple-900);
+    color: white;
     margin-bottom: 10px;
     letter-spacing: -0.5px;
 }
 
 .lp-section__head p {
     font-size: 17px;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.6);
     max-width: 500px;
     margin: 0 auto;
 }
@@ -1552,12 +1553,12 @@ tr:last-child td {
 }
 
 .lp-feature {
-    background: white;
+    background: rgba(255, 255, 255, 0.06);
     border-radius: 20px;
     padding: 36px 28px;
     position: relative;
     overflow: hidden;
-    border: 1px solid var(--border-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     animation: lpCardIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
     animation-delay: var(--delay);
@@ -1565,14 +1566,14 @@ tr:last-child td {
 
 .lp-feature:hover {
     transform: translateY(-8px);
-    box-shadow: 0 20px 40px rgba(88, 28, 135, 0.1);
-    border-color: var(--purple-200);
+    box-shadow: 0 20px 40px rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.3);
 }
 
 .lp-feature__icon {
     width: 64px;
     height: 64px;
-    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, white), color-mix(in srgb, var(--accent) 5%, white));
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, transparent), color-mix(in srgb, var(--accent) 8%, transparent));
     border-radius: 16px;
     display: flex;
     align-items: center;
@@ -1590,12 +1591,12 @@ tr:last-child td {
     font-size: 18px;
     font-weight: 700;
     margin-bottom: 8px;
-    color: var(--text);
+    color: white;
 }
 
 .lp-feature p {
     font-size: 14px;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.6);
     line-height: 1.7;
 }
 
@@ -1656,20 +1657,20 @@ tr:last-child td {
 
 .lp-tab {
     padding: 10px 24px;
-    border: 2px solid var(--border);
+    border: 2px solid rgba(255, 255, 255, 0.15);
     border-radius: 50px;
-    background: white;
+    background: rgba(255, 255, 255, 0.06);
     font-family: 'Poppins', sans-serif;
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
     transition: all 0.3s ease;
 }
 
 .lp-tab:hover {
-    border-color: var(--purple-300);
-    color: var(--purple-700);
+    border-color: rgba(168, 85, 247, 0.4);
+    color: white;
 }
 
 .lp-tab--active {
@@ -1692,10 +1693,10 @@ tr:last-child td {
 }
 
 .lp-product {
-    background: white;
+    background: rgba(255, 255, 255, 0.06);
     border-radius: 20px;
     overflow: hidden;
-    border: 1px solid var(--border-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     animation: lpCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
     animation-delay: var(--delay);
@@ -1703,7 +1704,7 @@ tr:last-child td {
 
 .lp-product:hover {
     transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 24px 48px rgba(88, 28, 135, 0.12);
+    box-shadow: 0 24px 48px rgba(168, 85, 247, 0.15);
 }
 
 .lp-product__img {
@@ -1771,13 +1772,13 @@ tr:last-child td {
 .lp-product__body h3 {
     font-size: 18px;
     font-weight: 700;
-    color: var(--text);
+    color: white;
     margin-bottom: 4px;
 }
 
 .lp-product__desc {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.6);
     line-height: 1.5;
     margin-bottom: 8px;
 }
@@ -1793,7 +1794,7 @@ tr:last-child td {
     font-family: 'Poppins', sans-serif;
     font-size: 26px;
     font-weight: 800;
-    background: linear-gradient(135deg, var(--purple-700), var(--purple-500));
+    background: linear-gradient(135deg, #a855f7, #c084fc);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -1806,8 +1807,8 @@ tr:last-child td {
 }
 
 .lp-chip {
-    background: var(--purple-50);
-    color: var(--purple-700);
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
     font-size: 11px;
     font-weight: 600;
     padding: 3px 10px;
@@ -1895,13 +1896,13 @@ tr:last-child td {
 .lp-about__text h2 {
     font-size: 36px;
     font-weight: 800;
-    color: var(--purple-900);
+    color: white;
     margin-bottom: 20px;
 }
 
 .lp-about__text p {
     font-size: 16px;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.6);
     line-height: 1.8;
     margin-bottom: 16px;
 }
@@ -1919,7 +1920,7 @@ tr:last-child td {
     gap: 10px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--text);
+    color: rgba(255, 255, 255, 0.85);
 }
 
 .lp-highlight__icon {
@@ -2007,17 +2008,18 @@ tr:last-child td {
 }
 
 .lp-contact-card {
-    background: var(--bg);
+    background: rgba(255, 255, 255, 0.06);
     border-radius: 20px;
     padding: 36px 28px;
     text-align: center;
-    border: 1px solid var(--border-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
 }
 
 .lp-contact-card:hover {
     transform: translateY(-6px);
-    box-shadow: 0 16px 40px rgba(88, 28, 135, 0.08);
+    box-shadow: 0 16px 40px rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.3);
 }
 
 .lp-contact-card__icon {
@@ -2028,13 +2030,13 @@ tr:last-child td {
 .lp-contact-card h3 {
     font-size: 18px;
     font-weight: 700;
-    color: var(--purple-800);
+    color: white;
     margin-bottom: 10px;
 }
 
 .lp-contact-card p {
     font-size: 14px;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.6);
     line-height: 1.8;
 }
 
