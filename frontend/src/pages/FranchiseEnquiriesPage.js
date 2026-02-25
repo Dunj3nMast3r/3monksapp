@@ -73,8 +73,7 @@ const FranchiseEnquiriesPage = () => {
                                             <a href={`tel:${enq.phone}`} style={{ color: '#a855f7' }}>{enq.phone}</a>
                                         </td>
                                         <td>{enq.city}</td>
-                                        <td style={{ maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                            title={enq.message || ''}>
+                                        <td style={{ maxWidth: '350px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                             {enq.message || '—'}
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>

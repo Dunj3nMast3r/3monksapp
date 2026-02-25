@@ -17,6 +17,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByOrderNumber(String orderNumber);
     
     List<Order> findByShopIdOrderByCreatedAtDesc(Long shopId);
+
+    List<Order> findAllByOrderByCreatedAtDesc();
     
     List<Order> findByShopIdAndOrderDateBetween(Long shopId, LocalDateTime start, LocalDateTime end);
     

@@ -156,6 +156,24 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
+    public List<OrderResponse> getAllOrders(Long shopId, UserPrincipal currentUser) {
+        if (shopId != null) {
+            validateShopAccess(shopId, currentUser);
+            return orderRepository.findByShopIdOrderByCreatedAtDesc(shopId).stream()
+                    .map(this::toResponse)
+                    .collect(Collectors.toList());
+        }
+        if (currentUser.getRole() == Role.SUPER_ADMIN) {
+            return orderRepository.findAllByOrderByCreatedAtDesc().stream()
+                    .map(this::toResponse)
+                    .collect(Collectors.toList());
+        }
+        Long resolvedShopId = currentUser.getShopId();
+        return orderRepository.findByShopIdOrderByCreatedAtDesc(resolvedShopId).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     public List<OrderResponse> getTodayOrders(Long shopId, UserPrincipal currentUser) {
         Long resolvedShopId = resolveShopId(shopId, currentUser);
         validateShopAccess(resolvedShopId, currentUser);

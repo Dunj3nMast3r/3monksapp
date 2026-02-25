@@ -41,6 +41,13 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(orderService.getOrderByNumber(orderNumber, currentUser)));
     }
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> getAllOrders(
+            @RequestParam(required = false) Long shopId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(orderService.getAllOrders(shopId, currentUser)));
+    }
+
     @GetMapping("/shop/{shopId}")
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getShopOrders(
             @PathVariable Long shopId,
