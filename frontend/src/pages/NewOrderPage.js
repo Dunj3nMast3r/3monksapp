@@ -73,81 +73,162 @@ const NewOrderPage = () => {
         }
     };
 
-    const handlePrint = () => {
-        const receiptHTML = receiptRef.current?.innerHTML || '';
-        if (!receiptHTML) { toast.error('No receipt to print'); return; }
-
-        // Remove any previous print iframe
-        const oldFrame = document.getElementById('receipt-print-frame');
-        if (oldFrame) oldFrame.remove();
-
-        const iframe = document.createElement('iframe');
-        iframe.id = 'receipt-print-frame';
-        iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
-        document.body.appendChild(iframe);
-
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        doc.open();
-        doc.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Receipt</title>
+    const buildReceiptHTML = () => {
+        const receiptContent = receiptRef.current?.innerHTML || '';
+        if (!receiptContent) return null;
+        return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Receipt - ${order?.orderNumber || ''}</title>
 <style>
-  @page {
-    size: 80mm auto;
-    margin: 0;
-  }
+  @page { size: 80mm auto; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: 'Courier New', 'Lucida Console', monospace;
-    font-size: 12px;
-    line-height: 1.4;
-    color: #000;
-    background: #fff;
-    width: 80mm;
-    padding: 4mm 3mm;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    font-size: 12px; line-height: 1.4; color: #000; background: #fff;
+    max-width: 80mm; margin: 0 auto; padding: 4mm 3mm;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .receipt { width: 100%; background: #fff; padding: 0; border: none; box-shadow: none; max-width: none; margin: 0; font-family: inherit; font-size: inherit; border-radius: 0; }
-  .receipt-header { text-align: center; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px dashed #000 !important; }
-  .receipt-header img { display: none; }
-  .receipt-header h3 { font-size: 16px; font-weight: bold; font-family: 'Courier New', monospace; margin-bottom: 2px; color: #000 !important; -webkit-text-fill-color: #000 !important; background: none !important; }
+  .receipt-header { text-align: center; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px dashed #000; }
+  .receipt-header h3 { font-size: 16px; font-weight: bold; font-family: 'Courier New', monospace; margin-bottom: 2px; color: #000; -webkit-text-fill-color: #000; background: none; }
   .receipt-header p { font-size: 11px; margin: 1px 0; color: #000; }
   table { width: 100%; border-collapse: collapse; }
-  td, th { padding: 2px 0; font-size: 11px; color: #000; border: none !important; background: none !important; vertical-align: top; }
-  th { font-weight: bold; border-bottom: 1px dashed #000 !important; padding-bottom: 4px; }
-  .receipt-total { border-top: 1px dashed #000 !important; padding-top: 6px; margin-top: 6px; font-weight: bold; }
+  td, th { padding: 2px 0; font-size: 11px; color: #000; border: none; background: none; vertical-align: top; }
+  th { font-weight: bold; border-bottom: 1px dashed #000; padding-bottom: 4px; }
+  .receipt-total { border-top: 1px dashed #000; padding-top: 6px; margin-top: 6px; font-weight: bold; }
   .receipt-total td { font-size: 13px; padding: 2px 0; }
-  .receipt-footer { text-align: center; border-top: 1px dashed #000 !important; padding-top: 8px; margin-top: 8px; font-size: 11px; color: #000; }
+  .receipt-footer { text-align: center; border-top: 1px dashed #000; padding-top: 8px; margin-top: 8px; font-size: 11px; color: #000; }
   .receipt-footer p { margin: 2px 0; }
-  div[style*="border-top"] { border-top: 1px dashed #000 !important; }
-  @media print {
-    html, body { width: 80mm; margin: 0; padding: 4mm 3mm; }
-    .receipt { page-break-inside: avoid; }
-  }
+  div[style*="border-top"] { border-top: 1px dashed #000; }
+  .print-actions { text-align: center; padding: 16px 0; }
+  .print-actions button { font-size: 16px; padding: 12px 32px; margin: 4px; border: 2px solid #7c3aed; background: #7c3aed; color: #fff; border-radius: 8px; cursor: pointer; font-weight: bold; }
+  .print-actions button:active { background: #6d28d9; }
+  .print-actions .close-btn { background: #fff; color: #7c3aed; }
+  @media print { .print-actions { display: none !important; } }
 </style>
 </head><body>
-${receiptHTML}
-</body></html>`);
-        doc.close();
+<div class="print-actions">
+  <button onclick="window.print()">🖨️ Print Receipt</button>
+  <button class="close-btn" onclick="window.close()">✕ Close</button>
+</div>
+${receiptContent}
+<div class="print-actions" style="margin-top:16px">
+  <button onclick="window.print()">🖨️ Print Receipt</button>
+</div>
+</body></html>`;
+    };
 
-        // Wait for content to render then print
-        iframe.onload = () => {
+    const handlePrint = () => {
+        const html = buildReceiptHTML();
+        if (!html) { toast.error('No receipt to print'); return; }
+
+        // Open in a real new tab — reliable on mobile Chrome + triggers Android print system
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            // Popup blocked — fallback to same-window
+            toast.error('Popup blocked. Allow popups for this site, then try again.');
+            return;
+        }
+        printWindow.document.write(html);
+        printWindow.document.close();
+
+        // Auto-trigger print dialog after content loads
+        printWindow.onload = () => {
             setTimeout(() => {
-                try {
-                    iframe.contentWindow.focus();
-                    iframe.contentWindow.print();
-                } catch (e) {
-                    // Fallback: open in new window
-                    const w = window.open('', '_blank');
-                    w.document.write(doc.documentElement.outerHTML);
-                    w.document.close();
-                    w.focus();
-                    w.print();
-                }
-                // Cleanup after print dialog closes
-                setTimeout(() => { iframe.remove(); }, 3000);
-            }, 300);
+                try { printWindow.print(); } catch (e) { /* user can use the on-page button */ }
+            }, 500);
         };
+        // Fallback if onload doesn't fire (some mobile browsers)
+        setTimeout(() => {
+            try { printWindow.print(); } catch (e) { /* user can use the on-page button */ }
+        }, 1500);
+    };
+
+    const handleShare = async () => {
+        if (!order) return;
+
+        // Build plain-text receipt for sharing
+        const lines = [];
+        lines.push('================================');
+        lines.push('          3 M O N K S           ');
+        lines.push('  100% Real Fruit. No Artificial');
+        lines.push('================================');
+        lines.push(`Shop: ${order.shopName || ''}`);
+        lines.push(`Order: ${order.orderNumber}`);
+        lines.push(`Date: ${new Date(order.orderDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+        if (order.customerName) lines.push(`Customer: ${order.customerName}`);
+        lines.push('--------------------------------');
+        lines.push('Item              Qty      Amt');
+        lines.push('--------------------------------');
+        order.items?.forEach(item => {
+            const name = item.productName.padEnd(18).slice(0, 18);
+            const qty = String(item.quantity).padStart(3);
+            const amt = formatCurrency(item.subtotal).padStart(9);
+            lines.push(`${name}${qty}${amt}`);
+        });
+        lines.push('================================');
+        lines.push(`TOTAL          ${formatCurrency(order.totalAmount).padStart(14)}`);
+        lines.push(`Payment: ${order.paymentMode}`);
+        lines.push('================================');
+        lines.push('  Thank you for choosing 3Monks!');
+        lines.push('   Stay Fresh, Stay Healthy 🍊  ');
+        lines.push('================================');
+        const receiptText = lines.join('\n');
+
+        // Try Web Share API (works on mobile — can share to Thermer)
+        if (navigator.share) {
+            try {
+                // Try sharing as a file first (Thermer prefers images)
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const lineHeight = 18;
+                const padding = 20;
+                canvas.width = 380;
+                canvas.height = (lines.length * lineHeight) + (padding * 2) + 10;
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#000';
+                ctx.font = '13px "Courier New", monospace';
+                ctx.textBaseline = 'top';
+                lines.forEach((line, i) => {
+                    ctx.fillText(line, padding, padding + (i * lineHeight));
+                });
+
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const file = new File([blob], `receipt-${order.orderNumber}.png`, { type: 'image/png' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: `Receipt ${order.orderNumber}`,
+                        files: [file],
+                    });
+                    toast.success('Receipt shared');
+                    return;
+                }
+            } catch (e) {
+                if (e.name === 'AbortError') return; // User cancelled
+            }
+
+            // Fallback: share as text
+            try {
+                await navigator.share({
+                    title: `Receipt ${order.orderNumber}`,
+                    text: receiptText,
+                });
+                toast.success('Receipt shared');
+                return;
+            } catch (e) {
+                if (e.name === 'AbortError') return;
+            }
+        }
+
+        // Final fallback: copy to clipboard
+        try {
+            await navigator.clipboard.writeText(receiptText);
+            toast.success('Receipt copied to clipboard');
+        } catch {
+            toast.error('Could not share receipt');
+        }
     };
 
     const filteredProducts = filter === 'ALL' ? products : products.filter(p => p.category === filter);
@@ -157,8 +238,9 @@ ${receiptHTML}
             <div>
                 <div className="page-header">
                     <h1>Order Confirmed! ✅</h1>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button className="btn btn-primary" onClick={handlePrint}>🖨️ Print Receipt</button>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button className="btn btn-primary" onClick={handlePrint}>🖨️ Print</button>
+                        <button className="btn btn-outline" onClick={handleShare}>📤 Share</button>
                         <button className="btn btn-outline" onClick={() => { setOrder(null); setCustomerName(''); setCustomerPhone(''); }}>New Order</button>
                     </div>
                 </div>
