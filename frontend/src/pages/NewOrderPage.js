@@ -4,6 +4,14 @@ import { publicService, orderService } from '../services/dataService';
 import { formatCurrency } from '../utils/helpers';
 import Receipt from '../components/Receipt';
 import toast from 'react-hot-toast';
+import {
+    isBluetoothAvailable,
+    isPrinterConnected,
+    getPrinterName,
+    connectPrinter,
+    printReceipt,
+    disconnectPrinter,
+} from '../services/bluetoothPrinter';
 
 const NewOrderPage = () => {
     const { user } = useAuth();
@@ -15,6 +23,8 @@ const NewOrderPage = () => {
     const [loading, setLoading] = useState(false);
     const [order, setOrder] = useState(null);
     const [filter, setFilter] = useState('ALL');
+    const [btConnected, setBtConnected] = useState(false);
+    const [btPrinting, setBtPrinting] = useState(false);
     const receiptRef = useRef();
 
     useEffect(() => {
@@ -74,9 +84,36 @@ const NewOrderPage = () => {
     };
 
     const handlePrint = () => {
-        // Print the current page directly — @media print CSS hides everything except the receipt
-        // This reliably triggers Android's system print dialog where Thermer appears
+        // Fallback: system print dialog (if Bluetooth not connected)
         window.print();
+    };
+
+    const handleConnectPrinter = async () => {
+        try {
+            const result = await connectPrinter();
+            setBtConnected(true);
+            toast.success(result.reconnected
+                ? `Reconnected to ${result.name}`
+                : `Connected to ${result.name}! Tap 🖨️ to print instantly.`
+            );
+        } catch (e) {
+            if (e.name === 'NotFoundError') return; // User cancelled picker
+            toast.error(e.message || 'Failed to connect printer');
+        }
+    };
+
+    const handleBluetoothPrint = async () => {
+        if (!order) return;
+        setBtPrinting(true);
+        try {
+            await printReceipt(order);
+            toast.success('Receipt printed!');
+        } catch (e) {
+            setBtConnected(false);
+            toast.error(e.message || 'Print failed');
+        } finally {
+            setBtPrinting(false);
+        }
     };
 
     const buildReceiptLines = () => {
@@ -181,16 +218,58 @@ const NewOrderPage = () => {
     const filteredProducts = filter === 'ALL' ? products : products.filter(p => p.category === filter);
 
     if (order) {
+        const btAvailable = isBluetoothAvailable();
+        const printerReady = btConnected && isPrinterConnected();
+        const printerName = getPrinterName();
+
         return (
             <div>
                 <div className="page-header">
                     <h1>Order Confirmed! ✅</h1>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <button className="btn btn-primary" onClick={handlePrint}>🖨️ Print</button>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {btAvailable && (
+                            printerReady ? (
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={handleBluetoothPrint}
+                                    disabled={btPrinting}
+                                    style={{ minWidth: '120px' }}
+                                >
+                                    {btPrinting ? '⏳ Printing...' : '🖨️ Print'}
+                                </button>
+                            ) : (
+                                <button className="btn btn-primary" onClick={handleConnectPrinter}>
+                                    🔗 Connect Printer
+                                </button>
+                            )
+                        )}
+                        <button className="btn btn-outline" onClick={handlePrint}>🖨️ System Print</button>
                         <button className="btn btn-outline" onClick={handleShare}>📤 Share</button>
                         <button className="btn btn-outline" onClick={() => { setOrder(null); setCustomerName(''); setCustomerPhone(''); }}>New Order</button>
                     </div>
                 </div>
+                {printerReady && printerName && (
+                    <div style={{
+                        background: 'rgba(76,175,80,0.1)',
+                        border: '1px solid rgba(76,175,80,0.3)',
+                        borderRadius: '8px',
+                        padding: '8px 16px',
+                        marginBottom: '16px',
+                        fontSize: '13px',
+                        color: '#4caf50',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                    }}>
+                        <span>✅ Connected: <strong>{printerName}</strong></span>
+                        <button
+                            onClick={() => { disconnectPrinter(); setBtConnected(false); }}
+                            style={{ background: 'none', border: 'none', color: '#f44336', cursor: 'pointer', fontSize: '12px' }}
+                        >
+                            Disconnect
+                        </button>
+                    </div>
+                )}
                 <div className="card">
                     <Receipt ref={receiptRef} order={order} />
                 </div>
