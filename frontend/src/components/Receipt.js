@@ -27,17 +27,17 @@ const Receipt = React.forwardRef(({ order, shop }, ref) => {
             <table>
                 <thead>
                     <tr>
-                        <th style={{ textAlign: 'left', padding: '4px 0', fontSize: '11px' }}>Item</th>
-                        <th style={{ textAlign: 'center', padding: '4px 0', fontSize: '11px' }}>Qty</th>
-                        <th style={{ textAlign: 'right', padding: '4px 0', fontSize: '11px' }}>Amt</th>
+                        <th style={{ textAlign: 'left', padding: '4px 0', fontSize: '14px', fontWeight: 'bold' }}>Item</th>
+                        <th style={{ textAlign: 'center', padding: '4px 0', fontSize: '14px', fontWeight: 'bold' }}>Qty</th>
+                        <th style={{ textAlign: 'right', padding: '4px 0', fontSize: '14px', fontWeight: 'bold' }}>Amt</th>
                     </tr>
                 </thead>
                 <tbody>
                     {order.items?.map((item, i) => (
                         <tr key={i}>
-                            <td style={{ padding: '2px 0', fontSize: '11px' }}>{item.productName}</td>
-                            <td style={{ textAlign: 'center', padding: '2px 0', fontSize: '11px' }}>{item.quantity}</td>
-                            <td style={{ textAlign: 'right', padding: '2px 0', fontSize: '11px' }}>{formatCurrency(item.subtotal)}</td>
+                            <td style={{ padding: '3px 0', fontSize: '14px' }}>{item.productName}</td>
+                            <td style={{ textAlign: 'center', padding: '3px 0', fontSize: '14px' }}>{item.quantity}</td>
+                            <td style={{ textAlign: 'right', padding: '3px 0', fontSize: '14px' }}>{formatCurrency(item.subtotal)}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -47,12 +47,12 @@ const Receipt = React.forwardRef(({ order, shop }, ref) => {
                 <table>
                     <tbody>
                         <tr>
-                            <td style={{ fontWeight: 'bold' }}>TOTAL</td>
-                            <td style={{ textAlign: 'right', fontWeight: 'bold', fontSize: '14px' }}>{formatCurrency(order.totalAmount)}</td>
+                            <td style={{ fontWeight: 'bold', fontSize: '16px' }}>TOTAL</td>
+                            <td style={{ textAlign: 'right', fontWeight: 'bold', fontSize: '18px' }}>{formatCurrency(order.totalAmount)}</td>
                         </tr>
                         <tr>
-                            <td>Payment:</td>
-                            <td style={{ textAlign: 'right' }}>{order.paymentMode}</td>
+                            <td style={{ fontSize: '14px' }}>Payment:</td>
+                            <td style={{ textAlign: 'right', fontSize: '14px' }}>{order.paymentMode}</td>
                         </tr>
                     </tbody>
                 </table>
