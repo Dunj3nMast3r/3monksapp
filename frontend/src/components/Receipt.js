@@ -7,11 +7,10 @@ const Receipt = React.forwardRef(({ order, shop }, ref) => {
     return (
         <div ref={ref} className="receipt">
             <div className="receipt-header">
-                <img src="/logo.svg" alt="3Monks" style={{ width: '40px', height: '40px', margin: '0 auto 6px' }} />
                 <h3>3Monks</h3>
                 <p>100% Real Fruit. No Artificial Flavor.</p>
                 <p>{shop?.name || order.shopName}</p>
-                <p>{shop?.address}</p>
+                {shop?.address && <p>{shop.address}</p>}
                 {shop?.gstNumber && <p>GST: {shop.gstNumber}</p>}
             </div>
 

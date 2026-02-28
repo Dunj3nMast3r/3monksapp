@@ -3816,8 +3816,22 @@ tr:last-child td {
 
     .sidebar,
     .topbar,
-    .no-print {
+    .no-print,
+    .page-header,
+    .btn {
         display: none !important;
+    }
+
+    html, body {
+        width: 80mm;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+    }
+
+    @page {
+        size: 80mm auto;
+        margin: 0;
     }
 
     .main-content {
@@ -3828,5 +3842,43 @@ tr:last-child td {
     .receipt {
         border: none;
         box-shadow: none;
+        border-radius: 0;
+        max-width: none;
+        width: 100%;
+        padding: 2mm;
+        font-size: 12px;
+        color: #000;
+        background: #fff;
+    }
+
+    .receipt .receipt-header {
+        border-bottom: 1px dashed #000;
+    }
+
+    .receipt .receipt-header h3 {
+        color: #000;
+        font-family: 'Courier New', monospace;
+        -webkit-text-fill-color: #000;
+        background: none;
+    }
+
+    .receipt .receipt-header img {
+        display: none;
+    }
+
+    .receipt .receipt-total {
+        border-top: 1px dashed #000;
+    }
+
+    .receipt .receipt-footer {
+        border-top: 1px dashed #000;
+        color: #000;
+    }
+
+    .receipt table,
+    .receipt td,
+    .receipt th {
+        color: #000;
+        border: none;
     }
 }

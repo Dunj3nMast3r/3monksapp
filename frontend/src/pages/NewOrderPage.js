@@ -74,19 +74,80 @@ const NewOrderPage = () => {
     };
 
     const handlePrint = () => {
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-      <html><head><title>Receipt</title>
-      <style>
-        body { font-family: 'Courier New', monospace; font-size: 12px; max-width: 300px; margin: 0 auto; padding: 20px; }
-        table { width: 100%; } td { padding: 2px 0; } .center { text-align: center; }
-        .right { text-align: right; } .bold { font-weight: bold; }
-        .line { border-top: 1px dashed #000; margin: 8px 0; }
-      </style></head><body>
-      ${receiptRef.current?.innerHTML || ''}
-      <script>window.print(); window.close();</script>
-      </body></html>
-    `);
+        const receiptHTML = receiptRef.current?.innerHTML || '';
+        if (!receiptHTML) { toast.error('No receipt to print'); return; }
+
+        // Remove any previous print iframe
+        const oldFrame = document.getElementById('receipt-print-frame');
+        if (oldFrame) oldFrame.remove();
+
+        const iframe = document.createElement('iframe');
+        iframe.id = 'receipt-print-frame';
+        iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Receipt</title>
+<style>
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #000;
+    background: #fff;
+    width: 80mm;
+    padding: 4mm 3mm;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .receipt { width: 100%; background: #fff; padding: 0; border: none; box-shadow: none; max-width: none; margin: 0; font-family: inherit; font-size: inherit; border-radius: 0; }
+  .receipt-header { text-align: center; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px dashed #000 !important; }
+  .receipt-header img { display: none; }
+  .receipt-header h3 { font-size: 16px; font-weight: bold; font-family: 'Courier New', monospace; margin-bottom: 2px; color: #000 !important; -webkit-text-fill-color: #000 !important; background: none !important; }
+  .receipt-header p { font-size: 11px; margin: 1px 0; color: #000; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: 2px 0; font-size: 11px; color: #000; border: none !important; background: none !important; vertical-align: top; }
+  th { font-weight: bold; border-bottom: 1px dashed #000 !important; padding-bottom: 4px; }
+  .receipt-total { border-top: 1px dashed #000 !important; padding-top: 6px; margin-top: 6px; font-weight: bold; }
+  .receipt-total td { font-size: 13px; padding: 2px 0; }
+  .receipt-footer { text-align: center; border-top: 1px dashed #000 !important; padding-top: 8px; margin-top: 8px; font-size: 11px; color: #000; }
+  .receipt-footer p { margin: 2px 0; }
+  div[style*="border-top"] { border-top: 1px dashed #000 !important; }
+  @media print {
+    html, body { width: 80mm; margin: 0; padding: 4mm 3mm; }
+    .receipt { page-break-inside: avoid; }
+  }
+</style>
+</head><body>
+${receiptHTML}
+</body></html>`);
+        doc.close();
+
+        // Wait for content to render then print
+        iframe.onload = () => {
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (e) {
+                    // Fallback: open in new window
+                    const w = window.open('', '_blank');
+                    w.document.write(doc.documentElement.outerHTML);
+                    w.document.close();
+                    w.focus();
+                    w.print();
+                }
+                // Cleanup after print dialog closes
+                setTimeout(() => { iframe.remove(); }, 3000);
+            }, 300);
+        };
     };
 
     const filteredProducts = filter === 'ALL' ? products : products.filter(p => p.category === filter);
