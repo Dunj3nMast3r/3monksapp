@@ -243,6 +243,7 @@ function formatAmount(amount) {
 
 /**
  * Print a formatted receipt via ESC/POS commands.
+ * Clean, professional layout — minimal bold, clear spacing.
  * @param {Object} order - The order object
  */
 export async function printReceipt(order) {
@@ -254,12 +255,16 @@ export async function printReceipt(order) {
     }
 
     const parts = [];
+    const LINE = '--------------------------------';
 
     // Initialize printer
     parts.push(new Uint8Array(CMD.INIT));
 
     // === HEADER ===
     parts.push(new Uint8Array(CMD.CENTER));
+    parts.push(new Uint8Array([LF]));
+
+    // Brand name — only thing in double size
     parts.push(new Uint8Array(CMD.BOLD_ON));
     parts.push(new Uint8Array(CMD.DOUBLE_SIZE));
     parts.push(encode('3Monks'));
@@ -267,31 +272,29 @@ export async function printReceipt(order) {
     parts.push(new Uint8Array(CMD.NORMAL_SIZE));
     parts.push(new Uint8Array(CMD.BOLD_OFF));
 
-    parts.push(encode('100% Real Fruit'));
+    // Tagline — normal weight, centered
+    parts.push(encode('Real Fruit | No Artificial Flavor'));
     parts.push(new Uint8Array([LF]));
-    parts.push(encode('No Artificial Flavor'));
-    parts.push(new Uint8Array([LF]));
-
-    // Dashed separator
-    parts.push(encode('--------------------------------'));
     parts.push(new Uint8Array([LF]));
 
-    // Shop info
+    // Shop name — normal weight
     if (order.shopName) {
-        parts.push(new Uint8Array(CMD.BOLD_ON));
         parts.push(encode(order.shopName));
-        parts.push(new Uint8Array(CMD.BOLD_OFF));
         parts.push(new Uint8Array([LF]));
     }
 
-    // === ORDER INFO ===
-    parts.push(new Uint8Array(CMD.LEFT));
-
-    parts.push(encode(`Order: ${order.orderNumber}`));
+    parts.push(encode(LINE));
     parts.push(new Uint8Array([LF]));
 
-    const dateStr = new Date(order.orderDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-    parts.push(encode(`Date: ${dateStr}`));
+    // === ORDER INFO — left aligned, normal weight ===
+    parts.push(new Uint8Array(CMD.LEFT));
+
+    parts.push(encode(`Order  : ${order.orderNumber}`));
+    parts.push(new Uint8Array([LF]));
+
+    const dateStr = new Date(order.orderDate)
+        .toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    parts.push(encode(`Date   : ${dateStr}`));
     parts.push(new Uint8Array([LF]));
 
     if (order.customerName) {
@@ -299,19 +302,17 @@ export async function printReceipt(order) {
         parts.push(new Uint8Array([LF]));
     }
 
-    // Separator
-    parts.push(encode('--------------------------------'));
+    parts.push(encode(LINE));
     parts.push(new Uint8Array([LF]));
 
-    // === ITEMS HEADER ===
-    parts.push(new Uint8Array(CMD.BOLD_ON));
-    parts.push(encode('Item              Qty       Amt'));
+    // === ITEMS HEADER — normal weight ===
+    //                   "Item              Qty      Amt"
+    parts.push(encode('Item              Qty      Amt'));
     parts.push(new Uint8Array([LF]));
-    parts.push(new Uint8Array(CMD.BOLD_OFF));
-    parts.push(encode('--------------------------------'));
+    parts.push(encode(LINE));
     parts.push(new Uint8Array([LF]));
 
-    // === ITEMS ===
+    // === ITEMS — normal weight, clean columns ===
     if (order.items) {
         for (const item of order.items) {
             const name = item.productName.length > 18
@@ -324,40 +325,40 @@ export async function printReceipt(order) {
         }
     }
 
-    // === TOTAL ===
-    parts.push(encode('================================'));
+    parts.push(encode(LINE));
     parts.push(new Uint8Array([LF]));
+
+    // === TOTAL — bold, normal size (not double) ===
     parts.push(new Uint8Array(CMD.BOLD_ON));
-    parts.push(new Uint8Array(CMD.DOUBLE_HEIGHT));
-
-    const totalStr = `TOTAL         ${formatAmount(order.totalAmount).padStart(17)}`;
-    parts.push(encode(totalStr));
+    const totalLabel = 'TOTAL';
+    const totalAmt = formatAmount(order.totalAmount);
+    const totalPad = 32 - totalLabel.length - totalAmt.length;
+    parts.push(encode(totalLabel + ' '.repeat(Math.max(1, totalPad)) + totalAmt));
     parts.push(new Uint8Array([LF]));
-
-    parts.push(new Uint8Array(CMD.NORMAL_SIZE));
     parts.push(new Uint8Array(CMD.BOLD_OFF));
 
-    parts.push(encode(`Payment: ${order.paymentMode}`));
+    // Payment — normal weight
+    const payLabel = 'Paid by';
+    const payVal = order.paymentMode;
+    const payPad = 32 - payLabel.length - payVal.length;
+    parts.push(encode(payLabel + ' '.repeat(Math.max(1, payPad)) + payVal));
     parts.push(new Uint8Array([LF]));
 
-    // === FOOTER ===
-    parts.push(encode('================================'));
+    parts.push(encode(LINE));
     parts.push(new Uint8Array([LF]));
+
+    // === FOOTER — centered, normal weight ===
     parts.push(new Uint8Array(CMD.CENTER));
-    parts.push(encode('Thank you for choosing 3Monks!'));
     parts.push(new Uint8Array([LF]));
-    parts.push(encode('Stay Fresh, Stay Healthy *'));
+    parts.push(encode('Thank you for visiting 3Monks!'));
     parts.push(new Uint8Array([LF]));
-    parts.push(encode('================================'));
     parts.push(new Uint8Array([LF]));
 
-    // Feed paper and cut (if cutter available)
-    parts.push(new Uint8Array(CMD.FEED_5));
+    // Feed paper and cut
+    parts.push(new Uint8Array(CMD.FEED_3));
     parts.push(new Uint8Array(CMD.CUT));
 
-    // Combine all parts into one buffer
+    // Combine and send
     const receipt = concat(...parts);
-
-    // Write to printer
     await writeData(receipt);
 }

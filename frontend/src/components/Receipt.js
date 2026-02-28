@@ -6,61 +6,69 @@ const Receipt = React.forwardRef(({ order, shop }, ref) => {
 
     return (
         <div ref={ref} className="receipt">
+            {/* Header */}
             <div className="receipt-header">
                 <h3>3Monks</h3>
-                <p>100% Real Fruit. No Artificial Flavor.</p>
-                <p>{shop?.name || order.shopName}</p>
-                {shop?.address && <p>{shop.address}</p>}
-                {shop?.gstNumber && <p>GST: {shop.gstNumber}</p>}
+                <p className="receipt-tagline">100% Real Fruit. No Artificial Flavor.</p>
+                <div className="receipt-shop-info">
+                    <p>{shop?.name || order.shopName}</p>
+                    {shop?.address && <p>{shop.address}</p>}
+                    {shop?.gstNumber && <p>GST: {shop.gstNumber}</p>}
+                </div>
             </div>
 
-            <table>
-                <tbody>
-                    <tr><td>Order #:</td><td style={{ textAlign: 'right' }}>{order.orderNumber}</td></tr>
-                    <tr><td>Date:</td><td style={{ textAlign: 'right' }}>{formatDateTime(order.orderDate)}</td></tr>
-                    {order.customerName && <tr><td>Customer:</td><td style={{ textAlign: 'right' }}>{order.customerName}</td></tr>}
-                </tbody>
-            </table>
+            {/* Order Details */}
+            <div className="receipt-section">
+                <table className="receipt-info-table">
+                    <tbody>
+                        <tr><td>Order</td><td>{order.orderNumber}</td></tr>
+                        <tr><td>Date</td><td>{formatDateTime(order.orderDate)}</td></tr>
+                        {order.customerName && <tr><td>Customer</td><td>{order.customerName}</td></tr>}
+                    </tbody>
+                </table>
+            </div>
 
-            <div style={{ borderTop: '1px dashed #000', margin: '8px 0' }} />
-
-            <table>
-                <thead>
-                    <tr>
-                        <th style={{ textAlign: 'left', padding: '4px 0', fontSize: '14px', fontWeight: 'bold' }}>Item</th>
-                        <th style={{ textAlign: 'center', padding: '4px 0', fontSize: '14px', fontWeight: 'bold' }}>Qty</th>
-                        <th style={{ textAlign: 'right', padding: '4px 0', fontSize: '14px', fontWeight: 'bold' }}>Amt</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {order.items?.map((item, i) => (
-                        <tr key={i}>
-                            <td style={{ padding: '3px 0', fontSize: '14px' }}>{item.productName}</td>
-                            <td style={{ textAlign: 'center', padding: '3px 0', fontSize: '14px' }}>{item.quantity}</td>
-                            <td style={{ textAlign: 'right', padding: '3px 0', fontSize: '14px' }}>{formatCurrency(item.subtotal)}</td>
+            {/* Items */}
+            <div className="receipt-section">
+                <table className="receipt-items-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Amount</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {order.items?.map((item, i) => (
+                            <tr key={i}>
+                                <td>{item.productName}</td>
+                                <td className="text-center">{item.quantity}</td>
+                                <td className="text-right">{formatCurrency(item.subtotal)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
+            {/* Total */}
             <div className="receipt-total">
                 <table>
                     <tbody>
-                        <tr>
-                            <td style={{ fontWeight: 'bold', fontSize: '16px' }}>TOTAL</td>
-                            <td style={{ textAlign: 'right', fontWeight: 'bold', fontSize: '18px' }}>{formatCurrency(order.totalAmount)}</td>
+                        <tr className="receipt-total-row">
+                            <td>Total</td>
+                            <td className="text-right">{formatCurrency(order.totalAmount)}</td>
                         </tr>
-                        <tr>
-                            <td style={{ fontSize: '14px' }}>Payment:</td>
-                            <td style={{ textAlign: 'right', fontSize: '14px' }}>{order.paymentMode}</td>
+                        <tr className="receipt-payment-row">
+                            <td>Payment</td>
+                            <td className="text-right">{order.paymentMode}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
+            {/* Footer */}
             <div className="receipt-footer">
-                <p>Thank you for choosing 3Monks!</p>
-                <p>Stay Fresh, Stay Healthy 🍊</p>
+                <p>Thank you for visiting 3Monks!</p>
             </div>
         </div>
     );

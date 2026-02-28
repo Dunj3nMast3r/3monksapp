@@ -118,16 +118,18 @@ const NewOrderPage = () => {
 
     const buildReceiptLines = () => {
         const lines = [];
-        lines.push('================================');
-        lines.push('         3 M O N K S            ');
-        lines.push(' 100% Real Fruit. No Artificial ');
-        lines.push('================================');
-        if (order.shopName) lines.push(`Shop: ${order.shopName}`);
-        lines.push(`Order: ${order.orderNumber}`);
-        lines.push(`Date: ${new Date(order.orderDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+        lines.push('');
+        lines.push('          3 M O N K S           ');
+        lines.push('  Real Fruit | No Artificial    ');
+        lines.push('');
+        if (order.shopName) lines.push(`  ${order.shopName}`);
+        lines.push('--------------------------------');
+        lines.push(`Order  : ${order.orderNumber}`);
+        const dateStr = new Date(order.orderDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        lines.push(`Date   : ${dateStr}`);
         if (order.customerName) lines.push(`Customer: ${order.customerName}`);
         lines.push('--------------------------------');
-        lines.push('Item              Qty       Amt');
+        lines.push('Item              Qty      Amt');
         lines.push('--------------------------------');
         order.items?.forEach(item => {
             const name = item.productName.length > 18
@@ -137,13 +139,14 @@ const NewOrderPage = () => {
             const amt = formatCurrency(item.subtotal).padStart(10);
             lines.push(`${name}${qty}${amt}`);
         });
-        lines.push('================================');
-        lines.push(`TOTAL         ${formatCurrency(order.totalAmount).padStart(17)}`);
-        lines.push(`Payment: ${order.paymentMode}`);
-        lines.push('================================');
-        lines.push(' Thank you for choosing 3Monks! ');
-        lines.push('  Stay Fresh, Stay Healthy 🍊   ');
-        lines.push('================================');
+        lines.push('--------------------------------');
+        const totalAmt = formatCurrency(order.totalAmount);
+        const totalPad = 32 - 5 - totalAmt.length;
+        lines.push(`TOTAL${' '.repeat(Math.max(1, totalPad))}${totalAmt}`);
+        lines.push(`Paid by${' '.repeat(Math.max(1, 32 - 7 - order.paymentMode.length))}${order.paymentMode}`);
+        lines.push('--------------------------------');
+        lines.push(' Thank you for visiting 3Monks! ');
+        lines.push('');
         return lines;
     };
 
@@ -174,7 +177,7 @@ const NewOrderPage = () => {
 
                 // Bold black monospace text
                 ctx.fillStyle = '#000000';
-                ctx.font = `bold ${fontSize}px "Courier New", "Courier", monospace`;
+                ctx.font = `${fontSize}px "Courier New", "Courier", monospace`;
                 ctx.textBaseline = 'top';
 
                 lines.forEach((line, i) => {
