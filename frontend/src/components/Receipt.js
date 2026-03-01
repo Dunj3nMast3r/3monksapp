@@ -1,13 +1,20 @@
 import React from 'react';
 import { formatCurrency, formatDateTime } from '../utils/helpers';
 
+const REVIEW_URL = 'https://search.google.com/local/writereview?placeid=ChIJs1eFOgC7wjsR3xyEexP6Uiw';
+
 const Receipt = React.forwardRef(({ order, shop }, ref) => {
     if (!order) return null;
 
     return (
         <div ref={ref} className="receipt">
-            {/* Header */}
+            {/* Logo + Header */}
             <div className="receipt-header">
+                <img
+                    src="/icons/icon-96.png"
+                    alt="3Monks"
+                    className="receipt-logo"
+                />
                 <h3>3Monks</h3>
                 <p className="receipt-tagline">100% Real Fruit. No Artificial Flavor.</p>
                 <div className="receipt-shop-info">
@@ -66,9 +73,13 @@ const Receipt = React.forwardRef(({ order, shop }, ref) => {
                 </table>
             </div>
 
-            {/* Footer */}
+            {/* Footer + QR */}
             <div className="receipt-footer">
                 <p>Thank you for visiting 3Monks!</p>
+                <div className="receipt-qr">
+                    <img src="/review-qr.png" alt="Review us on Google" className="receipt-qr-img" />
+                    <p className="receipt-qr-label">Scan to review us on Google</p>
+                </div>
             </div>
         </div>
     );

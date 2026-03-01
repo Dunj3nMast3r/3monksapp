@@ -2823,6 +2823,14 @@ tr:last-child td {
     border-bottom: 1px solid #e5e5e5;
 }
 
+.receipt .receipt-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    object-fit: contain;
+}
+
 .receipt .receipt-header h3 {
     font-size: 22px;
     font-weight: 700;
@@ -2950,6 +2958,23 @@ tr:last-child td {
 
 .receipt .receipt-footer p {
     font-size: 11px;
+    margin: 0;
+}
+
+.receipt .receipt-qr {
+    margin-top: 12px;
+}
+
+.receipt .receipt-qr-img {
+    width: 100px;
+    height: 100px;
+    display: block;
+    margin: 0 auto 4px auto;
+}
+
+.receipt .receipt-qr-label {
+    font-size: 10px;
+    color: #aaa;
     margin: 0;
 }
 
@@ -4107,6 +4132,29 @@ tr:last-child td {
     .receipt .receipt-footer p {
         font-size: 10px !important;
         margin: 1px 0 !important;
+    }
+
+    .receipt .receipt-logo {
+        width: 40px !important;
+        height: 40px !important;
+        display: block !important;
+        margin: 0 auto 4px auto !important;
+    }
+
+    .receipt .receipt-qr {
+        margin-top: 6px !important;
+    }
+
+    .receipt .receipt-qr-img {
+        width: 80px !important;
+        height: 80px !important;
+        display: block !important;
+        margin: 0 auto 2px auto !important;
+    }
+
+    .receipt .receipt-qr-label {
+        font-size: 8px !important;
+        color: #000 !important;
     }
 
     .receipt .receipt-info-table td:first-child {

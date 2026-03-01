@@ -354,6 +354,33 @@ export async function printReceipt(order) {
     parts.push(new Uint8Array([LF]));
     parts.push(new Uint8Array([LF]));
 
+    // === QR CODE — Google Review ===
+    // Using ESC/POS GS ( k commands for QR code
+    const qrUrl = 'https://search.google.com/local/writereview?placeid=ChIJs1eFOgC7wjsR3xyEexP6Uiw';
+    const qrData = encode(qrUrl);
+    const qrDataLen = qrData.length;
+
+    // GS ( k - Select QR model 2
+    parts.push(new Uint8Array([GS, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00]));
+    // GS ( k - Set QR size (module size = 4 dots)
+    parts.push(new Uint8Array([GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x04]));
+    // GS ( k - Set error correction level M (15%)
+    parts.push(new Uint8Array([GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x31]));
+    // GS ( k - Store QR data
+    const storeLen = qrDataLen + 3;
+    const pL = storeLen & 0xFF;
+    const pH = (storeLen >> 8) & 0xFF;
+    parts.push(concat(
+        [GS, 0x28, 0x6B, pL, pH, 0x31, 0x50, 0x30],
+        qrData
+    ));
+    // GS ( k - Print QR code
+    parts.push(new Uint8Array([GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30]));
+
+    parts.push(new Uint8Array([LF]));
+    parts.push(encode('Scan to review us'));
+    parts.push(new Uint8Array([LF]));
+
     // Feed paper and cut
     parts.push(new Uint8Array(CMD.FEED_3));
     parts.push(new Uint8Array(CMD.CUT));
