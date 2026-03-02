@@ -286,6 +286,19 @@ export async function printReceipt(order) {
     parts.push(encode(LINE));
     parts.push(new Uint8Array([LF]));
 
+    // === TOKEN NUMBER — centered, double size, bold ===
+    if (order.tokenNumber) {
+        parts.push(new Uint8Array(CMD.CENTER));
+        parts.push(new Uint8Array(CMD.BOLD_ON));
+        parts.push(new Uint8Array(CMD.DOUBLE_SIZE));
+        parts.push(encode(`Token #${order.tokenNumber}`));
+        parts.push(new Uint8Array([LF]));
+        parts.push(new Uint8Array(CMD.NORMAL_SIZE));
+        parts.push(new Uint8Array(CMD.BOLD_OFF));
+        parts.push(encode(LINE));
+        parts.push(new Uint8Array([LF]));
+    }
+
     // === ORDER INFO — left aligned, normal weight ===
     parts.push(new Uint8Array(CMD.LEFT));
 

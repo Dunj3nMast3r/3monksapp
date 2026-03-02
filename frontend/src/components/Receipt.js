@@ -24,6 +24,14 @@ const Receipt = React.forwardRef(({ order, shop }, ref) => {
                 </div>
             </div>
 
+            {/* Token Number */}
+            {order.tokenNumber && (
+                <div className="receipt-token">
+                    <span className="receipt-token-label">Token No.</span>
+                    <span className="receipt-token-number">{order.tokenNumber}</span>
+                </div>
+            )}
+
             {/* Order Details */}
             <div className="receipt-section">
                 <table className="receipt-info-table">

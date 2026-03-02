@@ -102,6 +102,7 @@ const OrderHistoryPage = () => {
                         <table>
                             <thead>
                                 <tr>
+                                    <th>Token</th>
                                     <th>Order #</th>
                                     {isAdmin() && <th>Shop</th>}
                                     <th>Items</th>
@@ -115,6 +116,7 @@ const OrderHistoryPage = () => {
                             <tbody>
                                 {orders.map(order => (
                                     <tr key={order.id}>
+                                        <td><span className="badge badge-token">{order.tokenNumber ? `#${order.tokenNumber}` : '-'}</span></td>
                                         <td style={{ fontWeight: 600 }}>{order.orderNumber}</td>
                                         {isAdmin() && <td>{order.shopName}</td>}
                                         <td>{order.items?.length} items</td>

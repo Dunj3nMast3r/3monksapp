@@ -24,4 +24,5 @@ public class OrderResponse {
     private String customerName;
     private String customerPhone;
     private LocalDateTime orderDate;
+    private Integer tokenNumber;
 }

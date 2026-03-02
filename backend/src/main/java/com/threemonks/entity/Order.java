@@ -47,6 +47,9 @@ public class Order {
     private String customerName;
     private String customerPhone;
 
+    @Column(name = "token_number")
+    private Integer tokenNumber;
+
     @Column(name = "order_date", nullable = false)
     private LocalDateTime orderDate;
 

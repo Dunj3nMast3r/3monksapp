@@ -124,6 +124,10 @@ const NewOrderPage = () => {
         lines.push('');
         if (order.shopName) lines.push(`  ${order.shopName}`);
         lines.push('--------------------------------');
+        if (order.tokenNumber) {
+            lines.push(`      ** TOKEN #${order.tokenNumber} **`);
+            lines.push('--------------------------------');
+        }
         lines.push(`Order  : ${order.orderNumber}`);
         const dateStr = new Date(order.orderDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         lines.push(`Date   : ${dateStr}`);

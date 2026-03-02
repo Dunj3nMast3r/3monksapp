@@ -55,6 +55,12 @@ public class OrderService {
         String orderNumber = "3M-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
                 + "-" + orderCounter.incrementAndGet() % 100000;
 
+        // Generate daily token number (per shop, resets each day)
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+        Integer maxToken = orderRepository.findMaxTokenNumberByShopAndDate(shopId, startOfDay, endOfDay);
+        int tokenNumber = (maxToken != null ? maxToken : 0) + 1;
+
         Order order = Order.builder()
                 .orderNumber(orderNumber)
                 .shop(shop)
@@ -65,6 +71,7 @@ public class OrderService {
                 .customerPhone(request.getCustomerPhone())
                 .totalAmount(BigDecimal.ZERO)
                 .orderDate(LocalDateTime.now())
+                .tokenNumber(tokenNumber)
                 .build();
 
         BigDecimal total = BigDecimal.ZERO;
@@ -296,6 +303,7 @@ public class OrderService {
                 .customerName(order.getCustomerName())
                 .customerPhone(order.getCustomerPhone())
                 .orderDate(order.getOrderDate())
+                .tokenNumber(order.getTokenNumber())
                 .build();
     }
 }

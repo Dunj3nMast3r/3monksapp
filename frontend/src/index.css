@@ -441,6 +441,14 @@ tr:last-child td {
     box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
 }
 
+.badge-token {
+    background: linear-gradient(135deg, #fef3cd, #fde68a);
+    color: #92400e;
+    font-weight: 700;
+    font-size: 13px;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+
 /* ============ PAGE LAYOUT ============ */
 .page-header {
     display: flex;
@@ -2853,6 +2861,30 @@ tr:last-child td {
     margin: 1px 0;
 }
 
+/* Token Number */
+.receipt .receipt-token {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 2px dashed #e0e0e0;
+    margin-bottom: 4px;
+}
+
+.receipt .receipt-token-label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+.receipt .receipt-token-number {
+    font-size: 28px;
+    font-weight: 700;
+    color: #e67e22;
+    letter-spacing: 1px;
+}
+
 .receipt .receipt-section {
     padding: 8px 0;
     border-bottom: 1px solid #f0f0f0;
@@ -4072,6 +4104,28 @@ tr:last-child td {
     .receipt .receipt-section {
         padding: 3px 0 !important;
         border-bottom: 1px solid #000 !important;
+    }
+
+    .receipt .receipt-token {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        padding: 4px 0 !important;
+        border-bottom: 2px dashed #000 !important;
+        margin-bottom: 2px !important;
+    }
+
+    .receipt .receipt-token-label {
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        color: #000 !important;
+    }
+
+    .receipt .receipt-token-number {
+        font-size: 22px !important;
+        font-weight: 700 !important;
+        color: #000 !important;
     }
 
     .receipt table {

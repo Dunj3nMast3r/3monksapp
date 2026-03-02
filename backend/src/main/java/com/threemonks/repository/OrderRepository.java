@@ -52,6 +52,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Long getOrderCountByUserAndDateRange(@Param("userId") Long userId, @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 
+    @Query("SELECT COALESCE(MAX(o.tokenNumber), 0) FROM Order o WHERE o.shop.id = :shopId AND o.orderDate BETWEEN :start AND :end")
+    Integer findMaxTokenNumberByShopAndDate(@Param("shopId") Long shopId, @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
     @Query("SELECT o FROM Order o WHERE o.orderDate BETWEEN :start AND :end AND o.status = 'COMPLETED' ORDER BY o.orderDate DESC")
     List<Order> findCompletedOrdersByDateRange(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }
