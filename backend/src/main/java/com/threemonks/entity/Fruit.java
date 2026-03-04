@@ -6,7 +6,11 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "fruits")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Fruit {
 
     @Id

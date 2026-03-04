@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { orderService, exportService } from '../services/dataService';
 import { formatCurrency, formatDateTime, getISTDateString, getISTMonthString } from '../utils/helpers';
 import ConfirmDialog from '../components/ConfirmDialog';
+import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 
 const OrderHistoryPage = () => {
@@ -13,6 +14,7 @@ const OrderHistoryPage = () => {
     const [confirmCancel, setConfirmCancel] = useState(null);
     const [cancelling, setCancelling] = useState(false);
     const [downloading, setDownloading] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState(null);
 
     useEffect(() => { fetchOrders(); }, [view]); // eslint-disable-line
 
@@ -119,7 +121,11 @@ const OrderHistoryPage = () => {
                                         <td><span className="badge badge-token">{order.tokenNumber ? `#${order.tokenNumber}` : '-'}</span></td>
                                         <td style={{ fontWeight: 600 }}>{order.orderNumber}</td>
                                         {isAdmin() && <td>{order.shopName}</td>}
-                                        <td>{order.items?.length} items</td>
+                                        <td>
+                                            <span className="items-link" onClick={() => setSelectedOrder(order)} style={{ cursor: 'pointer', color: 'var(--primary)', textDecoration: 'underline', fontWeight: 500 }}>
+                                                {order.items?.length} items
+                                            </span>
+                                        </td>
                                         <td style={{ fontWeight: 600 }}>{formatCurrency(order.totalAmount)}</td>
                                         <td><span className="badge badge-info">{order.paymentMode}</span></td>
                                         <td>
@@ -157,6 +163,46 @@ const OrderHistoryPage = () => {
                 ]}
                 confirmText="Cancel Order"
             />
+
+            <Modal isOpen={!!selectedOrder} onClose={() => setSelectedOrder(null)} title={`Order Items${selectedOrder?.tokenNumber ? ` — Token #${selectedOrder.tokenNumber}` : ''}`}>
+                {selectedOrder && (
+                    <div>
+                        <div style={{ marginBottom: '12px', fontSize: '13px', color: '#666' }}>
+                            {selectedOrder.orderNumber} · {formatDateTime(selectedOrder.orderDate)}
+                            {selectedOrder.customerName && ` · ${selectedOrder.customerName}`}
+                        </div>
+                        <table style={{ width: '100%' }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ textAlign: 'left' }}>Product</th>
+                                    <th style={{ textAlign: 'center' }}>Qty</th>
+                                    <th style={{ textAlign: 'right' }}>Price</th>
+                                    <th style={{ textAlign: 'right' }}>Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {selectedOrder.items?.map((item, i) => (
+                                    <tr key={i}>
+                                        <td>{item.productName}{item.customization ? ` (${item.customization})` : ''}</td>
+                                        <td style={{ textAlign: 'center' }}>{item.quantity}</td>
+                                        <td style={{ textAlign: 'right' }}>{formatCurrency(item.unitPrice)}</td>
+                                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(item.subtotal)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colSpan="3" style={{ textAlign: 'right', fontWeight: 700, paddingTop: '12px', borderTop: '2px solid #e0e0e0' }}>Total</td>
+                                    <td style={{ textAlign: 'right', fontWeight: 700, paddingTop: '12px', borderTop: '2px solid #e0e0e0', color: 'var(--primary)' }}>{formatCurrency(selectedOrder.totalAmount)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                            <button className="btn btn-outline" onClick={() => setSelectedOrder(null)}>← Back to Orders</button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 };

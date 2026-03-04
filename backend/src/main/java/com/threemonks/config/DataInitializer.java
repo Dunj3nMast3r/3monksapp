@@ -95,7 +95,8 @@ public class DataInitializer implements CommandLineRunner {
 
     private void seedFruitsAndProducts() {
         // Seed fruits
-        String[] fruitNames = {"Coconut", "Mango", "Blueberry", "Mulberry", "Strawberry", "Avocado", "Sitaphal", "Jamun", "Kiwi"};
+        String[] fruitNames = { "Coconut", "Mango", "Blueberry", "Mulberry", "Strawberry", "Avocado", "Sitaphal",
+                "Jamun", "Kiwi" };
         for (int i = 0; i < fruitNames.length; i++) {
             fruitRepository.save(Fruit.builder().name(fruitNames[i]).shortCode(i + 1).active(true).build());
         }
@@ -106,23 +107,35 @@ public class DataInitializer implements CommandLineRunner {
                 .collect(Collectors.toMap(Fruit::getName, f -> f));
 
         // --- Creamy Blends (₹90) - single fruit each ---
-        createProduct("Coconut Charm", "Creamy coconut smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap, "Coconut");
+        createProduct("Coconut Charm", "Creamy coconut smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap,
+                "Coconut");
         createProduct("Mango Melt", "Rich mango smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap, "Mango");
-        createProduct("Blueberry Bliss", "Refreshing blueberry smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap, "Blueberry");
-        createProduct("Mulberry Magic", "Delicious mulberry smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap, "Mulberry");
-        createProduct("Strawberry Spark", "Vibrant strawberry smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap, "Strawberry");
-        createProduct("Avocado Affair", "Creamy avocado smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap, "Avocado");
-        createProduct("Sitaphal Soul", "Custard apple smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap, "Sitaphal");
+        createProduct("Blueberry Bliss", "Refreshing blueberry smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap,
+                "Blueberry");
+        createProduct("Mulberry Magic", "Delicious mulberry smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap,
+                "Mulberry");
+        createProduct("Strawberry Spark", "Vibrant strawberry smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap,
+                "Strawberry");
+        createProduct("Avocado Affair", "Creamy avocado smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap,
+                "Avocado");
+        createProduct("Sitaphal Soul", "Custard apple smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap,
+                "Sitaphal");
         createProduct("Jamun Joy", "Tangy jamun smoothie", ProductCategory.CREAMY_BLEND, 90, fruitMap, "Jamun");
         logger.info("Seeded 8 Creamy Blends");
 
         // --- Curated Blends (₹90) - two fruits each ---
-        createProduct("Mango + Strawberry", "Mango strawberry fusion", ProductCategory.CURATED_BLEND, 90, fruitMap, "Mango", "Strawberry");
-        createProduct("Blueberry + Jamun", "Blueberry jamun fusion", ProductCategory.CURATED_BLEND, 90, fruitMap, "Blueberry", "Jamun");
-        createProduct("Sitaphal + Mango", "Sitaphal mango fusion", ProductCategory.CURATED_BLEND, 90, fruitMap, "Sitaphal", "Mango");
-        createProduct("Coconut + Avocado", "Coconut avocado fusion", ProductCategory.CURATED_BLEND, 90, fruitMap, "Coconut", "Avocado");
-        createProduct("Strawberry + Jamun", "Strawberry jamun fusion", ProductCategory.CURATED_BLEND, 90, fruitMap, "Strawberry", "Jamun");
-        createProduct("Mango + Coconut", "Mango coconut fusion", ProductCategory.CURATED_BLEND, 90, fruitMap, "Mango", "Coconut");
+        createProduct("Mango + Strawberry", "Mango strawberry fusion", ProductCategory.CURATED_BLEND, 90, fruitMap,
+                "Mango", "Strawberry");
+        createProduct("Blueberry + Jamun", "Blueberry jamun fusion", ProductCategory.CURATED_BLEND, 90, fruitMap,
+                "Blueberry", "Jamun");
+        createProduct("Sitaphal + Mango", "Sitaphal mango fusion", ProductCategory.CURATED_BLEND, 90, fruitMap,
+                "Sitaphal", "Mango");
+        createProduct("Coconut + Avocado", "Coconut avocado fusion", ProductCategory.CURATED_BLEND, 90, fruitMap,
+                "Coconut", "Avocado");
+        createProduct("Strawberry + Jamun", "Strawberry jamun fusion", ProductCategory.CURATED_BLEND, 90, fruitMap,
+                "Strawberry", "Jamun");
+        createProduct("Mango + Coconut", "Mango coconut fusion", ProductCategory.CURATED_BLEND, 90, fruitMap, "Mango",
+                "Coconut");
         logger.info("Seeded 6 Curated Blends");
 
         // --- Shots (₹40) ---
@@ -132,7 +145,8 @@ public class DataInitializer implements CommandLineRunner {
         logger.info("Seeded 3 Shots");
     }
 
-    private void createProduct(String name, String description, ProductCategory category, double price, Map<String, Fruit> fruitMap, String... fruitNames) {
+    private void createProduct(String name, String description, ProductCategory category, double price,
+            Map<String, Fruit> fruitMap, String... fruitNames) {
         List<Fruit> fruits = Arrays.stream(fruitNames)
                 .map(fruitMap::get)
                 .collect(Collectors.toList());
@@ -150,7 +164,8 @@ public class DataInitializer implements CommandLineRunner {
 
     private void seedRawMaterials() {
         // Fruit-based raw materials (GRAM)
-        String[] fruitMaterials = {"Coconut", "Mango", "Blueberry", "Mulberry", "Strawberry", "Avocado", "Sitaphal", "Jamun", "Kiwi"};
+        String[] fruitMaterials = { "Coconut", "Mango", "Blueberry", "Mulberry", "Strawberry", "Avocado", "Sitaphal",
+                "Jamun", "Kiwi" };
         for (String name : fruitMaterials) {
             rawMaterialRepository.save(RawMaterial.builder()
                     .name(name)
@@ -194,26 +209,26 @@ public class DataInitializer implements CommandLineRunner {
                 "Strawberry Spark", "Strawberry",
                 "Avocado Affair", "Avocado",
                 "Sitaphal Soul", "Sitaphal",
-                "Jamun Joy", "Jamun"
-        );
+                "Jamun Joy", "Jamun");
 
         for (Map.Entry<String, String> entry : creamyBlendFruit.entrySet()) {
             Product product = prodMap.get(entry.getKey());
             RawMaterial fruit = rmMap.get(entry.getValue());
             if (product != null && fruit != null) {
                 createRecipe(product, fruit, 150);
-                if (thickMilk != null) createRecipe(product, thickMilk, 200);
+                if (thickMilk != null)
+                    createRecipe(product, thickMilk, 200);
             }
         }
 
         // Curated Blends: 100g each fruit + 150ml thick milk
         String[][] curatedBlends = {
-                {"Mango + Strawberry", "Mango", "Strawberry"},
-                {"Blueberry + Jamun", "Blueberry", "Jamun"},
-                {"Sitaphal + Mango", "Sitaphal", "Mango"},
-                {"Coconut + Avocado", "Coconut", "Avocado"},
-                {"Strawberry + Jamun", "Strawberry", "Jamun"},
-                {"Mango + Coconut", "Mango", "Coconut"}
+                { "Mango + Strawberry", "Mango", "Strawberry" },
+                { "Blueberry + Jamun", "Blueberry", "Jamun" },
+                { "Sitaphal + Mango", "Sitaphal", "Mango" },
+                { "Coconut + Avocado", "Coconut", "Avocado" },
+                { "Strawberry + Jamun", "Strawberry", "Jamun" },
+                { "Mango + Coconut", "Mango", "Coconut" }
         };
 
         for (String[] combo : curatedBlends) {
@@ -221,9 +236,12 @@ public class DataInitializer implements CommandLineRunner {
             RawMaterial fruit1 = rmMap.get(combo[1]);
             RawMaterial fruit2 = rmMap.get(combo[2]);
             if (product != null) {
-                if (fruit1 != null) createRecipe(product, fruit1, 100);
-                if (fruit2 != null) createRecipe(product, fruit2, 100);
-                if (thickMilk != null) createRecipe(product, thickMilk, 150);
+                if (fruit1 != null)
+                    createRecipe(product, fruit1, 100);
+                if (fruit2 != null)
+                    createRecipe(product, fruit2, 100);
+                if (thickMilk != null)
+                    createRecipe(product, thickMilk, 150);
             }
         }
 
@@ -231,8 +249,7 @@ public class DataInitializer implements CommandLineRunner {
         Map<String, String> shotFruit = Map.of(
                 "Jamun Detoxer", "Jamun",
                 "Kiwi Green Gut", "Kiwi",
-                "Mango Delight", "Mango"
-        );
+                "Mango Delight", "Mango");
 
         for (Map.Entry<String, String> entry : shotFruit.entrySet()) {
             Product product = prodMap.get(entry.getKey());
@@ -257,8 +274,7 @@ public class DataInitializer implements CommandLineRunner {
         // Predefined order for existing fruits
         Map<String, Integer> codeMap = Map.of(
                 "Coconut", 1, "Mango", 2, "Blueberry", 3, "Mulberry", 4,
-                "Strawberry", 5, "Avocado", 6, "Sitaphal", 7, "Jamun", 8, "Kiwi", 9
-        );
+                "Strawberry", 5, "Avocado", 6, "Sitaphal", 7, "Jamun", 8, "Kiwi", 9);
         List<Fruit> fruits = fruitRepository.findAll();
         int maxCode = fruits.stream()
                 .map(Fruit::getShortCode)
