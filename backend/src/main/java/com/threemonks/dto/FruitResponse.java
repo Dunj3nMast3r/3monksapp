@@ -9,5 +9,6 @@ public class FruitResponse {
     private Long id;
     private String name;
     private String imageUrl;
+    private Integer shortCode;
     private Boolean active;
 }

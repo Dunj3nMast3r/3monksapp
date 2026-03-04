@@ -79,6 +79,9 @@ public class DataInitializer implements CommandLineRunner {
             seedFruitsAndProducts();
         }
 
+        // Assign shortCodes to existing fruits that don't have them
+        assignFruitShortCodes();
+
         // Seed raw materials if none exist
         if (rawMaterialRepository.count() == 0) {
             seedRawMaterials();
@@ -93,10 +96,10 @@ public class DataInitializer implements CommandLineRunner {
     private void seedFruitsAndProducts() {
         // Seed fruits
         String[] fruitNames = {"Coconut", "Mango", "Blueberry", "Mulberry", "Strawberry", "Avocado", "Sitaphal", "Jamun", "Kiwi"};
-        for (String name : fruitNames) {
-            fruitRepository.save(Fruit.builder().name(name).active(true).build());
+        for (int i = 0; i < fruitNames.length; i++) {
+            fruitRepository.save(Fruit.builder().name(fruitNames[i]).shortCode(i + 1).active(true).build());
         }
-        logger.info("Seeded {} fruits", fruitNames.length);
+        logger.info("Seeded {} fruits with shortCodes 1-{}", fruitNames.length, fruitNames.length);
 
         // Build a map for easy lookup
         Map<String, Fruit> fruitMap = fruitRepository.findAll().stream()
@@ -248,5 +251,39 @@ public class DataInitializer implements CommandLineRunner {
                 .rawMaterial(rawMaterial)
                 .quantityRequired(BigDecimal.valueOf(qty))
                 .build());
+    }
+
+    private void assignFruitShortCodes() {
+        // Predefined order for existing fruits
+        Map<String, Integer> codeMap = Map.of(
+                "Coconut", 1, "Mango", 2, "Blueberry", 3, "Mulberry", 4,
+                "Strawberry", 5, "Avocado", 6, "Sitaphal", 7, "Jamun", 8, "Kiwi", 9
+        );
+        List<Fruit> fruits = fruitRepository.findAll();
+        int maxCode = fruits.stream()
+                .map(Fruit::getShortCode)
+                .filter(c -> c != null)
+                .max(Integer::compareTo)
+                .orElse(0);
+
+        for (Fruit fruit : fruits) {
+            if (fruit.getShortCode() == null) {
+                Integer predefined = codeMap.get(fruit.getName());
+                if (predefined != null) {
+                    // Check if predefined code is already taken
+                    boolean taken = fruits.stream()
+                            .anyMatch(f -> predefined.equals(f.getShortCode()));
+                    if (!taken) {
+                        fruit.setShortCode(predefined);
+                    } else {
+                        fruit.setShortCode(++maxCode);
+                    }
+                } else {
+                    fruit.setShortCode(++maxCode);
+                }
+                fruitRepository.save(fruit);
+                logger.info("Assigned shortCode {} to fruit: {}", fruit.getShortCode(), fruit.getName());
+            }
+        }
     }
 }

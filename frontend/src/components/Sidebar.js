@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getInitials, roleLabels } from '../utils/helpers';
-import { FiHome, FiShoppingCart, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiBox, FiLayers, FiMapPin, FiUserCheck, FiList, FiTrendingUp, FiX, FiMessageSquare, FiBriefcase } from 'react-icons/fi';
+import { FiHome, FiShoppingCart, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiBox, FiLayers, FiMapPin, FiUserCheck, FiList, FiTrendingUp, FiX, FiMessageSquare, FiBriefcase, FiZap } from 'react-icons/fi';
 
 const Sidebar = ({ isOpen, onClose }) => {
     const { user, logout, isAdmin, isManager, hasRole } = useAuth();
@@ -38,6 +38,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                     </NavLink>
 
                     <div className="sidebar-section">Orders</div>
+                    <NavLink to="/dashboard/orders/quick" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiZap /> Quick Order</NavLink>
                     <NavLink to="/dashboard/orders/new" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiShoppingCart /> New Order</NavLink>
                     <NavLink to="/dashboard/orders" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiLayers /> Order History</NavLink>
 

@@ -11,7 +11,11 @@ import java.util.List;
 
 @Entity
 @Table(name = "orders")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Order {
 
     @Id
@@ -59,7 +63,8 @@ public class Order {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        if (orderDate == null) orderDate = LocalDateTime.now();
+        if (orderDate == null)
+            orderDate = LocalDateTime.now();
     }
 
     public void addItem(OrderItem item) {

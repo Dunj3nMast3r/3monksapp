@@ -18,6 +18,9 @@ public class Fruit {
 
     private String imageUrl;
 
+    @Column(name = "short_code")
+    private Integer shortCode;
+
     @Column(nullable = false)
     private Boolean active = true;
 

@@ -3305,6 +3305,194 @@ tr:last-child td {
     margin-top: 8px;
 }
 
+/* ============ QUICK ORDER PAGE ============ */
+.quick-cheat-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    box-shadow: var(--card-shadow);
+}
+
+.quick-cheat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.quick-cheat-hint {
+    font-size: 12px;
+    font-weight: 400;
+    color: #888;
+}
+
+.quick-cheat-grid {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.quick-cheat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f8f4ff, #f0ebff);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.quick-cheat-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+.quick-cheat-item:active {
+    transform: scale(0.97);
+}
+
+.quick-cheat-code {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--primary), #7c3aed);
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.quick-cheat-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+}
+
+.quick-input-card {
+    margin-bottom: 16px;
+}
+
+.quick-input-row {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.quick-code-input {
+    font-size: 32px !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    letter-spacing: 8px !important;
+    padding: 16px !important;
+    flex: 1;
+    border-radius: 14px !important;
+    border: 2px solid var(--border) !important;
+    transition: border-color 0.2s ease !important;
+}
+
+.quick-code-input:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15) !important;
+}
+
+.quick-add-btn {
+    padding: 16px 28px !important;
+    font-size: 18px !important;
+    border-radius: 14px !important;
+    white-space: nowrap;
+}
+
+.quick-preview {
+    margin-top: 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.quick-preview-ok {
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    color: #2e7d32;
+}
+
+.quick-preview-error {
+    background: rgba(244, 67, 54, 0.08);
+    border: 1px solid rgba(244, 67, 54, 0.25);
+    color: #c62828;
+    font-size: 13px;
+}
+
+.quick-preview-price {
+    font-weight: 700;
+    margin-left: 12px;
+    font-size: 18px;
+}
+
+.quick-examples-card h4 {
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #666;
+}
+
+.quick-examples-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.quick-example-btn {
+    font-size: 12px !important;
+    padding: 4px 10px !important;
+    border-radius: 8px !important;
+}
+
+/* Quick Order responsive styles */
+@media (max-width: 768px) {
+    .quick-cheat-header {
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-start;
+    }
+
+    .quick-code-input {
+        font-size: 28px !important;
+        letter-spacing: 6px !important;
+        padding: 12px !important;
+    }
+
+    .quick-add-btn {
+        padding: 12px 20px !important;
+        font-size: 16px !important;
+    }
+
+    .quick-cheat-item {
+        padding: 5px 10px;
+    }
+
+    .quick-cheat-code {
+        width: 24px;
+        height: 24px;
+        font-size: 13px;
+    }
+
+    .quick-cheat-name {
+        font-size: 12px;
+    }
+}
+
 /* ============ CONFIRM DIALOG ============ */
 .confirm-dialog {
     background: rgba(255, 255, 255, 0.95);

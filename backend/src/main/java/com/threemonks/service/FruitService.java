@@ -36,9 +36,16 @@ public class FruitService {
 
     @Transactional
     public FruitResponse createFruit(FruitRequest request) {
+        // Auto-assign next available short code
+        Integer maxCode = fruitRepository.findAll().stream()
+                .map(Fruit::getShortCode)
+                .filter(c -> c != null)
+                .max(Integer::compareTo)
+                .orElse(0);
         Fruit fruit = Fruit.builder()
                 .name(request.getName())
                 .imageUrl(request.getImageUrl())
+                .shortCode(maxCode + 1)
                 .active(true)
                 .build();
         return toResponse(fruitRepository.save(fruit));
@@ -69,6 +76,7 @@ public class FruitService {
                 .id(fruit.getId())
                 .name(fruit.getName())
                 .imageUrl(fruit.getImageUrl())
+                .shortCode(fruit.getShortCode())
                 .active(fruit.getActive())
                 .build();
     }
