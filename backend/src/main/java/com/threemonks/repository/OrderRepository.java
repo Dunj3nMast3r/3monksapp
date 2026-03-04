@@ -59,4 +59,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Query("SELECT o FROM Order o WHERE o.orderDate BETWEEN :start AND :end AND o.status = 'COMPLETED' ORDER BY o.orderDate DESC")
         List<Order> findCompletedOrdersByDateRange(@Param("start") LocalDateTime start,
                         @Param("end") LocalDateTime end);
+
+        @Query("SELECT o FROM Order o WHERE o.shop.id = :shopId AND o.orderDate BETWEEN :start AND :end AND o.status = 'PENDING' ORDER BY o.tokenNumber ASC")
+        List<Order> findTodayPendingOrdersByShopId(@Param("shopId") Long shopId, @Param("start") LocalDateTime start,
+                        @Param("end") LocalDateTime end);
 }

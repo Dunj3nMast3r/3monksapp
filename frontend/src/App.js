@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import NewOrderPage from './pages/NewOrderPage';
 import QuickOrderPage from './pages/QuickOrderPage';
+import OrderQueuePage from './pages/OrderQueuePage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
 import StockPage from './pages/StockPage';
 import PurchasesPage from './pages/PurchasesPage';
@@ -43,6 +44,7 @@ function App() {
                         {/* Orders - all authenticated users */}
                         <Route path="orders/new" element={<NewOrderPage />} />
                         <Route path="orders/quick" element={<QuickOrderPage />} />
+                        <Route path="orders/queue" element={<OrderQueuePage />} />
                         <Route path="orders" element={<OrderHistoryPage />} />
 
                         {/* Inventory - Admin & Manager */}

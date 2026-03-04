@@ -66,7 +66,7 @@ public class OrderService {
                 .shop(shop)
                 .createdBy(user)
                 .paymentMode(request.getPaymentMode())
-                .status(OrderStatus.COMPLETED)
+                .status(OrderStatus.PENDING)
                 .customerName(request.getCustomerName())
                 .customerPhone(request.getCustomerPhone())
                 .totalAmount(BigDecimal.ZERO)
@@ -191,6 +191,16 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
+    public List<OrderResponse> getPendingOrders(Long shopId, UserPrincipal currentUser) {
+        Long resolvedShopId = resolveShopId(shopId, currentUser);
+        validateShopAccess(resolvedShopId, currentUser);
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+        return orderRepository.findTodayPendingOrdersByShopId(resolvedShopId, startOfDay, endOfDay).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     public List<OrderResponse> getOrdersByDateRange(Long shopId, LocalDateTime start, LocalDateTime end,
             UserPrincipal currentUser) {
         if (shopId != null) {
@@ -205,6 +215,23 @@ public class OrderService {
         return orderRepository.findByOrderDateBetween(start, end).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public OrderResponse completeOrder(Long id, UserPrincipal currentUser) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", "id", id));
+        validateShopAccess(order.getShop().getId(), currentUser);
+
+        if (order.getStatus() == OrderStatus.COMPLETED) {
+            throw new BadRequestException("Order is already completed");
+        }
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BadRequestException("Cannot complete a cancelled order");
+        }
+
+        order.setStatus(OrderStatus.COMPLETED);
+        return toResponse(orderRepository.save(order));
     }
 
     @Transactional

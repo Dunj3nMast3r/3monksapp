@@ -62,6 +62,13 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(orderService.getTodayOrders(shopId, currentUser)));
     }
 
+    @GetMapping("/pending")
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> getPendingOrders(
+            @RequestParam(required = false) Long shopId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(orderService.getPendingOrders(shopId, currentUser)));
+    }
+
     @GetMapping("/range")
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getOrdersByRange(
             @RequestParam(required = false) Long shopId,
@@ -69,6 +76,13 @@ public class OrderController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         return ResponseEntity.ok(ApiResponse.success(orderService.getOrdersByDateRange(shopId, from, to, currentUser)));
+    }
+
+    @PatchMapping("/{id}/complete")
+    public ResponseEntity<ApiResponse<OrderResponse>> completeOrder(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success("Order delivered", orderService.completeOrder(id, currentUser)));
     }
 
     @PatchMapping("/{id}/cancel")

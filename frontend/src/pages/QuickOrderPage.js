@@ -307,26 +307,18 @@ const QuickOrderPage = () => {
                 <div className="quick-cheat-header">
                     <span>🔢 Fruit Codes</span>
                 </div>
-                <div className="quick-cheat-table">
-                    <div className="quick-cheat-table-header">
-                        <span>Code</span>
-                        <span>Fruit</span>
-                        <span>Creamy</span>
-                        <span>Shot</span>
-                    </div>
+                <div className="quick-cheat-compact">
                     {fruits.filter(f => f.shortCode && f.active !== false).sort((a, b) => a.shortCode - b.shortCode).map(f => (
-                        <div key={f.id} className="quick-cheat-row" onClick={() => { setCode(String(f.shortCode)); setPreview(resolveCode(String(f.shortCode))); }}>
+                        <div key={f.id} className="quick-cheat-pill" onClick={() => { setCode(String(f.shortCode)); setPreview(resolveCode(String(f.shortCode))); }}>
                             <span className="quick-cheat-code">{f.shortCode}</span>
                             <span className="quick-cheat-fruit">{f.name}</span>
-                            <span className="quick-cheat-example">{f.shortCode} →🍹</span>
-                            <span className="quick-cheat-example">{f.shortCode}{f.shortCode}{f.shortCode} →🍊</span>
                         </div>
                     ))}
                 </div>
                 <div className="quick-cheat-legend">
-                    <span>🍹 <strong>1 digit</strong> = Creamy</span>
-                    <span>🍸 <strong>2 digits</strong> = Combo (e.g. 25)</span>
-                    <span>🍊 <strong>3 same</strong> = Shot (e.g. 222)</span>
+                    <span className="quick-legend-item">🍹 <strong>1 digit</strong> = Creamy</span>
+                    <span className="quick-legend-item">🍸 <strong>2 digits</strong> = Combo</span>
+                    <span className="quick-legend-item">🍊 <strong>3 same</strong> = Shot</span>
                 </div>
             </div>
 
