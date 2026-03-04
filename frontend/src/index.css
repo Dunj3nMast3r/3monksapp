@@ -3316,99 +3316,188 @@ tr:last-child td {
 }
 
 .quick-cheat-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     margin-bottom: 12px;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 17px;
 }
 
-.quick-cheat-hint {
-    font-size: 12px;
-    font-weight: 400;
-    color: #888;
+.quick-cheat-table {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
 }
 
-.quick-cheat-grid {
-    display: flex;
+.quick-cheat-table-header {
+    display: grid;
+    grid-template-columns: 50px 1fr 80px 80px;
     gap: 8px;
-    flex-wrap: wrap;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, var(--primary), #7c3aed);
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.quick-cheat-item {
-    display: flex;
+.quick-cheat-row {
+    display: grid;
+    grid-template-columns: 50px 1fr 80px 80px;
+    gap: 8px;
+    padding: 10px 12px;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #f8f4ff, #f0ebff);
+    border-bottom: 1px solid var(--border);
     cursor: pointer;
-    transition: all 0.15s ease;
-    border: 1px solid rgba(139, 92, 246, 0.15);
+    transition: background 0.15s ease;
 }
 
-.quick-cheat-item:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
-    border-color: rgba(139, 92, 246, 0.4);
+.quick-cheat-row:last-child {
+    border-bottom: none;
 }
 
-.quick-cheat-item:active {
-    transform: scale(0.97);
+.quick-cheat-row:hover {
+    background: rgba(139, 92, 246, 0.06);
+}
+
+.quick-cheat-row:active {
+    background: rgba(139, 92, 246, 0.12);
 }
 
 .quick-cheat-code {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border-radius: 8px;
     background: linear-gradient(135deg, var(--primary), #7c3aed);
     color: #fff;
     font-weight: 700;
-    font-size: 15px;
+    font-size: 16px;
 }
 
-.quick-cheat-name {
-    font-size: 13px;
+.quick-cheat-fruit {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.quick-cheat-example {
+    font-size: 12px;
+    color: #888;
     font-weight: 500;
-    color: #333;
+}
+
+.quick-cheat-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: #888;
+    flex-wrap: wrap;
+}
+
+.quick-cheat-legend span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .quick-input-card {
     margin-bottom: 16px;
 }
 
-.quick-input-row {
+.quick-code-display {
+    text-align: center;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: var(--bg);
+    border-radius: 14px;
+    border: 2px solid var(--border);
+    min-height: 64px;
     display: flex;
-    gap: 12px;
-    align-items: stretch;
+    align-items: center;
+    justify-content: center;
 }
 
-.quick-code-input {
-    font-size: 32px !important;
-    font-weight: 700 !important;
-    text-align: center !important;
-    letter-spacing: 8px !important;
-    padding: 16px !important;
-    flex: 1;
-    border-radius: 14px !important;
-    border: 2px solid var(--border) !important;
-    transition: border-color 0.2s ease !important;
+.quick-code-digits {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: 16px;
+    color: var(--primary);
+    font-variant-numeric: tabular-nums;
 }
 
-.quick-code-input:focus {
-    border-color: var(--primary) !important;
-    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15) !important;
+.quick-hidden-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
 }
 
-.quick-add-btn {
-    padding: 16px 28px !important;
-    font-size: 18px !important;
-    border-radius: 14px !important;
-    white-space: nowrap;
+.quick-numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.quick-numpad-btn {
+    padding: 18px;
+    font-size: 24px;
+    font-weight: 700;
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    background: var(--card-bg);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.12s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.quick-numpad-btn:active {
+    transform: scale(0.95);
+    background: rgba(139, 92, 246, 0.08);
+}
+
+.quick-numpad-digit:hover {
+    border-color: var(--primary);
+    background: rgba(139, 92, 246, 0.04);
+}
+
+.quick-numpad-clear {
+    background: rgba(244, 67, 54, 0.08);
+    border-color: rgba(244, 67, 54, 0.25);
+    color: #e53935;
+    font-size: 20px;
+}
+
+.quick-numpad-clear:hover {
+    background: rgba(244, 67, 54, 0.15);
+}
+
+.quick-numpad-enter {
+    background: linear-gradient(135deg, var(--primary), #7c3aed);
+    color: #fff;
+    border: none;
+    font-size: 16px;
+}
+
+.quick-numpad-enter:hover {
+    opacity: 0.9;
+}
+
+.quick-numpad-enter:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .quick-preview {
@@ -3441,55 +3530,53 @@ tr:last-child td {
     font-size: 18px;
 }
 
-.quick-examples-card h4 {
-    margin-bottom: 12px;
-    font-size: 14px;
-    color: #666;
-}
-
-.quick-examples-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.quick-example-btn {
-    font-size: 12px !important;
-    padding: 4px 10px !important;
-    border-radius: 8px !important;
-}
-
 /* Quick Order responsive styles */
 @media (max-width: 768px) {
-    .quick-cheat-header {
-        flex-direction: column;
+    .quick-cheat-table-header {
+        grid-template-columns: 40px 1fr 70px 70px;
+        font-size: 10px;
+        padding: 6px 8px;
+    }
+
+    .quick-cheat-row {
+        grid-template-columns: 40px 1fr 70px 70px;
+        padding: 8px 8px;
         gap: 4px;
-        align-items: flex-start;
-    }
-
-    .quick-code-input {
-        font-size: 28px !important;
-        letter-spacing: 6px !important;
-        padding: 12px !important;
-    }
-
-    .quick-add-btn {
-        padding: 12px 20px !important;
-        font-size: 16px !important;
-    }
-
-    .quick-cheat-item {
-        padding: 5px 10px;
     }
 
     .quick-cheat-code {
-        width: 24px;
-        height: 24px;
+        width: 26px;
+        height: 26px;
+        font-size: 14px;
+    }
+
+    .quick-cheat-fruit {
         font-size: 13px;
     }
 
-    .quick-cheat-name {
-        font-size: 12px;
+    .quick-cheat-example {
+        font-size: 11px;
+    }
+
+    .quick-cheat-legend {
+        flex-direction: column;
+        gap: 6px;
+        font-size: 11px;
+    }
+
+    .quick-code-digits {
+        font-size: 36px;
+        letter-spacing: 12px;
+    }
+
+    .quick-numpad-btn {
+        padding: 14px;
+        font-size: 22px;
+        border-radius: 12px;
+    }
+
+    .quick-numpad-enter {
+        font-size: 14px;
     }
 }
 

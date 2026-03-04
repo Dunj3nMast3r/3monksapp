@@ -302,46 +302,41 @@ const QuickOrderPage = () => {
         <div>
             <div className="page-header"><h1>⚡ Quick Order</h1></div>
 
-            {/* Cheat Card */}
+            {/* Cheat Card — Fruit Code Reference */}
             <div className="quick-cheat-card">
                 <div className="quick-cheat-header">
                     <span>🔢 Fruit Codes</span>
-                    <span className="quick-cheat-hint">1 digit = Creamy · 2 digits = Combo · 3 same = Shot</span>
                 </div>
-                <div className="quick-cheat-grid">
+                <div className="quick-cheat-table">
+                    <div className="quick-cheat-table-header">
+                        <span>Code</span>
+                        <span>Fruit</span>
+                        <span>Creamy</span>
+                        <span>Shot</span>
+                    </div>
                     {fruits.filter(f => f.shortCode && f.active !== false).sort((a, b) => a.shortCode - b.shortCode).map(f => (
-                        <div key={f.id} className="quick-cheat-item" onClick={() => { setCode(String(f.shortCode)); setPreview(resolveCode(String(f.shortCode))); inputRef.current?.focus(); }}>
+                        <div key={f.id} className="quick-cheat-row" onClick={() => { setCode(String(f.shortCode)); setPreview(resolveCode(String(f.shortCode))); }}>
                             <span className="quick-cheat-code">{f.shortCode}</span>
-                            <span className="quick-cheat-name">{f.name}</span>
+                            <span className="quick-cheat-fruit">{f.name}</span>
+                            <span className="quick-cheat-example">{f.shortCode} →🍹</span>
+                            <span className="quick-cheat-example">{f.shortCode}{f.shortCode}{f.shortCode} →🍊</span>
                         </div>
                     ))}
+                </div>
+                <div className="quick-cheat-legend">
+                    <span>🍹 <strong>1 digit</strong> = Creamy</span>
+                    <span>🍸 <strong>2 digits</strong> = Combo (e.g. 25)</span>
+                    <span>🍊 <strong>3 same</strong> = Shot (e.g. 222)</span>
                 </div>
             </div>
 
             <div className="grid-2">
-                {/* Left: Input + Preview */}
+                {/* Left: Numpad + Preview */}
                 <div>
-                    {/* Code Input */}
+                    {/* Code Display + Preview */}
                     <div className="card quick-input-card">
-                        <div className="quick-input-row">
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                inputMode="numeric"
-                                className="form-control quick-code-input"
-                                value={code}
-                                onChange={handleCodeChange}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Enter code..."
-                                autoFocus
-                            />
-                            <button
-                                className="btn btn-primary btn-lg quick-add-btn"
-                                onClick={addFromCode}
-                                disabled={!preview || !!preview.error}
-                            >
-                                Add ↵
-                            </button>
+                        <div className="quick-code-display">
+                            <span className="quick-code-digits">{code || '—'}</span>
                         </div>
 
                         {/* Preview */}
@@ -357,35 +352,49 @@ const QuickOrderPage = () => {
                                 )}
                             </div>
                         )}
-                    </div>
 
-                    {/* Examples */}
-                    <div className="card quick-examples-card">
-                        <h4>Quick Examples</h4>
-                        <div className="quick-examples-grid">
-                            {fruits.filter(f => f.shortCode && f.active !== false).slice(0, 3).map(f => (
-                                <React.Fragment key={f.id}>
-                                    <button className="btn btn-sm btn-outline quick-example-btn" onClick={() => { setCode(String(f.shortCode)); setPreview(resolveCode(String(f.shortCode))); inputRef.current?.focus(); }}>
-                                        {f.shortCode} → 🍹 {f.name}
-                                    </button>
-                                </React.Fragment>
-                            ))}
-                            {fruits.filter(f => f.shortCode && f.active !== false).length >= 2 && (() => {
-                                const sorted = fruits.filter(f => f.shortCode && f.active !== false).sort((a, b) => a.shortCode - b.shortCode);
-                                const code2 = `${sorted[0].shortCode}${sorted[1].shortCode}`;
-                                return (
-                                    <button className="btn btn-sm btn-outline quick-example-btn" onClick={() => { setCode(code2); setPreview(resolveCode(code2)); inputRef.current?.focus(); }}>
-                                        {code2} → 🍸 {sorted[0].name} + {sorted[1].name}
-                                    </button>
-                                );
-                            })()}
-                            {fruits.filter(f => f.shortCode && f.active !== false).slice(0, 1).map(f => (
-                                <button key={`shot-${f.id}`} className="btn btn-sm btn-outline quick-example-btn" onClick={() => { const c = `${f.shortCode}${f.shortCode}${f.shortCode}`; setCode(c); setPreview(resolveCode(c)); inputRef.current?.focus(); }}>
-                                    {f.shortCode}{f.shortCode}{f.shortCode} → 🍊 Shot
+                        {/* Numpad */}
+                        <div className="quick-numpad">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                                <button key={n} className="quick-numpad-btn quick-numpad-digit" onClick={() => {
+                                    const val = (code + String(n)).slice(0, 3);
+                                    setCode(val);
+                                    setPreview(resolveCode(val));
+                                }}>
+                                    {n}
                                 </button>
                             ))}
+                            <button className="quick-numpad-btn quick-numpad-clear" onClick={() => { setCode(''); setPreview(null); }}>
+                                C
+                            </button>
+                            <button className="quick-numpad-btn quick-numpad-digit" onClick={() => {
+                                const val = (code + '0').slice(0, 3);
+                                setCode(val);
+                                setPreview(resolveCode(val));
+                            }}>
+                                0
+                            </button>
+                            <button
+                                className="quick-numpad-btn quick-numpad-enter"
+                                onClick={addFromCode}
+                                disabled={!preview || !!preview.error}
+                            >
+                                Add ↵
+                            </button>
                         </div>
                     </div>
+
+                    {/* Hidden input for keyboard support */}
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        inputMode="numeric"
+                        className="quick-hidden-input"
+                        value={code}
+                        onChange={handleCodeChange}
+                        onKeyDown={handleKeyDown}
+                        autoFocus
+                    />
                 </div>
 
                 {/* Right: Cart */}
