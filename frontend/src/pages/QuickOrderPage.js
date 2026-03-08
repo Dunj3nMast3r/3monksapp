@@ -20,7 +20,7 @@ const QuickOrderPage = () => {
     const [code, setCode] = useState('');
     const [preview, setPreview] = useState(null);
     const [cart, setCart] = useState([]);
-    const [paymentMode, setPaymentMode] = useState('CASH');
+    const [paymentMode, setPaymentMode] = useState('UPI');
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [loading, setLoading] = useState(false);

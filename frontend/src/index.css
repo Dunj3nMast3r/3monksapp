@@ -3398,6 +3398,7 @@ tr:last-child td {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 12px;
+    align-items: start;
 }
 
 .quick-order-page {
@@ -3450,9 +3451,8 @@ tr:last-child td {
     font-size: 12px;
     color: #666;
     margin-bottom: 6px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .quick-queue-done-btn {
@@ -3877,10 +3877,6 @@ tr:last-child td {
         justify-content: center;
     }
 
-    .sidebar-collapse-btn {
-        display: none !important;
-    }
-
     .quick-code-digits {
         font-size: 36px;
         letter-spacing: 12px;
@@ -3898,6 +3894,46 @@ tr:last-child td {
 
     .quick-queue-panel {
         max-height: none;
+    }
+
+    .sidebar-collapse-btn {
+        display: none !important;
+    }
+}
+
+/* Mobile landscape with collapsed sidebar — show 3-column layout */
+@media (max-width: 768px) and (orientation: landscape) {
+    .sidebar-collapse-btn {
+        display: flex !important;
+    }
+
+    .sidebar-collapsed .quick-order-grid {
+        grid-template-columns: 1fr 1fr minmax(0, 33%);
+    }
+
+    .sidebar-collapsed .quick-codes-strip {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .sidebar-collapsed .quick-code-digits {
+        font-size: 42px;
+        letter-spacing: 16px;
+    }
+
+    .sidebar-collapsed .quick-numpad-btn {
+        padding: 18px;
+        font-size: 24px;
+        border-radius: 14px;
+    }
+
+    .sidebar-collapsed .quick-numpad-enter {
+        font-size: 16px;
+    }
+
+    .sidebar-collapsed .quick-queue-panel {
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
     }
 }
 
@@ -3922,7 +3958,7 @@ tr:last-child td {
 
     /* When sidebar is collapsed, use the extra space for 3-column layout */
     .sidebar-collapsed .quick-order-grid {
-        grid-template-columns: 5fr 5fr 3fr;
+        grid-template-columns: 1fr 1fr minmax(0, 33%);
     }
 
     .sidebar-collapsed .quick-order-grid>div:nth-child(3) {
@@ -3942,7 +3978,7 @@ tr:last-child td {
 /* Wide landscape — full 3-column */
 @media (min-width: 1101px) {
     .quick-order-grid {
-        grid-template-columns: 5fr 5fr 3fr;
+        grid-template-columns: 1fr 1fr minmax(0, 33%);
     }
 }
 
