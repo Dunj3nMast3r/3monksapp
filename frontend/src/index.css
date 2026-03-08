@@ -3901,7 +3901,7 @@ tr:last-child td {
     }
 }
 
-/* Tablet landscape — 2 columns or 3 columns depending on width */
+/* Tablet landscape — 2 columns (sidebar visible) */
 @media (min-width: 769px) and (max-width: 1100px) {
     .quick-order-grid {
         grid-template-columns: 1fr 1fr;
@@ -3918,6 +3918,24 @@ tr:last-child td {
 
     .quick-queue-item {
         flex: 0 0 calc(50% - 4px);
+    }
+
+    /* When sidebar is collapsed, use the extra space for 3-column layout */
+    .sidebar-collapsed .quick-order-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .sidebar-collapsed .quick-order-grid>div:nth-child(3) {
+        grid-column: auto;
+    }
+
+    .sidebar-collapsed .quick-queue-list {
+        flex-direction: column;
+        flex-wrap: nowrap;
+    }
+
+    .sidebar-collapsed .quick-queue-item {
+        flex: none;
     }
 }
 
