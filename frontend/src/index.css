@@ -3922,7 +3922,7 @@ tr:last-child td {
 
     /* When sidebar is collapsed, use the extra space for 3-column layout */
     .sidebar-collapsed .quick-order-grid {
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: 5fr 5fr 3fr;
     }
 
     .sidebar-collapsed .quick-order-grid>div:nth-child(3) {
@@ -3942,7 +3942,7 @@ tr:last-child td {
 /* Wide landscape — full 3-column */
 @media (min-width: 1101px) {
     .quick-order-grid {
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: 5fr 5fr 3fr;
     }
 }
 
