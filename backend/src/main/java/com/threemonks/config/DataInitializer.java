@@ -95,7 +95,8 @@ public class DataInitializer implements CommandLineRunner {
 
     private void seedFruitsAndProducts() {
         // Seed fruits
-        String[] fruitNames = { "Jamun", "Mango", "Kiwi", "Coconut", "Blueberry", "Mulberry", "Strawberry", "Avocado", "Sitaphal" };
+        String[] fruitNames = { "Jamun", "Mango", "Kiwi", "Coconut", "Blueberry", "Mulberry", "Strawberry", "Avocado",
+                "Sitaphal" };
         for (int i = 0; i < fruitNames.length; i++) {
             fruitRepository.save(Fruit.builder().name(fruitNames[i]).shortCode(i + 1).active(true).build());
         }

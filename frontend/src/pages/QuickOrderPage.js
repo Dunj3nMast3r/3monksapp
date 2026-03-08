@@ -27,8 +27,17 @@ const QuickOrderPage = () => {
     const [order, setOrder] = useState(null);
     const [btConnected, setBtConnected] = useState(false);
     const [btPrinting, setBtPrinting] = useState(false);
+    const [pendingOrders, setPendingOrders] = useState([]);
+    const [completing, setCompleting] = useState(null);
     const inputRef = useRef();
     const receiptRef = useRef();
+
+    const fetchPendingOrders = useCallback(async () => {
+        try {
+            const res = await orderService.getPendingOrders(user?.shopId);
+            setPendingOrders(res.data.data || []);
+        } catch (_) { /* silent */ }
+    }, [user?.shopId]);
 
     useEffect(() => {
         Promise.all([
@@ -38,7 +47,23 @@ const QuickOrderPage = () => {
             setProducts(menuRes.data.data || []);
             setFruits(fruitRes.data.data || []);
         }).catch(() => toast.error('Failed to load menu'));
-    }, []);
+        fetchPendingOrders();
+        const interval = setInterval(fetchPendingOrders, 10000);
+        return () => clearInterval(interval);
+    }, [fetchPendingOrders]);
+
+    const handleComplete = async (orderId) => {
+        setCompleting(orderId);
+        try {
+            await orderService.completeOrder(orderId);
+            toast.success('Order delivered!');
+            fetchPendingOrders();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to mark as delivered');
+        } finally {
+            setCompleting(null);
+        }
+    };
 
     // Build lookup maps
     const fruitByCode = {};
@@ -160,7 +185,6 @@ const QuickOrderPage = () => {
         }
         setCode('');
         setPreview(null);
-        inputRef.current?.focus();
     };
 
     const handleKeyDown = (e) => {
@@ -200,6 +224,7 @@ const QuickOrderPage = () => {
             setOrder(res.data.data);
             toast.success('Order created!');
             setCart([]);
+            fetchPendingOrders();
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to create order');
         } finally {
@@ -302,6 +327,34 @@ const QuickOrderPage = () => {
         <div>
             <div className="page-header"><h1>⚡ Quick Order</h1></div>
 
+            {/* Inline Order Queue */}
+            {pendingOrders.length > 0 && (
+                <div className="quick-queue-bar">
+                    <div className="quick-queue-header">
+                        <span>📋 Queue ({pendingOrders.length})</span>
+                    </div>
+                    <div className="quick-queue-items">
+                        {pendingOrders.map((o, idx) => (
+                            <div key={o.id} className={`quick-queue-chip ${idx === 0 ? 'quick-queue-chip-active' : ''}`}>
+                                <div className="quick-queue-chip-top">
+                                    <span className="quick-queue-chip-token">#{o.tokenNumber}</span>
+                                    <span className="quick-queue-chip-detail">
+                                        {o.items?.map(i => `${i.quantity}× ${i.productName}`).join(', ')}
+                                    </span>
+                                </div>
+                                <button
+                                    className="btn btn-sm btn-primary quick-queue-chip-btn"
+                                    onClick={() => handleComplete(o.id)}
+                                    disabled={completing === o.id}
+                                >
+                                    {completing === o.id ? '⏳' : '✅ Done'}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Cheat Card — Fruit Code Reference */}
             <div className="quick-cheat-card">
                 <div className="quick-cheat-header">
@@ -331,19 +384,21 @@ const QuickOrderPage = () => {
                             <span className="quick-code-digits">{code || '—'}</span>
                         </div>
 
-                        {/* Preview */}
-                        {preview && (
-                            <div className={`quick-preview ${preview.error ? 'quick-preview-error' : 'quick-preview-ok'}`}>
-                                {preview.error ? (
-                                    <span>❌ {preview.error}</span>
-                                ) : (
-                                    <span>
-                                        {preview.label}
-                                        <span className="quick-preview-price">{formatCurrency(preview.product.price)}</span>
-                                    </span>
-                                )}
-                            </div>
-                        )}
+                        {/* Preview — fixed height so numpad doesn't shift */}
+                        <div className="quick-preview-container">
+                            {preview && (
+                                <div className={`quick-preview ${preview.error ? 'quick-preview-error' : 'quick-preview-ok'}`}>
+                                    {preview.error ? (
+                                        <span>❌ {preview.error}</span>
+                                    ) : (
+                                        <span>
+                                            {preview.label}
+                                            <span className="quick-preview-price">{formatCurrency(preview.product.price)}</span>
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         {/* Numpad */}
                         <div className="quick-numpad">
@@ -380,12 +435,11 @@ const QuickOrderPage = () => {
                     <input
                         ref={inputRef}
                         type="text"
-                        inputMode="numeric"
+                        inputMode="none"
                         className="quick-hidden-input"
                         value={code}
                         onChange={handleCodeChange}
                         onKeyDown={handleKeyDown}
-                        autoFocus
                     />
                 </div>
 

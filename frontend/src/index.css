@@ -3391,6 +3391,88 @@ tr:last-child td {
     border: 1px solid rgba(139, 92, 246, 0.2);
 }
 
+/* Quick Order — Inline Queue Bar */
+.quick-queue-bar {
+    background: var(--card-bg);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+}
+
+.quick-queue-header {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+}
+
+.quick-queue-items {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.quick-queue-chip {
+    flex: 0 0 auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.quick-queue-chip-active {
+    border-color: var(--primary);
+    background: rgba(139, 92, 246, 0.06);
+}
+
+.quick-queue-chip-top {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.quick-queue-chip-token {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--primary);
+}
+
+.quick-queue-chip-detail {
+    font-size: 12px;
+    color: #888;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+}
+
+.quick-queue-chip-btn {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    border-radius: 6px !important;
+    width: 100%;
+}
+
+/* Quick Order — fixed height preview container */
+.quick-preview-container {
+    min-height: 52px;
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.quick-preview-container .quick-preview {
+    margin-top: 0;
+    width: 100%;
+}
+
 .quick-input-card {
     margin-bottom: 16px;
 }
@@ -3628,8 +3710,15 @@ tr:last-child td {
 }
 
 @keyframes queuePulse {
-    0%, 100% { box-shadow: 0 4px 20px rgba(139, 92, 246, 0.15); }
-    50% { box-shadow: 0 4px 28px rgba(139, 92, 246, 0.3); }
+
+    0%,
+    100% {
+        box-shadow: 0 4px 20px rgba(139, 92, 246, 0.15);
+    }
+
+    50% {
+        box-shadow: 0 4px 28px rgba(139, 92, 246, 0.3);
+    }
 }
 
 .queue-card-header {
