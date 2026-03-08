@@ -3306,25 +3306,49 @@ tr:last-child td {
 }
 
 /* ============ QUICK ORDER PAGE ============ */
-.quick-cheat-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 12px 16px;
-    margin-bottom: 16px;
-    border: 1px solid var(--border);
-    box-shadow: var(--card-shadow);
-}
 
-.quick-cheat-header {
-    margin-bottom: 8px;
-    font-weight: 600;
-    font-size: 15px;
-}
-
-.quick-cheat-compact {
+/* Compact Fruit Codes Strip */
+.quick-codes-strip {
     display: flex;
-    gap: 6px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
     flex-wrap: wrap;
+}
+
+.quick-codes-pills {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.quick-codes-strip .quick-cheat-pill {
+    padding: 2px 8px 2px 2px;
+}
+
+.quick-codes-strip .quick-cheat-code {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+    border-radius: 5px;
+}
+
+.quick-codes-strip .quick-cheat-fruit {
+    font-size: 11px;
+}
+
+.quick-codes-legend {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #888;
+    white-space: nowrap;
 }
 
 .quick-cheat-pill {
@@ -3369,98 +3393,80 @@ tr:last-child td {
     white-space: nowrap;
 }
 
-.quick-cheat-legend {
-    display: flex;
+/* 3-column Quick Order grid */
+.quick-order-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 12px;
-    margin-top: 10px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border);
-    flex-wrap: wrap;
 }
 
-.quick-legend-item {
+.quick-order-page {
+    max-width: 100%;
+}
+
+/* Queue panel */
+.quick-queue-panel {
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+}
+
+.quick-queue-list {
     display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text);
-    background: rgba(139, 92, 246, 0.08);
-    padding: 4px 10px;
-    border-radius: 8px;
-    border: 1px solid rgba(139, 92, 246, 0.2);
-}
-
-/* Quick Order — Inline Queue Bar */
-.quick-queue-bar {
-    background: var(--card-bg);
-    border: 2px solid var(--border);
-    border-radius: 14px;
-    padding: 12px 16px;
-    margin-bottom: 16px;
-}
-
-.quick-queue-header {
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: var(--text);
-}
-
-.quick-queue-items {
-    display: flex;
+    flex-direction: column;
     gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
 }
 
-.quick-queue-chip {
-    flex: 0 0 auto;
-    background: var(--bg);
-    border: 1px solid var(--border);
+.quick-queue-item {
+    padding: 8px 10px;
     border-radius: 10px;
-    padding: 8px 12px;
-    min-width: 140px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
 }
 
-.quick-queue-chip-active {
+.quick-queue-item-active {
     border-color: var(--primary);
-    background: rgba(139, 92, 246, 0.06);
+    background: rgba(139, 92, 246, 0.04);
 }
 
-.quick-queue-chip-top {
+.quick-queue-item-header {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
 }
 
-.quick-queue-chip-token {
+.quick-queue-item-token {
     font-size: 18px;
     font-weight: 800;
     color: var(--primary);
 }
 
-.quick-queue-chip-detail {
-    font-size: 12px;
+.quick-queue-item-time {
+    font-size: 11px;
     color: #888;
+}
+
+.quick-queue-item-detail {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 6px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 160px;
 }
 
-.quick-queue-chip-btn {
+.quick-queue-done-btn {
+    width: 100%;
     padding: 4px 8px !important;
     font-size: 12px !important;
     border-radius: 6px !important;
-    width: 100%;
 }
 
-/* Quick Order — fixed height preview container */
+.quick-input-card {
+    margin-bottom: 16px;
+}
+
+/* Fixed height preview container */
 .quick-preview-container {
     min-height: 52px;
     margin-top: 12px;
@@ -3471,10 +3477,6 @@ tr:last-child td {
 .quick-preview-container .quick-preview {
     margin-top: 0;
     width: 100%;
-}
-
-.quick-input-card {
-    margin-bottom: 16px;
 }
 
 .quick-code-display {
@@ -3862,31 +3864,21 @@ tr:last-child td {
 
 /* Quick Order responsive styles */
 @media (max-width: 768px) {
-    .quick-cheat-compact {
-        gap: 4px;
+    .quick-order-grid {
+        grid-template-columns: 1fr;
     }
 
-    .quick-cheat-pill {
-        padding: 3px 8px 3px 3px;
+    .quick-codes-strip {
+        flex-direction: column;
+        align-items: stretch;
     }
 
-    .quick-cheat-code {
-        width: 22px;
-        height: 22px;
-        font-size: 12px;
+    .quick-codes-legend {
+        justify-content: center;
     }
 
-    .quick-cheat-fruit {
-        font-size: 11px;
-    }
-
-    .quick-cheat-legend {
-        gap: 6px;
-    }
-
-    .quick-legend-item {
-        font-size: 11px;
-        padding: 3px 8px;
+    .sidebar-collapse-btn {
+        display: none !important;
     }
 
     .quick-code-digits {
@@ -3902,6 +3894,37 @@ tr:last-child td {
 
     .quick-numpad-enter {
         font-size: 14px;
+    }
+
+    .quick-queue-panel {
+        max-height: none;
+    }
+}
+
+/* Tablet landscape — 2 columns or 3 columns depending on width */
+@media (min-width: 769px) and (max-width: 1100px) {
+    .quick-order-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .quick-order-grid>div:nth-child(3) {
+        grid-column: 1 / -1;
+    }
+
+    .quick-queue-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .quick-queue-item {
+        flex: 0 0 calc(50% - 4px);
+    }
+}
+
+/* Wide landscape — full 3-column */
+@media (min-width: 1101px) {
+    .quick-order-grid {
+        grid-template-columns: 1fr 1fr 1fr;
     }
 }
 
@@ -3997,6 +4020,60 @@ tr:last-child td {
 .sidebar-close-btn:hover {
     color: white;
     background: rgba(255, 255, 255, 0.1);
+}
+
+/* ============ SIDEBAR COLLAPSE TOGGLE ============ */
+.sidebar-collapse-btn {
+    display: none;
+    position: fixed;
+    left: 280px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 101;
+    width: 24px;
+    height: 48px;
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    background: var(--card-bg);
+    color: var(--text);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.06);
+    transition: left 0.25s ease;
+}
+
+.sidebar-collapsed .sidebar-collapse-btn {
+    left: 0;
+}
+
+.sidebar-collapsed .sidebar {
+    transform: translateX(-100%);
+}
+
+.sidebar-collapsed .main-content {
+    margin-left: 0 !important;
+}
+
+.sidebar-collapsed .main-wrapper .main-content {
+    margin-left: 0 !important;
+}
+
+/* Show on larger tablets / desktops */
+@media (min-width: 769px) {
+    .sidebar-collapse-btn {
+        display: flex;
+    }
+}
+
+/* Topbar page title (Quick Order in topbar) */
+.topbar-page-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-left: auto;
 }
 
 /* ============ TOPBAR (MOBILE) ============ */

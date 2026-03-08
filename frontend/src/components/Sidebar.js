@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getInitials, roleLabels } from '../utils/helpers';
 import { FiHome, FiShoppingCart, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiBox, FiLayers, FiMapPin, FiUserCheck, FiList, FiTrendingUp, FiX, FiMessageSquare, FiBriefcase, FiZap, FiClock } from 'react-icons/fi';
 
-const Sidebar = ({ isOpen, onClose }) => {
+const Sidebar = ({ isOpen, onClose, collapsed }) => {
     const { user, logout, isAdmin, isManager, hasRole } = useAuth();
     const navigate = useNavigate();
 
@@ -22,7 +22,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             {/* Mobile overlay */}
             {isOpen && <div className="sidebar-overlay" onClick={onClose} />}
 
-            <div className={`sidebar ${isOpen ? 'open' : ''}`}>
+            <div className={`sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
                 <div className="sidebar-header">
                     <img src="/logo.svg" alt="3Monks" className="sidebar-logo" />
                     <div className="sidebar-brand">

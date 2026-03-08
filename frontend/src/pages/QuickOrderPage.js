@@ -324,43 +324,10 @@ const QuickOrderPage = () => {
 
     // === QUICK ORDER VIEW ===
     return (
-        <div>
-            <div className="page-header"><h1>⚡ Quick Order</h1></div>
-
-            {/* Inline Order Queue */}
-            {pendingOrders.length > 0 && (
-                <div className="quick-queue-bar">
-                    <div className="quick-queue-header">
-                        <span>📋 Queue ({pendingOrders.length})</span>
-                    </div>
-                    <div className="quick-queue-items">
-                        {pendingOrders.map((o, idx) => (
-                            <div key={o.id} className={`quick-queue-chip ${idx === 0 ? 'quick-queue-chip-active' : ''}`}>
-                                <div className="quick-queue-chip-top">
-                                    <span className="quick-queue-chip-token">#{o.tokenNumber}</span>
-                                    <span className="quick-queue-chip-detail">
-                                        {o.items?.map(i => `${i.quantity}× ${i.productName}`).join(', ')}
-                                    </span>
-                                </div>
-                                <button
-                                    className="btn btn-sm btn-primary quick-queue-chip-btn"
-                                    onClick={() => handleComplete(o.id)}
-                                    disabled={completing === o.id}
-                                >
-                                    {completing === o.id ? '⏳' : '✅ Done'}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Cheat Card — Fruit Code Reference */}
-            <div className="quick-cheat-card">
-                <div className="quick-cheat-header">
-                    <span>🔢 Fruit Codes</span>
-                </div>
-                <div className="quick-cheat-compact">
+        <div className="quick-order-page">
+            {/* Compact Fruit Codes Strip */}
+            <div className="quick-codes-strip">
+                <div className="quick-codes-pills">
                     {fruits.filter(f => f.shortCode && f.active !== false).sort((a, b) => a.shortCode - b.shortCode).map(f => (
                         <div key={f.id} className="quick-cheat-pill" onClick={() => { setCode(String(f.shortCode)); setPreview(resolveCode(String(f.shortCode))); }}>
                             <span className="quick-cheat-code">{f.shortCode}</span>
@@ -368,14 +335,14 @@ const QuickOrderPage = () => {
                         </div>
                     ))}
                 </div>
-                <div className="quick-cheat-legend">
-                    <span className="quick-legend-item">🍹 <strong>1 digit</strong> = Creamy</span>
-                    <span className="quick-legend-item">🍸 <strong>2 digits</strong> = Combo</span>
-                    <span className="quick-legend-item">🍊 <strong>3 same</strong> = Shot</span>
+                <div className="quick-codes-legend">
+                    <span>🍹1=Creamy</span>
+                    <span>🍸2=Combo</span>
+                    <span>🍊3=Shot</span>
                 </div>
             </div>
 
-            <div className="grid-2">
+            <div className="quick-order-grid">
                 {/* Left: Numpad + Preview */}
                 <div>
                     {/* Code Display + Preview */}
@@ -443,10 +410,10 @@ const QuickOrderPage = () => {
                     />
                 </div>
 
-                {/* Right: Cart */}
+                {/* Center: Cart + Place Order */}
                 <div>
                     <div className="card">
-                        <h3 style={{ marginBottom: '16px' }}>🛒 Cart ({cart.length} items)</h3>
+                        <h3 style={{ marginBottom: '12px' }}>🛒 Cart ({cart.length})</h3>
 
                         {cart.length === 0 ? (
                             <p className="order-cart-empty">Enter codes to add items</p>
@@ -474,16 +441,15 @@ const QuickOrderPage = () => {
                         )}
 
                         <div className="order-cart-form">
-                            <div className="form-group">
-                                <label>Customer Name (optional)</label>
-                                <input className="form-control" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <div className="form-group" style={{ flex: 1, marginBottom: '8px' }}>
+                                    <input className="form-control" placeholder="Name (optional)" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+                                </div>
+                                <div className="form-group" style={{ flex: 1, marginBottom: '8px' }}>
+                                    <input className="form-control" placeholder="Phone (optional)" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
+                                </div>
                             </div>
-                            <div className="form-group">
-                                <label>Customer Phone (optional)</label>
-                                <input className="form-control" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
-                            </div>
-                            <div className="form-group">
-                                <label>Payment Mode</label>
+                            <div className="form-group" style={{ marginBottom: '8px' }}>
                                 <div className="order-payment-modes">
                                     {['CASH', 'UPI'].map(mode => (
                                         <button key={mode} className={`btn ${paymentMode === mode ? 'btn-primary' : 'btn-outline'} order-payment-btn`}
@@ -498,6 +464,39 @@ const QuickOrderPage = () => {
                                 {loading ? 'Processing...' : `Place Order • ${formatCurrency(getTotal())}`}
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                {/* Right: Order Queue */}
+                <div>
+                    <div className="card quick-queue-panel">
+                        <h3 style={{ marginBottom: '8px' }}>📋 Queue ({pendingOrders.length})</h3>
+                        {pendingOrders.length === 0 ? (
+                            <p style={{ color: '#888', fontSize: '13px', textAlign: 'center', padding: '16px 0' }}>✅ All delivered!</p>
+                        ) : (
+                            <div className="quick-queue-list">
+                                {pendingOrders.map((o, idx) => (
+                                    <div key={o.id} className={`quick-queue-item ${idx === 0 ? 'quick-queue-item-active' : ''}`}>
+                                        <div className="quick-queue-item-header">
+                                            <span className="quick-queue-item-token">#{o.tokenNumber}</span>
+                                            <span className="quick-queue-item-time">
+                                                {new Date(o.orderDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                        <div className="quick-queue-item-detail">
+                                            {o.items?.map(i => `${i.quantity}× ${i.productName}`).join(', ')}
+                                        </div>
+                                        <button
+                                            className="btn btn-sm btn-primary quick-queue-done-btn"
+                                            onClick={() => handleComplete(o.id)}
+                                            disabled={completing === o.id}
+                                        >
+                                            {completing === o.id ? '⏳' : '✅ Done'}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
