@@ -1,12 +1,3 @@
-/* Landscape: fruit codes strip spans center and right columns */
-@media (orientation: landscape) {
-    .quick-codes-landscape-grid {
-        display: block;
-        grid-column: 2 / span 2;
-        margin-bottom: 8px;
-    }
-}
-
 /* ============ 3MONKS DESIGN SYSTEM - Purple & Yellow Theme ============ */
 :root {
     --purple-50: #faf5ff;
@@ -3419,18 +3410,19 @@ tr:last-child td {
     display: block;
 }
 
-.quick-codes-landscape {
+.quick-codes-landscape-grid {
     display: none;
 }
 
-/* Landscape: hide top strip, show inline strip above cart */
+/* Landscape: hide top strip and show one shared strip for center + right */
 @media (orientation: landscape) {
     .quick-codes-portrait {
         display: none;
     }
 
-    .quick-codes-landscape {
+    .quick-codes-landscape-grid {
         display: block;
+        grid-column: 2 / -1;
         margin-bottom: 8px;
     }
 }
