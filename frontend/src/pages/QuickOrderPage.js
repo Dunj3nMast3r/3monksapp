@@ -414,9 +414,8 @@ const QuickOrderPage = () => {
                     />
                 </div>
 
-                {/* Center: Fruit codes (landscape only) + Cart + Place Order */}
+                {/* Center: Fruit codes (landscape) + Cart + Place Order */}
                 <div>
-                    {/* Fruit Codes Strip — landscape: above cart column; hidden in portrait */}
                     <div className="quick-codes-landscape">{fruitCodesStrip}</div>
                     <div className="card">
                         <h3 style={{ marginBottom: '12px' }}>🛒 Cart ({cart.length})</h3>
@@ -473,8 +472,10 @@ const QuickOrderPage = () => {
                     </div>
                 </div>
 
-                {/* Right: Order Queue */}
+                {/* Right: Fruit codes (landscape only) + Order Queue */}
                 <div>
+                    {/* Fruit Codes Strip — landscape: above queue column; hidden in portrait */}
+                    <div className="quick-codes-landscape">{fruitCodesStrip}</div>
                     <div className="card quick-queue-panel">
                         <h3 style={{ marginBottom: '8px' }}>📋 Queue ({pendingOrders.length})</h3>
                         {pendingOrders.length === 0 ? (

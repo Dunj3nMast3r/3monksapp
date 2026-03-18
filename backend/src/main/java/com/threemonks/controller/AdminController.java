@@ -34,6 +34,7 @@ public class AdminController {
     private final StockService stockService;
     private final FeedbackRepository feedbackRepository;
     private final FranchiseEnquiryRepository franchiseEnquiryRepository;
+    private final DataResetService dataResetService;
 
     // Shop management
     @GetMapping("/shops")
@@ -257,5 +258,48 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> deleteFranchiseEnquiry(@PathVariable Long id) {
         franchiseEnquiryRepository.deleteById(id);
         return ResponseEntity.ok(ApiResponse.success("Franchise enquiry deleted", null));
+    }
+
+    // Data Reset endpoints
+    @DeleteMapping("/reset/orders")
+    public ResponseEntity<ApiResponse<Void>> resetOrders() {
+        dataResetService.resetOrders();
+        return ResponseEntity.ok(ApiResponse.success("All orders and order history cleared", null));
+    }
+
+    @DeleteMapping("/reset/purchases")
+    public ResponseEntity<ApiResponse<Void>> resetPurchases() {
+        dataResetService.resetPurchases();
+        return ResponseEntity.ok(ApiResponse.success("All purchases cleared", null));
+    }
+
+    @DeleteMapping("/reset/stock")
+    public ResponseEntity<ApiResponse<Void>> resetStock() {
+        dataResetService.resetStock();
+        return ResponseEntity.ok(ApiResponse.success("All stock and stock history cleared", null));
+    }
+
+    @DeleteMapping("/reset/feedbacks")
+    public ResponseEntity<ApiResponse<Void>> resetFeedbacks() {
+        dataResetService.resetFeedbacks();
+        return ResponseEntity.ok(ApiResponse.success("All feedbacks cleared", null));
+    }
+
+    @DeleteMapping("/reset/franchise-enquiries")
+    public ResponseEntity<ApiResponse<Void>> resetFranchiseEnquiries() {
+        dataResetService.resetFranchiseEnquiries();
+        return ResponseEntity.ok(ApiResponse.success("All franchise enquiries cleared", null));
+    }
+
+    @DeleteMapping("/reset/employees")
+    public ResponseEntity<ApiResponse<Void>> resetEmployees() {
+        dataResetService.resetEmployees();
+        return ResponseEntity.ok(ApiResponse.success("All employees cleared", null));
+    }
+
+    @DeleteMapping("/reset/all")
+    public ResponseEntity<ApiResponse<Void>> resetAllData() {
+        dataResetService.resetAllData();
+        return ResponseEntity.ok(ApiResponse.success("All data has been reset", null));
     }
 }

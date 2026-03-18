@@ -70,6 +70,14 @@ export const adminService = {
     // Franchise Enquiries
     getFranchiseEnquiries: () => api.get('/api/admin/franchise-enquiries'),
     deleteFranchiseEnquiry: (id) => api.delete(`/api/admin/franchise-enquiries/${id}`),
+    // Data Reset
+    resetOrders: () => api.delete('/api/admin/reset/orders'),
+    resetPurchases: () => api.delete('/api/admin/reset/purchases'),
+    resetStock: () => api.delete('/api/admin/reset/stock'),
+    resetFeedbacks: () => api.delete('/api/admin/reset/feedbacks'),
+    resetFranchiseEnquiries: () => api.delete('/api/admin/reset/franchise-enquiries'),
+    resetEmployees: () => api.delete('/api/admin/reset/employees'),
+    resetAll: () => api.delete('/api/admin/reset/all'),
 };
 
 export const managerService = {

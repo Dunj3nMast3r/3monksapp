@@ -26,6 +26,7 @@ import RecipesPage from './pages/RecipesPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import FeedbacksPage from './pages/FeedbacksPage';
 import FranchiseEnquiriesPage from './pages/FranchiseEnquiriesPage';
+import DataResetPage from './pages/DataResetPage';
 
 function App() {
     return (
@@ -90,6 +91,9 @@ function App() {
                         } />
                         <Route path="franchise-enquiries" element={
                             <ProtectedRoute roles={['SUPER_ADMIN']}><FranchiseEnquiriesPage /></ProtectedRoute>
+                        } />
+                        <Route path="data-reset" element={
+                            <ProtectedRoute roles={['SUPER_ADMIN']}><DataResetPage /></ProtectedRoute>
                         } />
                     </Route>
 
