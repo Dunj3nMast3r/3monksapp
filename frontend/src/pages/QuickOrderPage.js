@@ -322,25 +322,29 @@ const QuickOrderPage = () => {
         );
     }
 
+    const fruitCodesStrip = (
+        <div className="quick-codes-strip">
+            <div className="quick-codes-pills">
+                {fruits.filter(f => f.shortCode && f.active !== false).sort((a, b) => a.shortCode - b.shortCode).map(f => (
+                    <div key={f.id} className="quick-cheat-pill" onClick={() => { setCode(String(f.shortCode)); setPreview(resolveCode(String(f.shortCode))); }}>
+                        <span className="quick-cheat-code">{f.shortCode}</span>
+                        <span className="quick-cheat-fruit">{f.name}</span>
+                    </div>
+                ))}
+            </div>
+            <div className="quick-codes-legend">
+                <span>🍹1=Creamy</span>
+                <span>🍸2=Combo</span>
+                <span>🍊3=Shot</span>
+            </div>
+        </div>
+    );
+
     // === QUICK ORDER VIEW ===
     return (
         <div className="quick-order-page">
-            {/* Compact Fruit Codes Strip */}
-            <div className="quick-codes-strip">
-                <div className="quick-codes-pills">
-                    {fruits.filter(f => f.shortCode && f.active !== false).sort((a, b) => a.shortCode - b.shortCode).map(f => (
-                        <div key={f.id} className="quick-cheat-pill" onClick={() => { setCode(String(f.shortCode)); setPreview(resolveCode(String(f.shortCode))); }}>
-                            <span className="quick-cheat-code">{f.shortCode}</span>
-                            <span className="quick-cheat-fruit">{f.name}</span>
-                        </div>
-                    ))}
-                </div>
-                <div className="quick-codes-legend">
-                    <span>🍹1=Creamy</span>
-                    <span>🍸2=Combo</span>
-                    <span>🍊3=Shot</span>
-                </div>
-            </div>
+            {/* Fruit Codes Strip — portrait: above entire grid; hidden in landscape */}
+            <div className="quick-codes-portrait">{fruitCodesStrip}</div>
 
             <div className="quick-order-grid">
                 {/* Left: Numpad + Preview */}
@@ -410,8 +414,10 @@ const QuickOrderPage = () => {
                     />
                 </div>
 
-                {/* Center: Cart + Place Order */}
+                {/* Center: Fruit codes (landscape only) + Cart + Place Order */}
                 <div>
+                    {/* Fruit Codes Strip — landscape: above cart column; hidden in portrait */}
+                    <div className="quick-codes-landscape">{fruitCodesStrip}</div>
                     <div className="card">
                         <h3 style={{ marginBottom: '12px' }}>🛒 Cart ({cart.length})</h3>
 

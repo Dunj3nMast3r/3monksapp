@@ -3405,6 +3405,27 @@ tr:last-child td {
     max-width: 100%;
 }
 
+/* Portrait: show top strip, hide inline strip */
+.quick-codes-portrait {
+    display: block;
+}
+
+.quick-codes-landscape {
+    display: none;
+}
+
+/* Landscape: hide top strip, show inline strip above cart */
+@media (orientation: landscape) {
+    .quick-codes-portrait {
+        display: none;
+    }
+
+    .quick-codes-landscape {
+        display: block;
+        margin-bottom: 8px;
+    }
+}
+
 /* Queue panel */
 .quick-queue-panel {
     max-height: calc(100vh - 160px);
@@ -3901,6 +3922,43 @@ tr:last-child td {
     }
 }
 
+/* Landscape: compact numpad so Add button fits on screen */
+@media (orientation: landscape) {
+    .quick-code-display {
+        padding: 6px 12px;
+        min-height: 44px;
+    }
+
+    .quick-code-digits {
+        font-size: 32px;
+        letter-spacing: 10px;
+    }
+
+    .quick-numpad {
+        gap: 5px;
+        margin-top: 6px;
+    }
+
+    .quick-numpad-btn {
+        padding: 10px;
+        font-size: 18px;
+        border-radius: 10px;
+    }
+
+    .quick-numpad-enter {
+        font-size: 13px;
+    }
+
+    .quick-preview-container {
+        min-height: 38px;
+        margin-top: 6px;
+    }
+
+    .quick-input-card {
+        margin-bottom: 8px;
+    }
+}
+
 /* Mobile landscape with collapsed sidebar — show 3-column layout */
 @media (max-width: 768px) and (orientation: landscape) {
     .sidebar-collapse-btn {
@@ -3909,26 +3967,6 @@ tr:last-child td {
 
     .sidebar-collapsed .quick-order-grid {
         grid-template-columns: 1fr 1fr minmax(0, 33%);
-    }
-
-    .sidebar-collapsed .quick-codes-strip {
-        flex-direction: row;
-        align-items: center;
-    }
-
-    .sidebar-collapsed .quick-code-digits {
-        font-size: 42px;
-        letter-spacing: 16px;
-    }
-
-    .sidebar-collapsed .quick-numpad-btn {
-        padding: 18px;
-        font-size: 24px;
-        border-radius: 14px;
-    }
-
-    .sidebar-collapsed .quick-numpad-enter {
-        font-size: 16px;
     }
 
     .sidebar-collapsed .quick-queue-panel {
