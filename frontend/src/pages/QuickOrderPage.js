@@ -352,13 +352,13 @@ const QuickOrderPage = () => {
                         {mode === 'SINGLE' ? (
                             <>
                                 <div style={{ marginBottom: '16px' }}>
-                                    <h4 style={{ marginBottom: '8px' }}>Shots</h4>
+                                    <h4 style={{ marginBottom: '8px' }}>Single Blends</h4>
                                     <div className="quick-fruit-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '8px' }}>
-                                        {fruits.filter(f => f.active && f.eligibleForShot).map(fruit => (
+                                        {fruits.filter(f => f.active && f.eligibleForBlend).map(fruit => (
                                             <button
                                                 key={fruit.id}
                                                 className="btn btn-outline"
-                                                onClick={() => addShot(fruit)}
+                                                onClick={() => addSingleBlend(fruit)}
                                                 style={{ whiteSpace: 'normal', minHeight: '48px', textAlign: 'center' }}
                                             >
                                                 {fruit.name}
@@ -367,13 +367,13 @@ const QuickOrderPage = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <h4 style={{ marginBottom: '8px' }}>Single Blends</h4>
+                                    <h4 style={{ marginBottom: '8px' }}>Shots</h4>
                                     <div className="quick-fruit-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '8px' }}>
-                                        {fruits.filter(f => f.active && f.eligibleForBlend).map(fruit => (
+                                        {fruits.filter(f => f.active && f.eligibleForShot).map(fruit => (
                                             <button
                                                 key={fruit.id}
                                                 className="btn btn-outline"
-                                                onClick={() => addSingleBlend(fruit)}
+                                                onClick={() => addShot(fruit)}
                                                 style={{ whiteSpace: 'normal', minHeight: '48px', textAlign: 'center' }}
                                             >
                                                 {fruit.name}
