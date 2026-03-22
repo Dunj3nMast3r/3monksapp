@@ -28,6 +28,12 @@ public class Fruit {
     @Column(nullable = false)
     private Boolean active = true;
 
+    @Column(name = "eligible_for_shot", nullable = false)
+    private Boolean eligibleForShot = true;
+
+    @Column(name = "eligible_for_blend", nullable = false)
+    private Boolean eligibleForBlend = true;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

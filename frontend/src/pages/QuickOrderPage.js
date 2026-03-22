@@ -17,8 +17,8 @@ const QuickOrderPage = () => {
     const { user } = useAuth();
     const [products, setProducts] = useState([]);
     const [fruits, setFruits] = useState([]);
-    const [code, setCode] = useState('');
-    const [preview, setPreview] = useState(null);
+    const [mode, setMode] = useState('SHOT');
+    const [selectedBlendFruits, setSelectedBlendFruits] = useState([]);
     const [cart, setCart] = useState([]);
     const [paymentMode, setPaymentMode] = useState('UPI');
     const [customerName, setCustomerName] = useState('');
@@ -29,7 +29,6 @@ const QuickOrderPage = () => {
     const [btPrinting, setBtPrinting] = useState(false);
     const [pendingOrders, setPendingOrders] = useState([]);
     const [completing, setCompleting] = useState(null);
-    const inputRef = useRef();
     const receiptRef = useRef();
 
     const fetchPendingOrders = useCallback(async () => {
@@ -65,113 +64,13 @@ const QuickOrderPage = () => {
         }
     };
 
-    // Build lookup maps
-    const fruitByCode = {};
-    fruits.forEach(f => { if (f.shortCode) fruitByCode[f.shortCode] = f; });
-
-    const resolveCode = useCallback((input) => {
-        const trimmed = input.trim();
-        if (!trimmed || !/^\d+$/.test(trimmed)) return null;
-
-        const digits = trimmed.split('').map(Number);
-
-        // --- SHOT: 3 same digits (e.g. 222) ---
-        if (digits.length === 3 && digits[0] === digits[1] && digits[1] === digits[2]) {
-            const fruitCode = digits[0];
-            const fruit = fruitByCode[fruitCode];
-            if (!fruit) return { error: `No fruit with code ${fruitCode}` };
-            // Find a SHOT product that contains this fruit
-            const shotProduct = products.find(p =>
-                p.category === 'SHOT' && p.fruits?.some(f => f.id === fruit.id)
-            );
-            if (!shotProduct) return { error: `No shot available for ${fruit.name}` };
-            return {
-                product: shotProduct,
-                label: `🍊 ${shotProduct.name}`,
-                type: 'SHOT',
-            };
-        }
-
-        // --- CURATED BLEND: 2 different digits (e.g. 25) ---
-        if (digits.length === 2 && digits[0] !== digits[1]) {
-            const fruit1 = fruitByCode[digits[0]];
-            const fruit2 = fruitByCode[digits[1]];
-            if (!fruit1) return { error: `No fruit with code ${digits[0]}` };
-            if (!fruit2) return { error: `No fruit with code ${digits[1]}` };
-
-            // Find a CURATED_BLEND product with both fruits
-            const curatedProduct = products.find(p =>
-                p.category === 'CURATED_BLEND' &&
-                p.fruits?.some(f => f.id === fruit1.id) &&
-                p.fruits?.some(f => f.id === fruit2.id)
-            );
-
-            if (curatedProduct) {
-                return {
-                    product: curatedProduct,
-                    label: `🍸 ${curatedProduct.name}`,
-                    type: 'CURATED_BLEND',
-                };
-            }
-
-            // No pre-made product — use the first available curated product with customization
-            const anyCurated = products.find(p => p.category === 'CURATED_BLEND');
-            if (!anyCurated) return { error: 'No curated blend available' };
-            return {
-                product: anyCurated,
-                label: `🍸 ${fruit1.name} + ${fruit2.name} (Curated)`,
-                type: 'CURATED_BLEND',
-                customization: `${fruit1.name} + ${fruit2.name}`,
-                customName: `${fruit1.name} + ${fruit2.name}`,
-            };
-        }
-
-        // --- CREAMY BLEND: single digit (e.g. 2) ---
-        if (digits.length === 1) {
-            const fruitCode = digits[0];
-            const fruit = fruitByCode[fruitCode];
-            if (!fruit) return { error: `No fruit with code ${fruitCode}` };
-            // Find a CREAMY_BLEND product that contains this fruit
-            const creamyProduct = products.find(p =>
-                p.category === 'CREAMY_BLEND' && p.fruits?.some(f => f.id === fruit.id)
-            );
-            if (!creamyProduct) return { error: `No creamy blend for ${fruit.name}` };
-            return {
-                product: creamyProduct,
-                label: `🍹 ${creamyProduct.name}`,
-                type: 'CREAMY_BLEND',
-            };
-        }
-
-        // --- SAME DIGIT x2 (e.g. 22) — invalid combo ---
-        if (digits.length === 2 && digits[0] === digits[1]) {
-            return { error: `Can't combo ${fruitByCode[digits[0]]?.name || 'fruit'} with itself. Use ${digits[0]} for creamy or ${digits.join('')}${digits[0]} for shot.` };
-        }
-
-        return { error: 'Invalid code. Use 1 digit (creamy), 2 digits (curated), or 3 same digits (shot)' };
-    }, [products, fruits, fruitByCode]); // eslint-disable-line
-
-    const handleCodeChange = (e) => {
-        const val = e.target.value.replace(/\D/g, '').slice(0, 3);
-        setCode(val);
-        if (val.length > 0) {
-            setPreview(resolveCode(val));
-        } else {
-            setPreview(null);
-        }
-    };
-
-    const addFromCode = () => {
-        if (!preview || preview.error) return;
-        const { product, customization, customName } = preview;
-
-        const cartKey = customization ? `${product.id}-${customization}` : `${product.id}`;
+    const addCartItem = (product, customName) => {
+        if (!product) return;
+        const cartKey = customName ? `${product.id}-${customName}` : `${product.id}`;
         const existing = cart.find(item => item.cartKey === cartKey);
 
         if (existing) {
-            setCart(cart.map(item =>
-                item.cartKey === cartKey ? { ...item, quantity: item.quantity + 1 } : item
-            ));
+            setCart(cart.map(item => item.cartKey === cartKey ? { ...item, quantity: item.quantity + 1 } : item));
         } else {
             setCart([...cart, {
                 cartKey,
@@ -180,19 +79,125 @@ const QuickOrderPage = () => {
                 category: product.category,
                 unitPrice: product.price,
                 quantity: 1,
-                customization: customization || undefined,
             }]);
         }
-        setCode('');
-        setPreview(null);
     };
 
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addFromCode();
+    const addShot = (fruit) => {
+        if (!fruit || !fruit.eligibleForShot) {
+            toast.error('Fruit is not eligible for shots.');
+            return;
+        }
+        const shotProduct = products.find(p => p.category === 'SHOT' && p.fruits?.some(f => f.id === fruit.id));
+        if (!shotProduct) {
+            toast.error(`No shot product available for ${fruit.name}`);
+            return;
+        }
+        addCartItem(shotProduct);
+        toast.success(`Added shot: ${shotProduct.name}`);
+    };
+
+    const addSingleBlend = (fruit) => {
+        if (!fruit || !fruit.eligibleForBlend) {
+            toast.error('Fruit is not eligible for blends.');
+            return;
+        }
+        const blendProduct = products.find(p =>
+            p.category === 'CREAMY_BLEND' && p.fruits?.some(f => f.id === fruit.id)
+        );
+        if (!blendProduct) {
+            const fallback = products.find(p => p.category === 'CURATED_BLEND');
+            if (!fallback) {
+                toast.error('No blend products configured.');
+                return;
+            }
+            addCartItem(fallback, fruit.name);
+            toast.success(`Added custom blend: ${fruit.name}`);
+        } else {
+            addCartItem(blendProduct);
+            toast.success(`Added blend: ${blendProduct.name}`);
         }
     };
+
+    const toggleBlendSelection = (fruit) => {
+        if (!fruit || !fruit.eligibleForBlend) {
+            toast.error('Fruit is not eligible for blends.');
+            return;
+        }
+        setSelectedBlendFruits(prev => {
+            let newSelection;
+            if (prev.some(f => f.id === fruit.id)) {
+                newSelection = prev.filter(f => f.id !== fruit.id);
+            } else {
+                if (prev.length >= 2) return prev;
+                newSelection = [...prev, fruit];
+            }
+
+            // Auto-add when exactly 2 fruits selected for curated blend
+            if (mode === 'CURATED_BLEND' && newSelection.length === 2) {
+                addCuratedBlend(newSelection);
+            }
+
+            return newSelection;
+        });
+    };
+
+    const addCuratedBlend = (selectedFruits = selectedBlendFruits) => {
+        if (selectedFruits.length === 0) {
+            toast.error('Select at least one fruit for blend.');
+            return;
+        }
+
+        if (selectedFruits.length === 1) {
+            const [fruit1] = selectedFruits;
+            const creamyProduct = products.find(p =>
+                p.category === 'CREAMY_BLEND' && p.fruits?.some(f => f.id === fruit1.id)
+            );
+            if (creamyProduct) {
+                addCartItem(creamyProduct);
+                toast.success(`Added blend: ${creamyProduct.name}`);
+            } else {
+                const fallback = products.find(p => p.category === 'CURATED_BLEND');
+                if (!fallback) {
+                    toast.error('No blend products configured.');
+                    return;
+                }
+                addCartItem(fallback, fruit1.name);
+                toast.success(`Added custom blend: ${fruit1.name}`);
+            }
+            setSelectedBlendFruits([]);
+            return;
+        }
+
+        if (selectedFruits.length > 2) {
+            toast.error('Select up to two fruits for blend.');
+            return;
+        }
+
+        const [fruit1, fruit2] = selectedFruits;
+        const curatedProduct = products.find(p =>
+            p.category === 'CURATED_BLEND' &&
+            p.fruits?.some(f => f.id === fruit1.id) &&
+            p.fruits?.some(f => f.id === fruit2.id)
+        );
+
+        if (curatedProduct) {
+            addCartItem(curatedProduct);
+            toast.success(`Added blend: ${curatedProduct.name}`);
+        } else {
+            const fallback = products.find(p => p.category === 'CURATED_BLEND');
+            if (!fallback) {
+                toast.error('No curated blend products configured.');
+                return;
+            }
+            const customName = `${fruit1.name} + ${fruit2.name}`;
+            addCartItem(fallback, customName);
+            toast.success(`Added custom blend: ${customName}`);
+        }
+        setSelectedBlendFruits([]);
+    };
+
+    const clearBlendSelection = () => setSelectedBlendFruits([]);
 
     const updateQuantity = (cartKey, qty) => {
         if (qty <= 0) {
@@ -322,100 +327,64 @@ const QuickOrderPage = () => {
         );
     }
 
-    const fruitCodesStrip = (
-        <div className="quick-codes-strip">
-            <div className="quick-codes-pills">
-                {fruits.filter(f => f.shortCode && f.active !== false).sort((a, b) => a.shortCode - b.shortCode).map(f => (
-                    <div key={f.id} className="quick-cheat-pill" onClick={() => { setCode(String(f.shortCode)); setPreview(resolveCode(String(f.shortCode))); }}>
-                        <span className="quick-cheat-code">{f.shortCode}</span>
-                        <span className="quick-cheat-fruit">{f.name}</span>
-                    </div>
-                ))}
-            </div>
-            <div className="quick-codes-legend">
-                <span>🍹1=Creamy</span>
-                <span>🍸2=Combo</span>
-                <span>🍊3=Shot</span>
-            </div>
-        </div>
-    );
+    const fruitCodesStrip = null;
+
 
     // === QUICK ORDER VIEW ===
     return (
         <div className="quick-order-page">
             {/* Fruit Codes Strip — portrait: above entire grid; hidden in landscape */}
-            <div className="quick-codes-portrait">{fruitCodesStrip}</div>
-
             <div className="quick-order-grid">
-                {/* Left: Numpad + Preview */}
+                {/* Left: Fruit-based selector (no numpad) */}
                 <div>
-                    {/* Code Display + Preview */}
                     <div className="card quick-input-card">
-                        <div className="quick-code-display">
-                            <span className="quick-code-digits">{code || '—'}</span>
+                        <div className="quick-action-tabs" style={{ marginBottom: '12px', display: 'flex', gap: '8px' }}>
+                            <button className={`btn ${mode === 'SHOT' ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('SHOT'); setSelectedBlendFruits([]); }}>Shot</button>
+                            <button className={`btn ${mode === 'SINGLE_BLEND' ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('SINGLE_BLEND'); setSelectedBlendFruits([]); }}>Single Blend</button>
+                            <button className={`btn ${mode === 'CURATED_BLEND' ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('CURATED_BLEND'); setSelectedBlendFruits([]); }}>Curated Blend</button>
                         </div>
 
-                        {/* Preview — fixed height so numpad doesn't shift */}
-                        <div className="quick-preview-container">
-                            {preview && (
-                                <div className={`quick-preview ${preview.error ? 'quick-preview-error' : 'quick-preview-ok'}`}>
-                                    {preview.error ? (
-                                        <span>❌ {preview.error}</span>
-                                    ) : (
-                                        <span>
-                                            {preview.label}
-                                            <span className="quick-preview-price">{formatCurrency(preview.product.price)}</span>
-                                        </span>
-                                    )}
+                        <div style={{ marginBottom: '12px' }}>
+                            {mode === 'SHOT'
+                                ? 'Tap a fruit to add its shot'
+                                : mode === 'SINGLE_BLEND'
+                                    ? 'Tap a fruit to add single blend'
+                                    : 'Select 2 fruits for curated blend'}
+                        </div>
+
+                        <div className="quick-fruit-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '8px' }}>
+                            {fruits.filter(f => f.active).map(fruit => {
+                                const isSelected = selectedBlendFruits.some(f => f.id === fruit.id);
+                                const eligible = mode === 'SHOT' ? fruit.eligibleForShot : fruit.eligibleForBlend;
+                                return (
+                                    <button
+                                        key={fruit.id}
+                                        className={`btn ${isSelected ? 'btn-primary' : 'btn-outline'}`}
+                                        disabled={!eligible}
+                                        onClick={() => {
+                                            if (mode === 'SHOT') addShot(fruit);
+                                            else if (mode === 'SINGLE_BLEND') addSingleBlend(fruit);
+                                            else toggleBlendSelection(fruit);
+                                        }}
+                                        style={{ whiteSpace: 'normal', minHeight: '48px', textAlign: 'center' }}
+                                    >
+                                        {fruit.name}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {mode === 'CURATED_BLEND' && (
+                            <div style={{ marginTop: '12px' }}>
+                                <strong>Selected:</strong> {selectedBlendFruits.map(f => f.name).join(' + ') || 'None'}
+                                <div style={{ marginTop: '8px' }}>
+                                    <button className="btn btn-outline" onClick={clearBlendSelection} disabled={selectedBlendFruits.length === 0}>Clear</button>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Numpad */}
-                        <div className="quick-numpad">
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                                <button key={n} className="quick-numpad-btn quick-numpad-digit" onClick={() => {
-                                    const val = (code + String(n)).slice(0, 3);
-                                    setCode(val);
-                                    setPreview(resolveCode(val));
-                                }}>
-                                    {n}
-                                </button>
-                            ))}
-                            <button className="quick-numpad-btn quick-numpad-clear" onClick={() => { setCode(''); setPreview(null); }}>
-                                C
-                            </button>
-                            <button className="quick-numpad-btn quick-numpad-digit" onClick={() => {
-                                const val = (code + '0').slice(0, 3);
-                                setCode(val);
-                                setPreview(resolveCode(val));
-                            }}>
-                                0
-                            </button>
-                            <button
-                                className="quick-numpad-btn quick-numpad-enter"
-                                onClick={addFromCode}
-                                disabled={!preview || !!preview.error}
-                            >
-                                Add ↵
-                            </button>
-                        </div>
+                            </div>
+                        )}
                     </div>
-
-                    {/* Hidden input for keyboard support */}
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        inputMode="none"
-                        className="quick-hidden-input"
-                        value={code}
-                        onChange={handleCodeChange}
-                        onKeyDown={handleKeyDown}
-                    />
                 </div>
 
-                {/* Fruit Codes Strip — landscape: single shared strip above center + right */}
-                <div className="quick-codes-landscape-grid">{fruitCodesStrip}</div>
 
                 {/* Center: Cart + Place Order */}
                 <div>
@@ -423,7 +392,7 @@ const QuickOrderPage = () => {
                         <h3 style={{ marginBottom: '12px' }}>🛒 Cart ({cart.length})</h3>
 
                         {cart.length === 0 ? (
-                            <p className="order-cart-empty">Enter codes to add items</p>
+                            <p className="order-cart-empty">Use Shot/Blend panels above to add items</p>
                         ) : (
                             <>
                                 {cart.map(item => (
