@@ -51,6 +51,11 @@ public class DataInitializer implements CommandLineRunner {
                                 "ALTER TABLE fruits ADD COLUMN IF NOT EXISTS eligible_for_blend BOOLEAN NOT NULL DEFAULT true");
                 jdbcTemplate.execute("UPDATE fruits SET eligible_for_blend = true WHERE eligible_for_blend IS NULL");
 
+                // Ensure the `eligible_for_shot` column exists in fruits table
+                jdbcTemplate.execute(
+                                "ALTER TABLE fruits ADD COLUMN IF NOT EXISTS eligible_for_shot BOOLEAN NOT NULL DEFAULT true");
+                jdbcTemplate.execute("UPDATE fruits SET eligible_for_shot = true WHERE eligible_for_shot IS NULL");
+
                 // Create default shop if none exists
                 if (shopRepository.count() == 0) {
                         Shop defaultShop = Shop.builder()
