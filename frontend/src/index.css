@@ -3396,7 +3396,7 @@ tr:last-child td {
 /* 3-column Quick Order grid */
 .quick-order-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1.5fr 1fr;
     gap: 12px;
     align-items: start;
     width: 100%;
@@ -3930,43 +3930,12 @@ tr:last-child td {
     }
 }
 
-/* Landscape: compact numpad so Add button fits on screen */
+/* Landscape: make cart wider for better accessibility */
 @media (orientation: landscape) {
-    .quick-order-grid>div:nth-child(1) {
-        grid-column: 1;
-        grid-row: 1 / span 2;
+    .quick-order-grid {
+        grid-template-columns: 1fr 2fr 1fr;
     }
-
-    .quick-codes-landscape-grid {
-        grid-column: 2 / -1;
-        grid-row: 1;
-        margin-bottom: 8px;
-    }
-
-    .quick-order-grid>div:nth-child(3) {
-        grid-column: 2;
-        grid-row: 2;
-    }
-
-    .quick-order-grid>div:nth-child(4) {
-        grid-column: 3;
-        grid-row: 2;
-    }
-
-    .quick-code-display {
-        padding: 6px 12px;
-        min-height: 44px;
-    }
-
-    .quick-code-digits {
-        font-size: 32px;
-        letter-spacing: 10px;
-    }
-
-    .quick-numpad {
-        gap: 5px;
-        margin-top: 6px;
-    }
+}
 
     .quick-numpad-btn {
         padding: 10px;

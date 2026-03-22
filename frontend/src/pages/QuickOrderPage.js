@@ -339,32 +339,32 @@ const QuickOrderPage = () => {
                 <div>
                     <div className="card quick-input-card">
                         <div className="quick-action-tabs" style={{ marginBottom: '12px', display: 'flex', gap: '8px' }}>
-                            <button className={`btn ${mode === 'SHOT' ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('SHOT'); setSelectedBlendFruits([]); }}>Shot</button>
-                            <button className={`btn ${mode === 'SINGLE_BLEND' ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('SINGLE_BLEND'); setSelectedBlendFruits([]); }}>Single Blend</button>
+                            <button className={`btn ${(mode === 'SHOT' || mode === 'SINGLE_BLEND') ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('SHOT'); setSelectedBlendFruits([]); }}>Single</button>
                             <button className={`btn ${mode === 'CURATED_BLEND' ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('CURATED_BLEND'); setSelectedBlendFruits([]); }}>Curated Blend</button>
                         </div>
 
                         <div style={{ marginBottom: '12px' }}>
-                            {mode === 'SHOT'
-                                ? 'Tap a fruit to add its shot'
-                                : mode === 'SINGLE_BLEND'
-                                    ? 'Tap a fruit to add single blend'
-                                    : 'Select 2 fruits for curated blend'}
+                            {(mode === 'SHOT' || mode === 'SINGLE_BLEND')
+                                ? 'Tap a fruit to add shot or single blend'
+                                : 'Select 2 fruits for curated blend'}
                         </div>
 
                         <div className="quick-fruit-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '8px' }}>
                             {fruits.filter(f => f.active).map(fruit => {
                                 const isSelected = selectedBlendFruits.some(f => f.id === fruit.id);
-                                const eligible = mode === 'SHOT' ? fruit.eligibleForShot : fruit.eligibleForBlend;
+                                const eligible = (mode === 'SHOT' || mode === 'SINGLE_BLEND') ? (fruit.eligibleForShot || fruit.eligibleForBlend) : fruit.eligibleForBlend;
                                 return (
                                     <button
                                         key={fruit.id}
                                         className={`btn ${isSelected ? 'btn-primary' : 'btn-outline'}`}
                                         disabled={!eligible}
                                         onClick={() => {
-                                            if (mode === 'SHOT') addShot(fruit);
-                                            else if (mode === 'SINGLE_BLEND') addSingleBlend(fruit);
-                                            else toggleBlendSelection(fruit);
+                                            if (mode === 'SHOT' || mode === 'SINGLE_BLEND') {
+                                                if (fruit.eligibleForShot) addShot(fruit);
+                                                else if (fruit.eligibleForBlend) addSingleBlend(fruit);
+                                            } else {
+                                                toggleBlendSelection(fruit);
+                                            }
                                         }}
                                         style={{ whiteSpace: 'normal', minHeight: '48px', textAlign: 'center' }}
                                     >
