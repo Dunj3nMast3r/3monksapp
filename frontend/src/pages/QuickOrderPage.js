@@ -17,7 +17,7 @@ const QuickOrderPage = () => {
     const { user } = useAuth();
     const [products, setProducts] = useState([]);
     const [fruits, setFruits] = useState([]);
-    const [mode, setMode] = useState('SHOT');
+    const [mode, setMode] = useState('SINGLE');
     const [selectedBlendFruits, setSelectedBlendFruits] = useState([]);
     const [cart, setCart] = useState([]);
     const [paymentMode, setPaymentMode] = useState('UPI');
@@ -339,40 +339,68 @@ const QuickOrderPage = () => {
                 <div>
                     <div className="card quick-input-card">
                         <div className="quick-action-tabs" style={{ marginBottom: '12px', display: 'flex', gap: '8px' }}>
-                            <button className={`btn ${(mode === 'SHOT' || mode === 'SINGLE_BLEND') ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('SHOT'); setSelectedBlendFruits([]); }}>Single</button>
+                            <button className={`btn ${(mode === 'SINGLE' || mode === 'CURATED_BLEND') ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('SINGLE'); setSelectedBlendFruits([]); }}>Single</button>
                             <button className={`btn ${mode === 'CURATED_BLEND' ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('CURATED_BLEND'); setSelectedBlendFruits([]); }}>Curated Blend</button>
                         </div>
 
                         <div style={{ marginBottom: '12px' }}>
-                            {(mode === 'SHOT' || mode === 'SINGLE_BLEND')
-                                ? 'Tap a fruit to add shot or single blend'
+                            {mode === 'SINGLE'
+                                ? 'Select from Shots or Single Blends below'
                                 : 'Select 2 fruits for curated blend'}
                         </div>
 
-                        <div className="quick-fruit-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '8px' }}>
-                            {fruits.filter(f => f.active).map(fruit => {
-                                const isSelected = selectedBlendFruits.some(f => f.id === fruit.id);
-                                const eligible = (mode === 'SHOT' || mode === 'SINGLE_BLEND') ? (fruit.eligibleForShot || fruit.eligibleForBlend) : fruit.eligibleForBlend;
-                                return (
-                                    <button
-                                        key={fruit.id}
-                                        className={`btn ${isSelected ? 'btn-primary' : 'btn-outline'}`}
-                                        disabled={!eligible}
-                                        onClick={() => {
-                                            if (mode === 'SHOT' || mode === 'SINGLE_BLEND') {
-                                                if (fruit.eligibleForShot) addShot(fruit);
-                                                else if (fruit.eligibleForBlend) addSingleBlend(fruit);
-                                            } else {
-                                                toggleBlendSelection(fruit);
-                                            }
-                                        }}
-                                        style={{ whiteSpace: 'normal', minHeight: '48px', textAlign: 'center' }}
-                                    >
-                                        {fruit.name}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        {mode === 'SINGLE' ? (
+                            <>
+                                <div style={{ marginBottom: '16px' }}>
+                                    <h4 style={{ marginBottom: '8px' }}>Shots</h4>
+                                    <div className="quick-fruit-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '8px' }}>
+                                        {fruits.filter(f => f.active && f.eligibleForShot).map(fruit => (
+                                            <button
+                                                key={fruit.id}
+                                                className="btn btn-outline"
+                                                onClick={() => addShot(fruit)}
+                                                style={{ whiteSpace: 'normal', minHeight: '48px', textAlign: 'center' }}
+                                            >
+                                                {fruit.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 style={{ marginBottom: '8px' }}>Single Blends</h4>
+                                    <div className="quick-fruit-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '8px' }}>
+                                        {fruits.filter(f => f.active && f.eligibleForBlend).map(fruit => (
+                                            <button
+                                                key={fruit.id}
+                                                className="btn btn-outline"
+                                                onClick={() => addSingleBlend(fruit)}
+                                                style={{ whiteSpace: 'normal', minHeight: '48px', textAlign: 'center' }}
+                                            >
+                                                {fruit.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="quick-fruit-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '8px' }}>
+                                {fruits.filter(f => f.active).map(fruit => {
+                                    const isSelected = selectedBlendFruits.some(f => f.id === fruit.id);
+                                    const eligible = fruit.eligibleForBlend;
+                                    return (
+                                        <button
+                                            key={fruit.id}
+                                            className={`btn ${isSelected ? 'btn-primary' : 'btn-outline'}`}
+                                            disabled={!eligible}
+                                            onClick={() => toggleBlendSelection(fruit)}
+                                            style={{ whiteSpace: 'normal', minHeight: '48px', textAlign: 'center' }}
+                                        >
+                                            {fruit.name}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
 
                         {mode === 'CURATED_BLEND' && (
                             <div style={{ marginTop: '12px' }}>
@@ -392,7 +420,7 @@ const QuickOrderPage = () => {
                         <h3 style={{ marginBottom: '12px' }}>🛒 Cart ({cart.length})</h3>
 
                         {cart.length === 0 ? (
-                            <p className="order-cart-empty">Use Shot/Blend panels above to add items</p>
+                            <p className="order-cart-empty">Use the panels above to add items</p>
                         ) : (
                             <>
                                 {cart.map(item => (
