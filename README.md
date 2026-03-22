@@ -6,7 +6,6 @@ Full-stack web application for managing a fruit shots and creamy blends business
 
 ## Quick Start
 
-
 ```bash
 docker-compose up --build
 ```
