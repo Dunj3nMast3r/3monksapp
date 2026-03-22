@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -32,6 +33,7 @@ public class DataInitializer implements CommandLineRunner {
         private final RawMaterialRepository rawMaterialRepository;
         private final RecipeRepository recipeRepository;
         private final PasswordEncoder passwordEncoder;
+        private final JdbcTemplate jdbcTemplate;
 
         @Value("${app.default-admin.username}")
         private String adminUsername;
@@ -44,6 +46,10 @@ public class DataInitializer implements CommandLineRunner {
 
         @Override
         public void run(String... args) {
+                // Ensure the `eligible_for_blend` column exists in fruits table
+                jdbcTemplate.execute("ALTER TABLE fruits ADD COLUMN IF NOT EXISTS eligible_for_blend BOOLEAN NOT NULL DEFAULT true");
+                jdbcTemplate.execute("UPDATE fruits SET eligible_for_blend = true WHERE eligible_for_blend IS NULL");
+
                 // Create default shop if none exists
                 if (shopRepository.count() == 0) {
                         Shop defaultShop = Shop.builder()
