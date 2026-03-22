@@ -27,6 +27,7 @@ docker-compose up --build
 - 🖨️ Thermal printer receipt support
 - 🏪 Multi-shop architecture
 - 🐳 Docker deployment
+- 🧩 Quick Order grid: 3-column layout (fruit panel, cart, queue) with seamless queue placement on the right side
 
 ## Documentation
 
