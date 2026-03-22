@@ -26,7 +26,17 @@ public class Fruit {
     private Integer shortCode;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean active = true;
+
+    // Eligibility for shots, blends, or both
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean eligibleForShot = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean eligibleForBlend = true;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

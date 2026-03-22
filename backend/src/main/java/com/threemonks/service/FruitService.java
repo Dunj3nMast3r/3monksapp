@@ -47,6 +47,8 @@ public class FruitService {
                 .imageUrl(request.getImageUrl())
                 .shortCode(maxCode + 1)
                 .active(true)
+                .eligibleForShot(request.getEligibleForShot() != null ? request.getEligibleForShot() : true)
+                .eligibleForBlend(request.getEligibleForBlend() != null ? request.getEligibleForBlend() : true)
                 .build();
         return toResponse(fruitRepository.save(fruit));
     }
@@ -56,6 +58,12 @@ public class FruitService {
         Fruit fruit = findFruitById(id);
         fruit.setName(request.getName());
         fruit.setImageUrl(request.getImageUrl());
+        if (request.getEligibleForShot() != null) {
+            fruit.setEligibleForShot(request.getEligibleForShot());
+        }
+        if (request.getEligibleForBlend() != null) {
+            fruit.setEligibleForBlend(request.getEligibleForBlend());
+        }
         return toResponse(fruitRepository.save(fruit));
     }
 
@@ -78,6 +86,8 @@ public class FruitService {
                 .imageUrl(fruit.getImageUrl())
                 .shortCode(fruit.getShortCode())
                 .active(fruit.getActive())
+                .eligibleForShot(fruit.getEligibleForShot())
+                .eligibleForBlend(fruit.getEligibleForBlend())
                 .build();
     }
 }

@@ -8,7 +8,7 @@ const FruitsPage = () => {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', description: '' });
+    const [form, setForm] = useState({ name: '', description: '', eligibleForShot: true, eligibleForBlend: true });
 
     useEffect(() => { fetchFruits(); }, []);
 
@@ -18,8 +18,17 @@ const FruitsPage = () => {
         finally { setLoading(false); }
     };
 
-    const openAdd = () => { setEditing(null); setForm({ name: '', description: '' }); setShowModal(true); };
-    const openEdit = (f) => { setEditing(f); setForm({ name: f.name, description: f.description || '' }); setShowModal(true); };
+    const openAdd = () => { setEditing(null); setForm({ name: '', description: '', eligibleForShot: true, eligibleForBlend: true }); setShowModal(true); };
+    const openEdit = (f) => {
+        setEditing(f);
+        setForm({
+            name: f.name,
+            description: f.description || '',
+            eligibleForShot: f.eligibleForShot ?? true,
+            eligibleForBlend: f.eligibleForBlend ?? true
+        });
+        setShowModal(true);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -41,11 +50,22 @@ const FruitsPage = () => {
             {loading ? <div className="loading"><div className="spinner"></div></div> : (
                 <div className="card"><div className="table-wrapper">
                     <table>
-                        <thead><tr><th>Name</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Shot</th>
+                                <th>Blend</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
                         <tbody>{fruits.map(f => (
                             <tr key={f.id}>
                                 <td style={{ fontWeight: 500 }}>{f.name}</td>
                                 <td>{f.description || '-'}</td>
+                                <td><span className={`badge ${f.eligibleForShot ? 'badge-success' : 'badge-danger'}`}>{f.eligibleForShot ? 'Yes' : 'No'}</span></td>
+                                <td><span className={`badge ${f.eligibleForBlend ? 'badge-success' : 'badge-danger'}`}>{f.eligibleForBlend ? 'Yes' : 'No'}</span></td>
                                 <td><span className={`badge ${f.active ? 'badge-success' : 'badge-danger'}`}>{f.active ? 'Active' : 'Inactive'}</span></td>
                                 <td style={{ display: 'flex', gap: '6px' }}>
                                     <button className="btn btn-sm btn-outline" onClick={() => openEdit(f)}>Edit</button>
@@ -60,6 +80,12 @@ const FruitsPage = () => {
                 <form onSubmit={handleSubmit}>
                     <div className="form-group"><label>Name *</label><input className="form-control" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
                     <div className="form-group"><label>Description</label><input className="form-control" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+                    <div className="form-group">
+                        <label><input type="checkbox" checked={form.eligibleForShot} onChange={e => setForm({ ...form, eligibleForShot: e.target.checked })} /> Eligible for Shot</label>
+                    </div>
+                    <div className="form-group">
+                        <label><input type="checkbox" checked={form.eligibleForBlend} onChange={e => setForm({ ...form, eligibleForBlend: e.target.checked })} /> Eligible for Blend</label>
+                    </div>
                     <div className="modal-actions"><button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button><button type="submit" className="btn btn-primary">Save</button></div>
                 </form>
             </Modal>
