@@ -3955,7 +3955,6 @@ tr:last-child td {
 .quick-input-card {
     margin-bottom: 8px;
 }
-}
 
 /* Mobile landscape with collapsed sidebar — show 3-column layout */
 @media (max-width: 768px) and (orientation: landscape) {
