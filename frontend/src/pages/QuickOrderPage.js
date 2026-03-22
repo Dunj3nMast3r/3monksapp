@@ -347,70 +347,71 @@ const QuickOrderPage = () => {
             <div className="quick-codes-portrait">{fruitCodesStrip}</div>
 
             <div className="quick-order-grid">
-                {/* Left: Fruit Buttons + Curated Blend */}
+                {/* Left: Numpad + Preview */}
                 <div>
+                    {/* Code Display + Preview */}
                     <div className="card quick-input-card">
-                        <div style={{ marginBottom: 12 }}>
-                            <strong>Shots</strong>
-                            <div className="quick-fruit-btns">
-                                {fruits.filter(f => f.eligibleForShot && f.active !== false).map(f => (
-                                    <button key={f.id} className="quick-fruit-btn" onClick={() => {
-                                        // Find a SHOT product for this fruit
-                                        const shotProduct = products.find(p => p.category === 'SHOT' && p.fruits?.some(fruit => fruit.id === f.id));
-                                        if (!shotProduct) return toast.error(`No shot for ${f.name}`);
-                                        setCart(c => [...c, {
-                                            cartKey: `${shotProduct.id}-${Date.now()}`,
-                                            productId: shotProduct.id,
-                                            productName: shotProduct.name,
-                                            unitPrice: shotProduct.price,
-                                            quantity: 1,
-                                            type: 'SHOT',
-                                            fruit: f,
-                                        }]);
-                                    }}>{f.name}</button>
-                                ))}
-                            </div>
+                        <div className="quick-code-display">
+                            <span className="quick-code-digits">{code || '—'}</span>
                         </div>
-                        <div style={{ marginBottom: 12 }}>
-                            <strong>Blends</strong>
-                            <div className="quick-fruit-btns">
-                                {fruits.filter(f => f.eligibleForBlend && f.active !== false).map(f => (
-                                    <button key={f.id} className={`quick-fruit-btn${selectedBlendFruits?.some(sel => sel.id === f.id) ? ' selected' : ''}`} onClick={() => {
-                                        // Select for curated blend
-                                        if (selectedBlendFruits?.some(sel => sel.id === f.id)) {
-                                            setSelectedBlendFruits(selectedBlendFruits.filter(sel => sel.id !== f.id));
-                                        } else if (selectedBlendFruits.length < 2) {
-                                            setSelectedBlendFruits([...selectedBlendFruits, f]);
-                                        }
-                                    }}>{f.name}</button>
-                                ))}
-                            </div>
-                            <button className="btn btn-primary" style={{ marginTop: 8 }} disabled={selectedBlendFruits.length !== 2} onClick={() => {
-                                if (selectedBlendFruits.length !== 2) return;
-                                // Find a CURATED_BLEND product with both fruits
-                                const [f1, f2] = selectedBlendFruits;
-                                const curatedProduct = products.find(p =>
-                                    p.category === 'CURATED_BLEND' &&
-                                    p.fruits?.some(f => f.id === f1.id) &&
-                                    p.fruits?.some(f => f.id === f2.id)
-                                );
-                                if (curatedProduct) {
-                                    setCart(c => [...c, {
-                                        cartKey: `${curatedProduct.id}-${Date.now()}`,
-                                        productId: curatedProduct.id,
-                                        productName: curatedProduct.name,
-                                        unitPrice: curatedProduct.price,
-                                        quantity: 1,
-                                        type: 'CURATED_BLEND',
-                                        fruits: [f1, f2],
-                                    }]);
-                                } else {
-                                    toast.error('No curated blend for this combination');
-                                }
-                                setSelectedBlendFruits([]);
-                            }}>Add Curated Blend</button>
+
+                        {/* Preview — fixed height so numpad doesn't shift */}
+                        <div className="quick-preview-container">
+                            {preview && (
+                                <div className={`quick-preview ${preview.error ? 'quick-preview-error' : 'quick-preview-ok'}`}>
+                                    {preview.error ? (
+                                        <span>❌ {preview.error}</span>
+                                    ) : (
+                                        <span>
+                                            {preview.label}
+                                            <span className="quick-preview-price">{formatCurrency(preview.product.price)}</span>
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Numpad */}
+                        <div className="quick-numpad">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                                <button key={n} className="quick-numpad-btn quick-numpad-digit" onClick={() => {
+                                    const val = (code + String(n)).slice(0, 3);
+                                    setCode(val);
+                                    setPreview(resolveCode(val));
+                                }}>
+                                    {n}
+                                </button>
+                            ))}
+                            <button className="quick-numpad-btn quick-numpad-clear" onClick={() => { setCode(''); setPreview(null); }}>
+                                C
+                            </button>
+                            <button className="quick-numpad-btn quick-numpad-digit" onClick={() => {
+                                const val = (code + '0').slice(0, 3);
+                                setCode(val);
+                                setPreview(resolveCode(val));
+                            }}>
+                                0
+                            </button>
+                            <button
+                                className="quick-numpad-btn quick-numpad-enter"
+                                onClick={addFromCode}
+                                disabled={!preview || !!preview.error}
+                            >
+                                Add ↵
+                            </button>
                         </div>
                     </div>
+
+                    {/* Hidden input for keyboard support */}
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        inputMode="none"
+                        className="quick-hidden-input"
+                        value={code}
+                        onChange={handleCodeChange}
+                        onKeyDown={handleKeyDown}
+                    />
                 </div>
 
                 {/* Fruit Codes Strip — landscape: single shared strip above center + right */}

@@ -11,6 +11,4 @@ public class FruitResponse {
     private String imageUrl;
     private Integer shortCode;
     private Boolean active;
-    private Boolean eligibleForShot;
-    private Boolean eligibleForBlend;
 }
