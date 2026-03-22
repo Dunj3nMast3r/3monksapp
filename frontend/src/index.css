@@ -3937,24 +3937,24 @@ tr:last-child td {
     }
 }
 
-    .quick-numpad-btn {
-        padding: 10px;
-        font-size: 18px;
-        border-radius: 10px;
-    }
+.quick-numpad-btn {
+    padding: 10px;
+    font-size: 18px;
+    border-radius: 10px;
+}
 
-    .quick-numpad-enter {
-        font-size: 13px;
-    }
+.quick-numpad-enter {
+    font-size: 13px;
+}
 
-    .quick-preview-container {
-        min-height: 38px;
-        margin-top: 6px;
-    }
+.quick-preview-container {
+    min-height: 38px;
+    margin-top: 6px;
+}
 
-    .quick-input-card {
-        margin-bottom: 8px;
-    }
+.quick-input-card {
+    margin-bottom: 8px;
+}
 }
 
 /* Mobile landscape with collapsed sidebar — show 3-column layout */
