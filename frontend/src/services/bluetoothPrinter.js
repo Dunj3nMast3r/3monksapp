@@ -328,9 +328,10 @@ export async function printReceipt(order) {
     // === ITEMS — normal weight, clean columns ===
     if (order.items) {
         for (const item of order.items) {
-            const name = item.productName.length > 18
-                ? item.productName.slice(0, 18)
-                : item.productName.padEnd(18);
+            const label = (item.customization || item.productName || '').toString();
+            const name = label.length > 18
+                ? label.slice(0, 18)
+                : label.padEnd(18);
             const qty = String(item.quantity).padStart(3);
             const amt = formatAmount(item.subtotal).padStart(10);
             parts.push(encode(`${name}${qty}${amt}`));
