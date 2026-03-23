@@ -56,7 +56,7 @@ const Receipt = React.forwardRef(({ order, shop }, ref) => {
                     <tbody>
                         {order.items?.map((item, i) => (
                             <tr key={i}>
-                                <td>{item.productName}</td>
+                                <td>{item.customization || item.productName}</td>
                                 <td className="text-center">{item.quantity}</td>
                                 <td className="text-right">{formatCurrency(item.subtotal)}</td>
                             </tr>

@@ -79,6 +79,7 @@ const QuickOrderPage = () => {
                 category: product.category,
                 unitPrice: product.price,
                 quantity: 1,
+                customization: customName || null,
             }]);
         }
     };
