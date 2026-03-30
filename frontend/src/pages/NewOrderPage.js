@@ -10,52 +10,174 @@ import {
     getPrinterName,
     connectPrinter,
     printReceipt,
+    printToken,
     disconnectPrinter,
 } from '../services/bluetoothPrinter';
 
 const NewOrderPage = () => {
     const { user } = useAuth();
     const [products, setProducts] = useState([]);
+    const [fruits, setFruits] = useState([]);
+    const [mode, setMode] = useState('BLEND');
+    const [selectedBlendFruits, setSelectedBlendFruits] = useState([]);
     const [cart, setCart] = useState([]);
-    const [paymentMode, setPaymentMode] = useState('CASH');
+    const [paymentMode, setPaymentMode] = useState('UPI');
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [loading, setLoading] = useState(false);
     const [order, setOrder] = useState(null);
-    const [filter, setFilter] = useState('ALL');
     const [btConnected, setBtConnected] = useState(false);
     const [btPrinting, setBtPrinting] = useState(false);
+    const [tokenPrinting, setTokenPrinting] = useState(false);
     const receiptRef = useRef();
 
     useEffect(() => {
-        publicService.getMenu()
-            .then(res => setProducts(res.data.data || []))
-            .catch(() => toast.error('Failed to load menu'));
+        Promise.all([
+            publicService.getMenu(),
+            publicService.getFruits(),
+        ]).then(([menuRes, fruitRes]) => {
+            setProducts(menuRes.data.data || []);
+            setFruits(fruitRes.data.data || []);
+        }).catch(() => toast.error('Failed to load menu'));
     }, []);
 
-    const addToCart = (product) => {
-        const existing = cart.find(item => item.productId === product.id);
+    const addCartItem = (product, customName) => {
+        if (!product) return;
+        const cartKey = customName ? `${product.id}-${customName}` : `${product.id}`;
+        const existing = cart.find(item => item.cartKey === cartKey);
+
         if (existing) {
-            setCart(cart.map(item =>
-                item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
-            ));
+            setCart(cart.map(item => item.cartKey === cartKey ? { ...item, quantity: item.quantity + 1 } : item));
         } else {
             setCart([...cart, {
+                cartKey,
                 productId: product.id,
-                productName: product.name,
+                productName: customName || product.name,
                 category: product.category,
                 unitPrice: product.price,
                 quantity: 1,
+                customization: customName || null,
             }]);
         }
     };
 
-    const updateQuantity = (productId, qty) => {
+    const addShot = (fruit) => {
+        if (!fruit || !fruit.eligibleForShot) {
+            toast.error('Fruit is not eligible for shots.');
+            return;
+        }
+        const shotProduct = products.find(p => p.category === 'SHOT' && p.fruits?.some(f => f.id === fruit.id));
+        if (!shotProduct) {
+            toast.error(`No shot product available for ${fruit.name}`);
+            return;
+        }
+        addCartItem(shotProduct);
+        toast.success(`Added shot: ${shotProduct.name}`);
+    };
+
+    const addSingleBlend = (fruit) => {
+        if (!fruit || !fruit.eligibleForBlend) {
+            toast.error('Fruit is not eligible for blends.');
+            return;
+        }
+        const blendProduct = products.find(p =>
+            p.category === 'CREAMY_BLEND' && p.fruits?.some(f => f.id === fruit.id)
+        );
+        if (!blendProduct) {
+            const fallback = products.find(p => p.category === 'CURATED_BLEND');
+            if (!fallback) {
+                toast.error('No blend products configured.');
+                return;
+            }
+            addCartItem(fallback, fruit.name);
+            toast.success(`Added custom blend: ${fruit.name}`);
+        } else {
+            addCartItem(blendProduct);
+            toast.success(`Added blend: ${blendProduct.name}`);
+        }
+    };
+
+    const toggleBlendSelection = (fruit) => {
+        if (!fruit || !fruit.eligibleForBlend) {
+            toast.error('Fruit is not eligible for blends.');
+            return;
+        }
+        setSelectedBlendFruits(prev => {
+            let newSelection;
+            if (prev.some(f => f.id === fruit.id)) {
+                newSelection = prev.filter(f => f.id !== fruit.id);
+            } else {
+                if (prev.length >= 2) return prev;
+                newSelection = [...prev, fruit];
+            }
+            if (mode === 'CURATED_BLEND' && newSelection.length === 2) {
+                addCuratedBlend(newSelection);
+            }
+            return newSelection;
+        });
+    };
+
+    const addCuratedBlend = (selectedFruits = selectedBlendFruits) => {
+        if (selectedFruits.length === 0) {
+            toast.error('Select at least one fruit for blend.');
+            return;
+        }
+
+        if (selectedFruits.length === 1) {
+            const [fruit1] = selectedFruits;
+            const creamyProduct = products.find(p =>
+                p.category === 'CREAMY_BLEND' && p.fruits?.some(f => f.id === fruit1.id)
+            );
+            if (creamyProduct) {
+                addCartItem(creamyProduct);
+                toast.success(`Added blend: ${creamyProduct.name}`);
+            } else {
+                const fallback = products.find(p => p.category === 'CURATED_BLEND');
+                if (!fallback) {
+                    toast.error('No blend products configured.');
+                    return;
+                }
+                addCartItem(fallback, fruit1.name);
+                toast.success(`Added custom blend: ${fruit1.name}`);
+            }
+            setSelectedBlendFruits([]);
+            return;
+        }
+
+        if (selectedFruits.length > 2) {
+            toast.error('Select up to two fruits for blend.');
+            return;
+        }
+
+        const [fruit1, fruit2] = selectedFruits;
+        const curatedProduct = products.find(p =>
+            p.category === 'CURATED_BLEND' &&
+            p.fruits?.some(f => f.id === fruit1.id) &&
+            p.fruits?.some(f => f.id === fruit2.id)
+        );
+
+        if (curatedProduct) {
+            addCartItem(curatedProduct);
+            toast.success(`Added blend: ${curatedProduct.name}`);
+        } else {
+            const fallback = products.find(p => p.category === 'CURATED_BLEND');
+            if (!fallback) {
+                toast.error('No curated blend products configured.');
+                return;
+            }
+            const customName = `${fruit1.name} + ${fruit2.name}`;
+            addCartItem(fallback, customName);
+            toast.success(`Added custom blend: ${customName}`);
+        }
+        setSelectedBlendFruits([]);
+    };
+
+    const updateQuantity = (cartKey, qty) => {
         if (qty <= 0) {
-            setCart(cart.filter(item => item.productId !== productId));
+            setCart(cart.filter(item => item.cartKey !== cartKey));
         } else {
             setCart(cart.map(item =>
-                item.productId === productId ? { ...item, quantity: qty } : item
+                item.cartKey === cartKey ? { ...item, quantity: qty } : item
             ));
         }
     };
@@ -63,18 +185,22 @@ const NewOrderPage = () => {
     const getTotal = () => cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
 
     const handleSubmit = async () => {
-        if (cart.length === 0) { toast.error('Add items to cart'); return; }
+        if (cart.length === 0) { toast.error('Add items first'); return; }
         setLoading(true);
         try {
             const res = await orderService.createOrder({
                 shopId: user.shopId,
-                items: cart.map(item => ({ productId: item.productId, quantity: item.quantity })),
+                items: cart.map(item => ({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    customization: item.customization,
+                })),
                 paymentMode,
                 customerName: customerName || undefined,
                 customerPhone: customerPhone || undefined,
             });
             setOrder(res.data.data);
-            toast.success('Order created successfully!');
+            toast.success('Order created!');
             setCart([]);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to create order');
@@ -83,21 +209,16 @@ const NewOrderPage = () => {
         }
     };
 
-    const handlePrint = () => {
-        // Fallback: system print dialog (if Bluetooth not connected)
-        window.print();
-    };
-
     const handleConnectPrinter = async () => {
         try {
             const result = await connectPrinter();
             setBtConnected(true);
             toast.success(result.reconnected
                 ? `Reconnected to ${result.name}`
-                : `Connected to ${result.name}! Tap 🖨️ to print instantly.`
+                : `Connected to ${result.name}!`
             );
         } catch (e) {
-            if (e.name === 'NotFoundError') return; // User cancelled picker
+            if (e.name === 'NotFoundError') return;
             toast.error(e.message || 'Failed to connect printer');
         }
     };
@@ -116,114 +237,21 @@ const NewOrderPage = () => {
         }
     };
 
-    const buildReceiptLines = () => {
-        const lines = [];
-        lines.push('');
-        lines.push('          3 M O N K S           ');
-        lines.push('  Real Fruit | No Artificial    ');
-        lines.push('');
-        if (order.shopName) lines.push(`  ${order.shopName}`);
-        lines.push('--------------------------------');
-        if (order.tokenNumber) {
-            lines.push(`      ** TOKEN #${order.tokenNumber} **`);
-            lines.push('--------------------------------');
-        }
-        lines.push(`Order  : ${order.orderNumber}`);
-        const dateStr = new Date(order.orderDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-        lines.push(`Date   : ${dateStr}`);
-        if (order.customerName) lines.push(`Customer: ${order.customerName}`);
-        lines.push('--------------------------------');
-        lines.push('Item              Qty      Amt');
-        lines.push('--------------------------------');
-        order.items?.forEach(item => {
-            const name = item.productName.length > 18
-                ? item.productName.slice(0, 18)
-                : item.productName.padEnd(18);
-            const qty = String(item.quantity).padStart(3);
-            const amt = formatCurrency(item.subtotal).padStart(10);
-            lines.push(`${name}${qty}${amt}`);
-        });
-        lines.push('--------------------------------');
-        const totalAmt = formatCurrency(order.totalAmount);
-        const totalPad = 32 - 5 - totalAmt.length;
-        lines.push(`TOTAL${' '.repeat(Math.max(1, totalPad))}${totalAmt}`);
-        lines.push(`Paid by${' '.repeat(Math.max(1, 32 - 7 - order.paymentMode.length))}${order.paymentMode}`);
-        lines.push('--------------------------------');
-        lines.push(' Thank you for visiting 3Monks! ');
-        lines.push('');
-        return lines;
-    };
-
-    const handleShare = async () => {
+    const handleTokenPrint = async () => {
         if (!order) return;
-
-        const lines = buildReceiptLines();
-        const receiptText = lines.join('\n');
-
-        if (navigator.share) {
-            try {
-                // Generate a high-quality receipt image (2x scale for sharpness)
-                const scale = 2;
-                const fontSize = 16 * scale;
-                const lineHeight = 22 * scale;
-                const paddingX = 16 * scale;
-                const paddingY = 20 * scale;
-                const canvasWidth = 576; // 80mm at 183 DPI ≈ 576px (standard thermal width)
-
-                const canvas = document.createElement('canvas');
-                canvas.width = canvasWidth;
-                canvas.height = (lines.length * lineHeight) + (paddingY * 2);
-                const ctx = canvas.getContext('2d');
-
-                // White background
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // Bold black monospace text
-                ctx.fillStyle = '#000000';
-                ctx.font = `${fontSize}px "Courier New", "Courier", monospace`;
-                ctx.textBaseline = 'top';
-
-                lines.forEach((line, i) => {
-                    ctx.fillText(line, paddingX, paddingY + (i * lineHeight));
-                });
-
-                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-                const file = new File([blob], `receipt-${order.orderNumber}.png`, { type: 'image/png' });
-
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        title: `Receipt ${order.orderNumber}`,
-                        files: [file],
-                    });
-                    toast.success('Receipt shared');
-                    return;
-                }
-            } catch (e) {
-                if (e.name === 'AbortError') return;
-            }
-
-            // Fallback: share as text
-            try {
-                await navigator.share({ title: `Receipt ${order.orderNumber}`, text: receiptText });
-                toast.success('Receipt shared');
-                return;
-            } catch (e) {
-                if (e.name === 'AbortError') return;
-            }
-        }
-
-        // Final fallback: copy to clipboard
+        setTokenPrinting(true);
         try {
-            await navigator.clipboard.writeText(receiptText);
-            toast.success('Receipt copied to clipboard');
-        } catch {
-            toast.error('Could not share receipt');
+            await printToken(order);
+            toast.success('Token printed!');
+        } catch (e) {
+            setBtConnected(false);
+            toast.error(e.message || 'Token print failed');
+        } finally {
+            setTokenPrinting(false);
         }
     };
 
-    const filteredProducts = filter === 'ALL' ? products : products.filter(p => p.category === filter);
-
+    // === ORDER CONFIRMED VIEW ===
     if (order) {
         const btAvailable = isBluetoothAvailable();
         const printerReady = btConnected && isPrinterConnected();
@@ -231,113 +259,150 @@ const NewOrderPage = () => {
 
         return (
             <div>
-                <div className="page-header">
-                    <h1>Order Confirmed! ✅</h1>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        {btAvailable && (
-                            printerReady ? (
-                                <button
-                                    className="btn btn-primary"
-                                    onClick={handleBluetoothPrint}
-                                    disabled={btPrinting}
-                                    style={{ minWidth: '120px' }}
-                                >
-                                    {btPrinting ? '⏳ Printing...' : '🖨️ Print'}
+                <div className="page-header"><h1>Order Confirmed! ✅</h1></div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '16px' }}>
+                    <button className="btn btn-primary" onClick={() => { setOrder(null); setCustomerName(''); setCustomerPhone(''); }}>
+                        ➕ New Order
+                    </button>
+                    {btAvailable && (
+                        printerReady ? (
+                            <>
+                                <button className="btn btn-outline" onClick={handleTokenPrint} disabled={tokenPrinting}
+                                    style={{ minWidth: '120px' }}>
+                                    {tokenPrinting ? '⏳ Printing...' : '🎫 Print Token'}
                                 </button>
-                            ) : (
-                                <button className="btn btn-primary" onClick={handleConnectPrinter}>
+                                <button className="btn btn-outline" onClick={handleBluetoothPrint} disabled={btPrinting}
+                                    style={{ minWidth: '120px' }}>
+                                    {btPrinting ? '⏳ Printing...' : '🖨️ Print Receipt'}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button className="btn btn-outline" disabled style={{ minWidth: '120px', opacity: 0.5 }}>
+                                    🎫 Print Token
+                                </button>
+                                <button className="btn btn-outline" disabled style={{ minWidth: '120px', opacity: 0.5 }}>
+                                    🖨️ Print Receipt
+                                </button>
+                                <button className="btn btn-outline" onClick={handleConnectPrinter}>
                                     🔗 Connect Printer
                                 </button>
-                            )
-                        )}
-                        <button className="btn btn-outline" onClick={handlePrint}>🖨️ System Print</button>
-                        <button className="btn btn-outline" onClick={handleShare}>📤 Share</button>
-                        <button className="btn btn-outline" onClick={() => { setOrder(null); setCustomerName(''); setCustomerPhone(''); }}>New Order</button>
-                    </div>
+                            </>
+                        )
+                    )}
                 </div>
                 {printerReady && printerName && (
                     <div style={{
-                        background: 'rgba(76,175,80,0.1)',
-                        border: '1px solid rgba(76,175,80,0.3)',
-                        borderRadius: '8px',
-                        padding: '8px 16px',
-                        marginBottom: '16px',
-                        fontSize: '13px',
-                        color: '#4caf50',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
+                        background: 'rgba(76,175,80,0.1)', border: '1px solid rgba(76,175,80,0.3)',
+                        borderRadius: '8px', padding: '8px 16px', marginBottom: '16px', fontSize: '13px',
+                        color: '#4caf50', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     }}>
                         <span>✅ Connected: <strong>{printerName}</strong></span>
-                        <button
-                            onClick={() => { disconnectPrinter(); setBtConnected(false); }}
-                            style={{ background: 'none', border: 'none', color: '#f44336', cursor: 'pointer', fontSize: '12px' }}
-                        >
+                        <button onClick={() => { disconnectPrinter(); setBtConnected(false); }}
+                            style={{ background: 'none', border: 'none', color: '#f44336', cursor: 'pointer', fontSize: '12px' }}>
                             Disconnect
                         </button>
                     </div>
                 )}
-                <div className="card">
-                    <Receipt ref={receiptRef} order={order} />
-                </div>
+                <div className="card"><Receipt ref={receiptRef} order={order} /></div>
             </div>
         );
     }
 
+    // === ORDER FORM VIEW ===
     return (
-        <div>
-            <div className="page-header"><h1>New Order</h1></div>
-
-            <div className="grid-2">
-                {/* Menu Section */}
+        <div className="quick-order-page">
+            <div className="new-order-grid">
+                {/* Left: Fruit-based selector */}
                 <div>
-                    <div className="order-filter-bar">
-                        {['ALL', 'CREAMY_BLEND', 'CURATED_BLEND', 'SHOT'].map(f => (
-                            <button key={f} className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter(f)}>
-                                {f === 'ALL' ? 'All' : f === 'CREAMY_BLEND' ? '🍹 Creamy' : f === 'CURATED_BLEND' ? '🍸 Curated' : '🍊 Shots'}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="order-product-grid">
-                        {filteredProducts.map(product => (
-                            <div key={product.id} className="card order-product-card" onClick={() => addToCart(product)}>
-                                <span className="badge badge-info" style={{ marginBottom: '8px' }}>{product.category.replace(/_/g, ' ')}</span>
-                                <h4>{product.name}</h4>
-                                <div className="order-product-price">{formatCurrency(product.price)}</div>
-                                {product.fruits?.length > 0 && (
-                                    <div className="order-product-fruits">
-                                        {product.fruits.map(f => f.name).join(', ')}
-                                    </div>
-                                )}
+                    <div className="card quick-input-card">
+                        <div className="quick-action-tabs" style={{ marginBottom: '12px', display: 'flex', gap: '8px' }}>
+                            <button className={`btn ${mode === 'BLEND' ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('BLEND'); setSelectedBlendFruits([]); }}>Blends</button>
+                            <button className={`btn ${mode === 'CURATED_BLEND' ? 'btn-primary' : 'btn-outline'}`} onClick={() => { setMode('CURATED_BLEND'); setSelectedBlendFruits([]); }}>Curated Blend</button>
+                        </div>
+
+                        {mode === 'BLEND' ? (
+                            <div style={{ marginBottom: '16px' }}>
+                                <h4 style={{ marginBottom: '8px' }}>Single Blends</h4>
+                                <div className="quick-fruit-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '8px' }}>
+                                    {fruits.filter(f => f.active && f.eligibleForBlend).map(fruit => (
+                                        <button
+                                            key={fruit.id}
+                                            className="btn btn-outline"
+                                            onClick={() => addSingleBlend(fruit)}
+                                            style={{ whiteSpace: 'normal', minHeight: '48px', textAlign: 'center' }}
+                                        >
+                                            {fruit.name}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        ))}
+                        ) : (
+                            <>
+                                <div style={{ marginBottom: '12px' }}>
+                                    <strong>Selected:</strong> {selectedBlendFruits.map(f => f.name).join(' + ') || 'None'}
+                                </div>
+                                <div className="quick-fruit-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '8px' }}>
+                                    {fruits.filter(f => f.active).map(fruit => {
+                                        const isSelected = selectedBlendFruits.some(f => f.id === fruit.id);
+                                        const eligible = fruit.eligibleForBlend;
+                                        return (
+                                            <button
+                                                key={fruit.id}
+                                                className={`btn ${isSelected ? 'btn-primary' : 'btn-outline'}`}
+                                                disabled={!eligible}
+                                                onClick={() => toggleBlendSelection(fruit)}
+                                                style={{ whiteSpace: 'normal', minHeight: '48px', textAlign: 'center' }}
+                                            >
+                                                {fruit.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
+
+                        <div>
+                            <h4 style={{ marginBottom: '8px' }}>Shots</h4>
+                            <div className="quick-fruit-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '8px' }}>
+                                {fruits.filter(f => f.active && f.eligibleForShot).map(fruit => (
+                                    <button
+                                        key={fruit.id}
+                                        className="btn btn-outline"
+                                        onClick={() => addShot(fruit)}
+                                        style={{ whiteSpace: 'normal', minHeight: '48px', textAlign: 'center' }}
+                                    >
+                                        {fruit.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                {/* Cart Section */}
+                {/* Right: Cart + Place Order */}
                 <div>
                     <div className="card">
-                        <h3 style={{ marginBottom: '16px' }}>🛒 Cart ({cart.length} items)</h3>
+                        <h3 style={{ marginBottom: '12px' }}>🛒 Cart ({cart.length})</h3>
 
                         {cart.length === 0 ? (
-                            <p className="order-cart-empty">Tap products to add to cart</p>
+                            <p className="order-cart-empty">Use the panels to add items</p>
                         ) : (
                             <>
                                 {cart.map(item => (
-                                    <div key={item.productId} className="order-cart-item">
+                                    <div key={item.cartKey} className="order-cart-item">
                                         <div>
                                             <div style={{ fontWeight: 500 }}>{item.productName}</div>
                                             <div className="order-cart-item-price">{formatCurrency(item.unitPrice)} each</div>
                                         </div>
                                         <div className="order-cart-item-controls">
-                                            <button className="btn btn-sm btn-outline" onClick={() => updateQuantity(item.productId, item.quantity - 1)}>-</button>
+                                            <button className="btn btn-sm btn-outline" onClick={() => updateQuantity(item.cartKey, item.quantity - 1)}>-</button>
                                             <span className="order-cart-item-qty">{item.quantity}</span>
-                                            <button className="btn btn-sm btn-outline" onClick={() => updateQuantity(item.productId, item.quantity + 1)}>+</button>
+                                            <button className="btn btn-sm btn-outline" onClick={() => updateQuantity(item.cartKey, item.quantity + 1)}>+</button>
                                             <span className="order-cart-item-total">{formatCurrency(item.unitPrice * item.quantity)}</span>
                                         </div>
                                     </div>
                                 ))}
-
                                 <div className="order-cart-total">
                                     <span>Total</span>
                                     <span style={{ color: 'var(--primary)' }}>{formatCurrency(getTotal())}</span>
@@ -346,16 +411,15 @@ const NewOrderPage = () => {
                         )}
 
                         <div className="order-cart-form">
-                            <div className="form-group">
-                                <label>Customer Name (optional)</label>
-                                <input className="form-control" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <div className="form-group" style={{ flex: 1, marginBottom: '8px' }}>
+                                    <input className="form-control" placeholder="Name (optional)" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+                                </div>
+                                <div className="form-group" style={{ flex: 1, marginBottom: '8px' }}>
+                                    <input className="form-control" placeholder="Phone (optional)" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
+                                </div>
                             </div>
-                            <div className="form-group">
-                                <label>Customer Phone (optional)</label>
-                                <input className="form-control" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
-                            </div>
-                            <div className="form-group">
-                                <label>Payment Mode</label>
+                            <div className="form-group" style={{ marginBottom: '8px' }}>
                                 <div className="order-payment-modes">
                                     {['CASH', 'UPI'].map(mode => (
                                         <button key={mode} className={`btn ${paymentMode === mode ? 'btn-primary' : 'btn-outline'} order-payment-btn`}
@@ -365,7 +429,6 @@ const NewOrderPage = () => {
                                     ))}
                                 </div>
                             </div>
-
                             <button className="btn btn-primary btn-lg order-submit-btn"
                                 onClick={handleSubmit} disabled={cart.length === 0 || loading}>
                                 {loading ? 'Processing...' : `Place Order • ${formatCurrency(getTotal())}`}

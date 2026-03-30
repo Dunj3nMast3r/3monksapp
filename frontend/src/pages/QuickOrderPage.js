@@ -10,6 +10,7 @@ import {
     getPrinterName,
     connectPrinter,
     printReceipt as btPrintReceipt,
+    printToken as btPrintToken,
     disconnectPrinter,
 } from '../services/bluetoothPrinter';
 
@@ -27,6 +28,7 @@ const QuickOrderPage = () => {
     const [order, setOrder] = useState(null);
     const [btConnected, setBtConnected] = useState(false);
     const [btPrinting, setBtPrinting] = useState(false);
+    const [tokenPrinting, setTokenPrinting] = useState(false);
     const [pendingOrders, setPendingOrders] = useState([]);
     const [completing, setCompleting] = useState(null);
     const receiptRef = useRef();
@@ -268,19 +270,17 @@ const QuickOrderPage = () => {
         }
     };
 
-    const handleShare = async () => {
+    const handleTokenPrint = async () => {
         if (!order) return;
-        const text = `3Monks Receipt\nOrder: ${order.orderNumber}\nToken: #${order.tokenNumber}\nTotal: ${formatCurrency(order.totalAmount)}\nPayment: ${order.paymentMode}`;
+        setTokenPrinting(true);
         try {
-            if (navigator.share) {
-                await navigator.share({ title: `Receipt ${order.orderNumber}`, text });
-                toast.success('Shared');
-            } else {
-                await navigator.clipboard.writeText(text);
-                toast.success('Copied to clipboard');
-            }
+            await btPrintToken(order);
+            toast.success('Token printed!');
         } catch (e) {
-            if (e.name !== 'AbortError') toast.error('Share failed');
+            setBtConnected(false);
+            toast.error(e.message || 'Token print failed');
+        } finally {
+            setTokenPrinting(false);
         }
     };
 
@@ -292,23 +292,35 @@ const QuickOrderPage = () => {
 
         return (
             <div>
-                <div className="page-header">
-                    <h1>Order Confirmed! ✅</h1>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        {btAvailable && (
-                            printerReady ? (
-                                <button className="btn btn-primary" onClick={handleBluetoothPrint} disabled={btPrinting}
+                <div className="page-header"><h1>Order Confirmed! ✅</h1></div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '16px' }}>
+                    <button className="btn btn-primary" onClick={() => { setOrder(null); setCustomerName(''); setCustomerPhone(''); }}>
+                        ➕ New Order
+                    </button>
+                    {btAvailable && (
+                        printerReady ? (
+                            <>
+                                <button className="btn btn-outline" onClick={handleTokenPrint} disabled={tokenPrinting}
                                     style={{ minWidth: '120px' }}>
-                                    {btPrinting ? '⏳ Printing...' : '🖨️ Print'}
+                                    {tokenPrinting ? '⏳ Printing...' : '🎫 Print Token'}
                                 </button>
-                            ) : (
-                                <button className="btn btn-primary" onClick={handleConnectPrinter}>🔗 Connect Printer</button>
-                            )
-                        )}
-                        <button className="btn btn-outline" onClick={handlePrint}>🖨️ System Print</button>
-                        <button className="btn btn-outline" onClick={handleShare}>📤 Share</button>
-                        <button className="btn btn-outline" onClick={() => { setOrder(null); setCustomerName(''); setCustomerPhone(''); }}>New Order</button>
-                    </div>
+                                <button className="btn btn-outline" onClick={handleBluetoothPrint} disabled={btPrinting}
+                                    style={{ minWidth: '120px' }}>
+                                    {btPrinting ? '⏳ Printing...' : '🖨️ Print Receipt'}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button className="btn btn-outline" disabled style={{ minWidth: '120px', opacity: 0.5 }}>
+                                    🎫 Print Token
+                                </button>
+                                <button className="btn btn-outline" disabled style={{ minWidth: '120px', opacity: 0.5 }}>
+                                    🖨️ Print Receipt
+                                </button>
+                                <button className="btn btn-outline" onClick={handleConnectPrinter}>🔗 Connect Printer</button>
+                            </>
+                        )
+                    )}
                 </div>
                 {printerReady && printerName && (
                     <div style={{

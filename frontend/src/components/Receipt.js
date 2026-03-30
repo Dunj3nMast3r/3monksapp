@@ -81,13 +81,9 @@ const Receipt = React.forwardRef(({ order, shop }, ref) => {
                 </table>
             </div>
 
-            {/* Footer + QR */}
+            {/* Footer */}
             <div className="receipt-footer">
                 <p>Thank you for visiting 3Monks!</p>
-                <div className="receipt-qr">
-                    <img src="/review-qr.png" alt="Review us on Google" className="receipt-qr-img" />
-                    <p className="receipt-qr-label">Scan to review us on Google</p>
-                </div>
             </div>
         </div>
     );

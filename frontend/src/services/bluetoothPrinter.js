@@ -368,33 +368,6 @@ export async function printReceipt(order) {
     parts.push(new Uint8Array([LF]));
     parts.push(new Uint8Array([LF]));
 
-    // === QR CODE — Google Review ===
-    // Using ESC/POS GS ( k commands for QR code
-    const qrUrl = 'https://search.google.com/local/writereview?placeid=ChIJs1eFOgC7wjsR3xyEexP6Uiw';
-    const qrData = encode(qrUrl);
-    const qrDataLen = qrData.length;
-
-    // GS ( k - Select QR model 2
-    parts.push(new Uint8Array([GS, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00]));
-    // GS ( k - Set QR size (module size = 4 dots)
-    parts.push(new Uint8Array([GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x04]));
-    // GS ( k - Set error correction level M (15%)
-    parts.push(new Uint8Array([GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x31]));
-    // GS ( k - Store QR data
-    const storeLen = qrDataLen + 3;
-    const pL = storeLen & 0xFF;
-    const pH = (storeLen >> 8) & 0xFF;
-    parts.push(concat(
-        [GS, 0x28, 0x6B, pL, pH, 0x31, 0x50, 0x30],
-        qrData
-    ));
-    // GS ( k - Print QR code
-    parts.push(new Uint8Array([GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30]));
-
-    parts.push(new Uint8Array([LF]));
-    parts.push(encode('Scan to review us'));
-    parts.push(new Uint8Array([LF]));
-
     // Feed paper and cut
     parts.push(new Uint8Array(CMD.FEED_3));
     parts.push(new Uint8Array(CMD.CUT));
@@ -402,4 +375,81 @@ export async function printReceipt(order) {
     // Combine and send
     const receipt = concat(...parts);
     await writeData(receipt);
+}
+
+/**
+ * Print only the token number slip via ESC/POS.
+ * @param {Object} order - The order object (needs tokenNumber, orderNumber, items, shopName)
+ */
+export async function printToken(order) {
+    if (!isPrinterConnected()) {
+        const reconnected = await reconnectPrinter();
+        if (!reconnected) {
+            throw new Error('Printer not connected. Tap "Connect Printer" first.');
+        }
+    }
+
+    const parts = [];
+    const LINE = '--------------------------------';
+
+    parts.push(new Uint8Array(CMD.INIT));
+
+    // Header
+    parts.push(new Uint8Array(CMD.CENTER));
+    parts.push(new Uint8Array([LF]));
+    parts.push(new Uint8Array(CMD.BOLD_ON));
+    parts.push(new Uint8Array(CMD.DOUBLE_SIZE));
+    parts.push(encode('3Monks'));
+    parts.push(new Uint8Array([LF]));
+    parts.push(new Uint8Array(CMD.NORMAL_SIZE));
+    parts.push(new Uint8Array(CMD.BOLD_OFF));
+
+    if (order.shopName) {
+        parts.push(encode(order.shopName));
+        parts.push(new Uint8Array([LF]));
+    }
+
+    parts.push(encode(LINE));
+    parts.push(new Uint8Array([LF]));
+
+    // Large token number
+    if (order.tokenNumber) {
+        parts.push(new Uint8Array(CMD.CENTER));
+        parts.push(new Uint8Array(CMD.BOLD_ON));
+        parts.push(new Uint8Array(CMD.DOUBLE_SIZE));
+        parts.push(encode(`Token #${order.tokenNumber}`));
+        parts.push(new Uint8Array([LF]));
+        parts.push(new Uint8Array(CMD.NORMAL_SIZE));
+        parts.push(new Uint8Array(CMD.BOLD_OFF));
+    }
+
+    parts.push(encode(LINE));
+    parts.push(new Uint8Array([LF]));
+
+    // Items summary
+    parts.push(new Uint8Array(CMD.LEFT));
+    if (order.items) {
+        for (const item of order.items) {
+            const label = (item.customization || item.productName || '').toString();
+            const name = label.length > 24 ? label.slice(0, 24) : label;
+            parts.push(encode(`${item.quantity}x ${name}`));
+            parts.push(new Uint8Array([LF]));
+        }
+    }
+
+    parts.push(encode(LINE));
+    parts.push(new Uint8Array([LF]));
+
+    // Date/time
+    parts.push(new Uint8Array(CMD.CENTER));
+    const dateStr = new Date(order.orderDate)
+        .toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
+    parts.push(encode(dateStr));
+    parts.push(new Uint8Array([LF]));
+
+    parts.push(new Uint8Array(CMD.FEED_3));
+    parts.push(new Uint8Array(CMD.CUT));
+
+    const token = concat(...parts);
+    await writeData(token);
 }

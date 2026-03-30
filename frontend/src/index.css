@@ -3402,6 +3402,15 @@ tr:last-child td {
     width: 100%;
 }
 
+/* 2-column New Order grid (no queue) */
+.new-order-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+    width: 100%;
+}
+
 .quick-order-grid>div {
     min-width: 0;
     display: flex;
@@ -3893,7 +3902,9 @@ tr:last-child td {
 
 /* Quick Order responsive styles */
 @media (max-width: 768px) {
-    .quick-order-grid {
+
+    .quick-order-grid,
+    .new-order-grid {
         grid-template-columns: 1fr;
     }
 
@@ -3934,6 +3945,10 @@ tr:last-child td {
 @media (orientation: landscape) {
     .quick-order-grid {
         grid-template-columns: 1fr 2fr 1fr;
+    }
+
+    .new-order-grid {
+        grid-template-columns: 1fr 1fr;
     }
 }
 
