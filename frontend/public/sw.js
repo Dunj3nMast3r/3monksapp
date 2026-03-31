@@ -1,4 +1,4 @@
-const CACHE_NAME = 'threemonks-v1';
+const CACHE_NAME = 'threemonks-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to pre-cache on install
@@ -58,22 +58,26 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Static assets (JS, CSS, images, fonts): Cache-first
+    // Static assets (JS, CSS, images, fonts): Network-first with cache fallback
+    // CRA hashed filenames change on every build, so network-first ensures fresh content
     if (
         url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|gif|woff|woff2|ttf)$/) ||
         url.pathname.startsWith('/static/')
     ) {
         event.respondWith(
-            caches.match(request).then((cached) => {
-                if (cached) return cached;
-                return fetch(request).then((response) => {
+            fetch(request)
+                .then((response) => {
                     if (response.ok) {
                         const clone = response.clone();
                         caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
                     }
                     return response;
-                });
-            })
+                })
+                .catch(() => {
+                    return caches.match(request).then((cached) => {
+                        return cached || new Response('', { status: 503 });
+                    });
+                })
         );
         return;
     }

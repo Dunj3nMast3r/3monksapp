@@ -3405,13 +3405,14 @@ tr:last-child td {
 /* 2-column New Order grid (no queue) */
 .new-order-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1.5fr;
     gap: 12px;
     align-items: start;
     width: 100%;
 }
 
-.quick-order-grid>div {
+.quick-order-grid>div,
+.new-order-grid>div {
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -3948,7 +3949,7 @@ tr:last-child td {
     }
 
     .new-order-grid {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 2fr;
     }
 }
 
