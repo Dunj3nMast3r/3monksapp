@@ -14,7 +14,6 @@ public class StockResponse {
     private Long rawMaterialId;
     private String rawMaterialName;
     private String unitType;
-    private BigDecimal openingStock;
     private BigDecimal quantity;
     private BigDecimal minimumThreshold;
     private Boolean lowStock;

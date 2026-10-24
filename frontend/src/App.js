@@ -22,7 +22,6 @@ import FruitsPage from './pages/FruitsPage';
 import RawMaterialsPage from './pages/RawMaterialsPage';
 import UsersPage from './pages/UsersPage';
 import EmployeesPage from './pages/EmployeesPage';
-import RecipesPage from './pages/RecipesPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import FeedbacksPage from './pages/FeedbacksPage';
 import FranchiseEnquiriesPage from './pages/FranchiseEnquiriesPage';
@@ -79,9 +78,6 @@ function App() {
                         } />
                         <Route path="employees" element={
                             <ProtectedRoute roles={['SUPER_ADMIN']}><EmployeesPage /></ProtectedRoute>
-                        } />
-                        <Route path="recipes" element={
-                            <ProtectedRoute roles={['SUPER_ADMIN']}><RecipesPage /></ProtectedRoute>
                         } />
                         <Route path="analytics" element={
                             <ProtectedRoute roles={['SUPER_ADMIN']}><AnalyticsPage /></ProtectedRoute>

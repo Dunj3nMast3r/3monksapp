@@ -67,7 +67,6 @@ const Sidebar = ({ isOpen, onClose, collapsed }) => {
                             <NavLink to="/dashboard/shops" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiMapPin /> Shops</NavLink>
                             <NavLink to="/dashboard/products" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiBox /> Products</NavLink>
                             <NavLink to="/dashboard/fruits" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiPackage /> Fruits</NavLink>
-                            <NavLink to="/dashboard/recipes" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiList /> Recipes</NavLink>
                             <NavLink to="/dashboard/raw-materials" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiPackage /> Raw Materials</NavLink>
                             <NavLink to="/dashboard/employees" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiUserCheck /> Employees</NavLink>
                             <NavLink to="/dashboard/users" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiUsers /> Users</NavLink>

@@ -29,7 +29,6 @@ public class AdminController {
     private final ProductService productService;
     private final RawMaterialService rawMaterialService;
     private final AuthService authService;
-    private final RecipeService recipeService;
     private final EmployeeService employeeService;
     private final StockService stockService;
     private final FeedbackRepository feedbackRepository;
@@ -157,34 +156,6 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> toggleRawMaterial(@PathVariable Long id) {
         rawMaterialService.toggleRawMaterialStatus(id);
         return ResponseEntity.ok(ApiResponse.success("Raw material status toggled", null));
-    }
-
-    // Recipe management
-    @GetMapping("/recipes")
-    public ResponseEntity<ApiResponse<List<RecipeResponse>>> getAllRecipes() {
-        return ResponseEntity.ok(ApiResponse.success(recipeService.getAllRecipes()));
-    }
-
-    @GetMapping("/recipes/product/{productId}")
-    public ResponseEntity<ApiResponse<List<RecipeResponse>>> getRecipesByProduct(@PathVariable Long productId) {
-        return ResponseEntity.ok(ApiResponse.success(recipeService.getRecipesByProduct(productId)));
-    }
-
-    @PostMapping("/recipes")
-    public ResponseEntity<ApiResponse<RecipeResponse>> createRecipe(@Valid @RequestBody RecipeRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Recipe created", recipeService.createRecipe(request)));
-    }
-
-    @PutMapping("/recipes/{id}")
-    public ResponseEntity<ApiResponse<RecipeResponse>> updateRecipe(@PathVariable Long id,
-            @Valid @RequestBody RecipeRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("Recipe updated", recipeService.updateRecipe(id, request)));
-    }
-
-    @DeleteMapping("/recipes/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteRecipe(@PathVariable Long id) {
-        recipeService.deleteRecipe(id);
-        return ResponseEntity.ok(ApiResponse.success("Recipe deleted", null));
     }
 
     // Employee management

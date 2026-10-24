@@ -16,7 +16,7 @@ public class DataResetService {
     private final OrderItemRepository orderItemRepository;
     private final OrderRepository orderRepository;
     private final PurchaseRepository purchaseRepository;
-    private final StockHistoryRepository stockHistoryRepository;
+    private final StockTransactionRepository stockTransactionRepository;
     private final StockRepository stockRepository;
     private final FeedbackRepository feedbackRepository;
     private final FranchiseEnquiryRepository franchiseEnquiryRepository;
@@ -40,11 +40,11 @@ public class DataResetService {
 
     @Transactional
     public void resetStock() {
-        long historyCount = stockHistoryRepository.count();
+        long txnCount = stockTransactionRepository.count();
         long stockCount = stockRepository.count();
-        stockHistoryRepository.deleteAll();
+        stockTransactionRepository.deleteAll();
         stockRepository.deleteAll();
-        logger.warn("DATA RESET: Deleted {} stock history and {} stock records", historyCount, stockCount);
+        logger.warn("DATA RESET: Deleted {} stock transactions and {} stock records", txnCount, stockCount);
     }
 
     @Transactional

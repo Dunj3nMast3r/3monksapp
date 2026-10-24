@@ -30,9 +30,6 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ShopRepository shopRepository;
     private final UserRepository userRepository;
-    private final RecipeService recipeService;
-    private final StockRepository stockRepository;
-    private final StockHistoryRepository stockHistoryRepository;
     private static final AtomicLong orderCounter = new AtomicLong(System.currentTimeMillis());
 
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(OrderService.class);
@@ -97,52 +94,14 @@ public class OrderService {
         order.setTotalAmount(total);
         Order saved = orderRepository.save(order);
 
-        // Auto-deduct stock based on recipes
-        deductStockForOrder(saved, user);
+        // Stock is NOT touched here. Stock is maintained manually through the
+        // stock entry screens (purchase / consumption / adjustment), so placing
+        // an order must have no effect on stock balances.
 
         return toResponse(saved);
     }
 
-    private void deductStockForOrder(Order order, User user) {
-        for (OrderItem item : order.getItems()) {
-            List<Recipe> recipes = recipeService.getRecipeEntitiesByProduct(item.getProduct().getId());
-            for (Recipe recipe : recipes) {
-                BigDecimal consumeQty = recipe.getQuantityRequired().multiply(BigDecimal.valueOf(item.getQuantity()));
-
-                Stock stock = stockRepository
-                        .findByShopIdAndRawMaterialId(order.getShop().getId(), recipe.getRawMaterial().getId())
-                        .orElse(null);
-
-                if (stock != null) {
-                    stock.setQuantity(stock.getQuantity().subtract(consumeQty));
-                    stockRepository.save(stock);
-
-                    StockHistory history = StockHistory.builder()
-                            .shop(order.getShop())
-                            .rawMaterial(recipe.getRawMaterial())
-                            .quantityChange(consumeQty.negate())
-                            .changeType("CONSUMED")
-                            .notes("Order: " + order.getOrderNumber() + " | Product: " + item.getProduct().getName())
-                            .changedBy(user)
-                            .build();
-                    stockHistoryRepository.save(history);
-
-                    // Low stock warning
-                    if (stock.getMinimumThreshold() != null
-                            && stock.getQuantity().compareTo(stock.getMinimumThreshold()) <= 0) {
-                        logger.warn("LOW STOCK ALERT: {} at {} - Current: {}, Threshold: {}",
-                                recipe.getRawMaterial().getName(), order.getShop().getName(),
-                                stock.getQuantity(), stock.getMinimumThreshold());
-                    }
-                } else {
-                    logger.warn("No stock record found for material {} in shop {}",
-                            recipe.getRawMaterial().getName(), order.getShop().getName());
-                }
-            }
-        }
-    }
-
-    public OrderResponse getOrderById(Long id, UserPrincipal currentUser) {
+        public OrderResponse getOrderById(Long id, UserPrincipal currentUser) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", "id", id));
         validateShopAccess(order.getShop().getId(), currentUser);
@@ -247,48 +206,14 @@ public class OrderService {
         order.setStatus(OrderStatus.CANCELLED);
         Order saved = orderRepository.save(order);
 
-        // Restore stock when order is cancelled
-        User user = userRepository.findById(currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", currentUser.getId()));
-        restoreStockForOrder(saved, user);
+        // Stock is NOT restored here. Stock is maintained manually through the
+        // stock entry screens, so cancelling an order must have no effect on
+        // stock balances.
 
         return toResponse(saved);
     }
 
-    private void restoreStockForOrder(Order order, User user) {
-        for (OrderItem item : order.getItems()) {
-            List<Recipe> recipes = recipeService.getRecipeEntitiesByProduct(item.getProduct().getId());
-            for (Recipe recipe : recipes) {
-                BigDecimal restoreQty = recipe.getQuantityRequired().multiply(BigDecimal.valueOf(item.getQuantity()));
-
-                Stock stock = stockRepository.findByShopIdAndRawMaterialId(
-                        order.getShop().getId(), recipe.getRawMaterial().getId())
-                        .orElse(null);
-
-                if (stock != null) {
-                    stock.setQuantity(stock.getQuantity().add(restoreQty));
-                    stockRepository.save(stock);
-
-                    StockHistory history = StockHistory.builder()
-                            .shop(order.getShop())
-                            .rawMaterial(recipe.getRawMaterial())
-                            .quantityChange(restoreQty)
-                            .changeType("RESTORED")
-                            .notes("Order cancelled: " + order.getOrderNumber() + " | Product: "
-                                    + item.getProduct().getName())
-                            .changedBy(user)
-                            .build();
-                    stockHistoryRepository.save(history);
-
-                    logger.info("STOCK RESTORED: {} +{} at {} (Order: {})",
-                            recipe.getRawMaterial().getName(), restoreQty,
-                            order.getShop().getName(), order.getOrderNumber());
-                }
-            }
-        }
-    }
-
-    private Long resolveShopId(Long requestShopId, UserPrincipal currentUser) {
+        private Long resolveShopId(Long requestShopId, UserPrincipal currentUser) {
         if (currentUser.getRole() == Role.SUPER_ADMIN) {
             return requestShopId != null ? requestShopId
                     : shopRepository.findByActiveTrue().stream().findFirst()

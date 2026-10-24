@@ -22,9 +22,6 @@ public class Stock {
     @JoinColumn(name = "raw_material_id", nullable = false)
     private RawMaterial rawMaterial;
 
-    @Column(precision = 10, scale = 2)
-    private BigDecimal openingStock;
-
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal quantity;
 
