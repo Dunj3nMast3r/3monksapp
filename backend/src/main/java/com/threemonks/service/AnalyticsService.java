@@ -3,6 +3,7 @@ package com.threemonks.service;
 import com.threemonks.dto.AnalyticsResponse;
 import com.threemonks.entity.Order;
 import com.threemonks.entity.Stock;
+import com.threemonks.enums.StockTransactionType;
 import com.threemonks.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,7 +26,7 @@ public class AnalyticsService {
     private final OrderItemRepository orderItemRepository;
     private final PurchaseRepository purchaseRepository;
     private final StockRepository stockRepository;
-    private final StockHistoryRepository stockHistoryRepository;
+    private final StockTransactionRepository stockTransactionRepository;
     private final EmployeeRepository employeeRepository;
 
     public AnalyticsResponse getAnalytics(LocalDate from, LocalDate to) {
@@ -73,7 +74,8 @@ public class AnalyticsService {
     }
 
     private List<AnalyticsResponse.MaterialUsageDTO> getRawMaterialUsage(LocalDateTime start, LocalDateTime end) {
-        List<Object[]> consumed = stockHistoryRepository.getMaterialUsageByType("CONSUMED", start, end);
+        List<Object[]> consumed = stockTransactionRepository.getMaterialUsageByType(
+                StockTransactionType.CONSUMPTION, start.toLocalDate(), end.toLocalDate());
 
         // Get all stock for current levels
         List<Stock> allStock = stockRepository.findAll();

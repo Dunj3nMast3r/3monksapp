@@ -1,11 +1,15 @@
 package com.threemonks.service;
 
+import com.threemonks.dto.DailyStockSummaryResponse;
 import com.threemonks.dto.PurchaseRequest;
 import com.threemonks.dto.PurchaseResponse;
-import com.threemonks.dto.StockRequest;
+import com.threemonks.dto.StockAdjustmentRequest;
+import com.threemonks.dto.StockEntryRequest;
 import com.threemonks.dto.StockResponse;
 import com.threemonks.entity.*;
 import com.threemonks.enums.Role;
+import com.threemonks.enums.StockTransactionType;
+import com.threemonks.exception.BadRequestException;
 import com.threemonks.exception.ResourceNotFoundException;
 import com.threemonks.exception.UnauthorizedException;
 import com.threemonks.repository.*;
@@ -19,12 +23,17 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Stock is maintained by hand: purchases in, daily consumption out, and
+ * adjustments against a physical count. Nothing else moves stock — orders and
+ * the purchase ledger deliberately do not touch it.
+ */
 @Service
 @RequiredArgsConstructor
 public class StockService {
 
         private final StockRepository stockRepository;
-        private final StockHistoryRepository stockHistoryRepository;
+        private final StockTransactionRepository stockTransactionRepository;
         private final PurchaseRepository purchaseRepository;
         private final RawMaterialRepository rawMaterialRepository;
         private final ShopRepository shopRepository;
@@ -50,83 +59,129 @@ public class StockService {
                                 .collect(Collectors.toList());
         }
 
+        /** Stock received. Increases the balance. */
         @Transactional
-        public StockResponse addStock(StockRequest request, UserPrincipal currentUser) {
+        public StockResponse recordPurchase(StockEntryRequest request, UserPrincipal currentUser) {
+                return applyMovement(request.getShopId(), request.getRawMaterialId(),
+                                request.getQuantity(), StockTransactionType.PURCHASE,
+                                request.getTxnDate(), request.getNotes(), null,
+                                request.getMinimumThreshold(), currentUser);
+        }
+
+        /** Stock used up on a given day. Decreases the balance. */
+        @Transactional
+        public StockResponse recordConsumption(StockEntryRequest request, UserPrincipal currentUser) {
+                return applyMovement(request.getShopId(), request.getRawMaterialId(),
+                                request.getQuantity().negate(), StockTransactionType.CONSUMPTION,
+                                request.getTxnDate(), request.getNotes(), null,
+                                request.getMinimumThreshold(), currentUser);
+        }
+
+        /**
+         * Correction from a physical count: the caller says what is actually on the
+         * shelf and we record the difference against the current balance.
+         */
+        @Transactional
+        public StockResponse adjustToActualCount(StockAdjustmentRequest request, UserPrincipal currentUser) {
                 validateShopAccess(request.getShopId(), currentUser);
 
-                Shop shop = shopRepository.findById(request.getShopId())
-                                .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", request.getShopId()));
-                RawMaterial rm = rawMaterialRepository.findById(request.getRawMaterialId())
-                                .orElseThrow(() -> new ResourceNotFoundException("RawMaterial", "id",
-                                                request.getRawMaterialId()));
+                Stock stock = stockRepository
+                                .findForUpdate(request.getShopId(), request.getRawMaterialId())
+                                .orElse(null);
+                BigDecimal current = stock != null ? stock.getQuantity() : BigDecimal.ZERO;
+                BigDecimal delta = request.getActualCount().subtract(current);
+
+                return applyMovement(request.getShopId(), request.getRawMaterialId(),
+                                delta, StockTransactionType.ADJUSTMENT,
+                                request.getTxnDate(), request.getNotes(), request.getActualCount(),
+                                null, currentUser);
+        }
+
+        public List<DailyStockSummaryResponse> getDailySummary(Long shopId, LocalDate from, LocalDate to,
+                        UserPrincipal currentUser) {
+                validateShopAccess(shopId, currentUser);
+
+                LocalDate end = to != null ? to : LocalDate.now();
+                LocalDate start = from != null ? from : end.minusDays(30);
+                if (start.isAfter(end)) {
+                        throw new BadRequestException("Start date cannot be after end date");
+                }
+
+                return stockTransactionRepository.getDailySummary(shopId, start, end,
+                                StockTransactionType.PURCHASE,
+                                StockTransactionType.CONSUMPTION,
+                                StockTransactionType.ADJUSTMENT).stream()
+                                .map(row -> DailyStockSummaryResponse.builder()
+                                                .txnDate((LocalDate) row[0])
+                                                .rawMaterialId((Long) row[1])
+                                                .rawMaterialName((String) row[2])
+                                                .unitType(row[3].toString())
+                                                .purchased(toAmount(row[4]))
+                                                .consumed(toAmount(row[5]).abs())
+                                                .adjusted(toAmount(row[6]))
+                                                .build())
+                                .collect(Collectors.toList());
+        }
+
+        /**
+         * The single place a Stock balance changes. Locks the row for the
+         * transaction so concurrent entries cannot both pass the negative check.
+         */
+        private StockResponse applyMovement(Long shopId, Long rawMaterialId, BigDecimal signedQuantity,
+                        StockTransactionType type, LocalDate txnDate, String notes,
+                        BigDecimal actualCount, BigDecimal minimumThreshold, UserPrincipal currentUser) {
+
+                validateShopAccess(shopId, currentUser);
+
+                Shop shop = shopRepository.findById(shopId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", shopId));
+                RawMaterial rm = rawMaterialRepository.findById(rawMaterialId)
+                                .orElseThrow(() -> new ResourceNotFoundException("RawMaterial", "id", rawMaterialId));
                 User user = userRepository.findById(currentUser.getId())
                                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", currentUser.getId()));
 
-                Stock stock = stockRepository
-                                .findByShopIdAndRawMaterialId(request.getShopId(), request.getRawMaterialId())
-                                .orElse(Stock.builder()
+                Stock stock = stockRepository.findForUpdate(shopId, rawMaterialId)
+                                .orElseGet(() -> Stock.builder()
                                                 .shop(shop)
                                                 .rawMaterial(rm)
                                                 .quantity(BigDecimal.ZERO)
-                                                .openingStock(BigDecimal.ZERO)
                                                 .build());
 
-                // Set opening stock on first ever stock entry
-                if (stock.getId() == null) {
-                        stock.setOpeningStock(request.getQuantity());
-                }
-                stock.setQuantity(stock.getQuantity().add(request.getQuantity()));
-                if (request.getMinimumThreshold() != null) {
-                        stock.setMinimumThreshold(request.getMinimumThreshold());
+                BigDecimal newQuantity = stock.getQuantity().add(signedQuantity);
+                if (newQuantity.compareTo(BigDecimal.ZERO) < 0) {
+                        throw new BadRequestException(String.format(
+                                        "Not enough %s in stock. Available: %s %s, requested: %s %s",
+                                        rm.getName(), stock.getQuantity().toPlainString(), rm.getUnitType(),
+                                        signedQuantity.abs().toPlainString(), rm.getUnitType()));
                 }
 
+                stock.setQuantity(newQuantity);
+                if (minimumThreshold != null) {
+                        stock.setMinimumThreshold(minimumThreshold);
+                }
                 Stock saved = stockRepository.save(stock);
 
-                // Record history
-                StockHistory history = StockHistory.builder()
+                stockTransactionRepository.save(StockTransaction.builder()
                                 .shop(shop)
                                 .rawMaterial(rm)
-                                .quantityChange(request.getQuantity())
-                                .changeType("ADDED")
-                                .notes(request.getNotes())
-                                .changedBy(user)
-                                .build();
-                stockHistoryRepository.save(history);
+                                .txnDate(txnDate != null ? txnDate : LocalDate.now())
+                                .txnType(type)
+                                .quantityChange(signedQuantity)
+                                .actualCount(actualCount)
+                                .notes(notes)
+                                .createdBy(user)
+                                .build());
 
                 return toStockResponse(saved);
         }
 
-        @Transactional
-        public StockResponse updateStock(Long stockId, StockRequest request, UserPrincipal currentUser) {
-                Stock stock = stockRepository.findById(stockId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Stock", "id", stockId));
-                validateShopAccess(stock.getShop().getId(), currentUser);
-
-                User user = userRepository.findById(currentUser.getId())
-                                .orElseThrow(() -> new ResourceNotFoundException("User", "id", currentUser.getId()));
-
-                BigDecimal diff = request.getQuantity().subtract(stock.getQuantity());
-                stock.setQuantity(request.getQuantity());
-                if (request.getMinimumThreshold() != null) {
-                        stock.setMinimumThreshold(request.getMinimumThreshold());
-                }
-
-                Stock saved = stockRepository.save(stock);
-
-                StockHistory history = StockHistory.builder()
-                                .shop(stock.getShop())
-                                .rawMaterial(stock.getRawMaterial())
-                                .quantityChange(diff)
-                                .changeType("ADJUSTED")
-                                .notes(request.getNotes())
-                                .changedBy(user)
-                                .build();
-                stockHistoryRepository.save(history);
-
-                return toStockResponse(saved);
-        }
-
-        // Purchase management
+        // ---------------------------------------------------------------
+        // Purchase ledger — vendor, invoice and GST records.
+        //
+        // NOTE: recording or deleting a purchase deliberately does NOT move
+        // stock. Stock is maintained manually through the stock entry screens,
+        // so this path must stay free of stock side effects.
+        // ---------------------------------------------------------------
         @Transactional
         public PurchaseResponse createPurchase(PurchaseRequest request, UserPrincipal currentUser) {
                 validateShopAccess(request.getShopId(), currentUser);
@@ -155,17 +210,8 @@ public class StockService {
 
                 Purchase saved = purchaseRepository.save(purchase);
 
-                // Update last purchase date on raw material
                 rm.setLastPurchaseDate(saved.getPurchaseDate());
                 rawMaterialRepository.save(rm);
-
-                // Auto-add to stock
-                StockRequest stockReq = new StockRequest();
-                stockReq.setShopId(request.getShopId());
-                stockReq.setRawMaterialId(request.getRawMaterialId());
-                stockReq.setQuantity(request.getQuantity());
-                stockReq.setNotes("Purchase: " + request.getInvoiceNumber());
-                addStock(stockReq, currentUser);
 
                 return toPurchaseResponse(saved);
         }
@@ -186,35 +232,6 @@ public class StockService {
                         throw new UnauthorizedException("Only admin can delete purchases");
                 }
 
-                User user = userRepository.findById(currentUser.getId())
-                                .orElseThrow(() -> new ResourceNotFoundException("User", "id", currentUser.getId()));
-
-                // Reverse stock addition
-                Stock stock = stockRepository.findByShopIdAndRawMaterialId(
-                                purchase.getShop().getId(), purchase.getRawMaterial().getId())
-                                .orElse(null);
-
-                if (stock != null) {
-                        stock.setQuantity(stock.getQuantity().subtract(purchase.getQuantity()));
-                        stockRepository.save(stock);
-
-                        StockHistory history = StockHistory.builder()
-                                        .shop(purchase.getShop())
-                                        .rawMaterial(purchase.getRawMaterial())
-                                        .quantityChange(purchase.getQuantity().negate())
-                                        .changeType("PURCHASE_DELETED")
-                                        .notes("Purchase deleted: "
-                                                        + (purchase.getInvoiceNumber() != null
-                                                                        ? purchase.getInvoiceNumber()
-                                                                        : "N/A")
-                                                        + " | Vendor: "
-                                                        + (purchase.getVendorName() != null ? purchase.getVendorName()
-                                                                        : "N/A"))
-                                        .changedBy(user)
-                                        .build();
-                        stockHistoryRepository.save(history);
-                }
-
                 purchaseRepository.delete(purchase);
         }
 
@@ -222,6 +239,10 @@ public class StockService {
                 if (currentUser.getRole() != Role.SUPER_ADMIN && !currentUser.getShopId().equals(shopId)) {
                         throw new UnauthorizedException("Access denied to this shop's data");
                 }
+        }
+
+        private BigDecimal toAmount(Object value) {
+                return value != null ? (BigDecimal) value : BigDecimal.ZERO;
         }
 
         private StockResponse toStockResponse(Stock stock) {
@@ -236,7 +257,6 @@ public class StockService {
                                 .rawMaterialName(stock.getRawMaterial().getName())
                                 .unitType(stock.getRawMaterial().getUnitType().name())
                                 .quantity(stock.getQuantity())
-                                .openingStock(stock.getOpeningStock())
                                 .minimumThreshold(stock.getMinimumThreshold())
                                 .lowStock(isLow)
                                 .build();

@@ -140,7 +140,7 @@ const DataResetPage = () => {
                         </div>
                         <div style={{ fontSize: '13px', color: '#888' }}>
                             Clears orders, purchases, stock, feedbacks, franchise enquiries, and employees at once.
-                            Master data (shops, products, fruits, raw materials, users, recipes) will NOT be affected.
+                            Master data (shops, products, fruits, raw materials, users) will NOT be affected.
                         </div>
                     </div>
                     <button

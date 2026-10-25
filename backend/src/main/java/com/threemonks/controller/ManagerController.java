@@ -5,11 +5,13 @@ import com.threemonks.service.*;
 import com.threemonks.security.UserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -45,19 +47,39 @@ public class ManagerController {
         return ResponseEntity.ok(ApiResponse.success(stockService.getStockByShop(shopId, currentUser)));
     }
 
-    @PostMapping("/stock")
-    public ResponseEntity<ApiResponse<StockResponse>> addStock(
-            @Valid @RequestBody StockRequest request,
+    @PostMapping("/stock/purchase")
+    public ResponseEntity<ApiResponse<StockResponse>> recordPurchase(
+            @Valid @RequestBody StockEntryRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        return ResponseEntity.ok(ApiResponse.success("Stock added", stockService.addStock(request, currentUser)));
+        return ResponseEntity.ok(ApiResponse.success("Stock added",
+                stockService.recordPurchase(request, currentUser)));
     }
 
-    @PutMapping("/stock/{id}")
-    public ResponseEntity<ApiResponse<StockResponse>> updateStock(
-            @PathVariable Long id,
-            @Valid @RequestBody StockRequest request,
+    @PostMapping("/stock/consumption")
+    public ResponseEntity<ApiResponse<StockResponse>> recordConsumption(
+            @Valid @RequestBody StockEntryRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        return ResponseEntity.ok(ApiResponse.success("Stock updated", stockService.updateStock(id, request, currentUser)));
+        return ResponseEntity.ok(ApiResponse.success("Consumption recorded",
+                stockService.recordConsumption(request, currentUser)));
+    }
+
+    @PostMapping("/stock/adjustment")
+    public ResponseEntity<ApiResponse<StockResponse>> adjustStock(
+            @Valid @RequestBody StockAdjustmentRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success("Stock adjusted",
+                stockService.adjustToActualCount(request, currentUser)));
+    }
+
+    /** Day-wise roll-up: one row per material per day, however many entries were made. */
+    @GetMapping("/shop/{shopId}/stock/summary")
+    public ResponseEntity<ApiResponse<List<DailyStockSummaryResponse>>> getStockSummary(
+            @PathVariable Long shopId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(
+                stockService.getDailySummary(shopId, from, to, currentUser)));
     }
 
     @GetMapping("/shop/{shopId}/stock/low")

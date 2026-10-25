@@ -48,12 +48,6 @@ export const adminService = {
     createRawMaterial: (data) => api.post('/api/admin/raw-materials', data),
     updateRawMaterial: (id, data) => api.put(`/api/admin/raw-materials/${id}`, data),
     toggleRawMaterial: (id) => api.patch(`/api/admin/raw-materials/${id}/toggle`),
-    // Recipes
-    getRecipes: () => api.get('/api/admin/recipes'),
-    getRecipesByProduct: (productId) => api.get(`/api/admin/recipes/product/${productId}`),
-    createRecipe: (data) => api.post('/api/admin/recipes', data),
-    updateRecipe: (id, data) => api.put(`/api/admin/recipes/${id}`, data),
-    deleteRecipe: (id) => api.delete(`/api/admin/recipes/${id}`),
     // Employees
     getEmployees: () => api.get('/api/admin/employees'),
     getEmployeesByShop: (shopId) => api.get(`/api/admin/employees/shop/${shopId}`),
@@ -84,8 +78,11 @@ export const managerService = {
     getShopUsers: (shopId) => api.get(`/api/manager/shop/${shopId}/users`),
     createUser: (data) => api.post('/api/manager/users', data),
     getShopStock: (shopId) => api.get(`/api/manager/shop/${shopId}/stock`),
-    addStock: (data) => api.post('/api/manager/stock', data),
-    updateStock: (id, data) => api.put(`/api/manager/stock/${id}`, data),
+    recordPurchase: (data) => api.post('/api/manager/stock/purchase', data),
+    recordConsumption: (data) => api.post('/api/manager/stock/consumption', data),
+    adjustStock: (data) => api.post('/api/manager/stock/adjustment', data),
+    getStockSummary: (shopId, from, to) =>
+        api.get(`/api/manager/shop/${shopId}/stock/summary`, { params: { from, to } }),
     getLowStock: (shopId) => api.get(`/api/manager/shop/${shopId}/stock/low`),
     createPurchase: (data) => api.post('/api/manager/purchases', data),
     getShopPurchases: (shopId) => api.get(`/api/manager/shop/${shopId}/purchases`),

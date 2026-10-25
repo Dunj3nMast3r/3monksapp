@@ -31,7 +31,6 @@ public class DataInitializer implements CommandLineRunner {
         private final FruitRepository fruitRepository;
         private final ProductRepository productRepository;
         private final RawMaterialRepository rawMaterialRepository;
-        private final RecipeRepository recipeRepository;
         private final PasswordEncoder passwordEncoder;
         private final JdbcTemplate jdbcTemplate;
 
@@ -107,12 +106,6 @@ public class DataInitializer implements CommandLineRunner {
                 // Seed raw materials if none exist
                 if (rawMaterialRepository.count() == 0) {
                         seedRawMaterials();
-                }
-
-                // Seed recipes if none exist
-                if (recipeRepository.count() == 0 && productRepository.count() > 0
-                                && rawMaterialRepository.count() > 0) {
-                        seedRecipes();
                 }
         }
 
@@ -231,85 +224,7 @@ public class DataInitializer implements CommandLineRunner {
                 logger.info("Seeded {} raw materials", fruitMaterials.length + 1);
         }
 
-        private void seedRecipes() {
-                Map<String, RawMaterial> rmMap = rawMaterialRepository.findAll().stream()
-                                .collect(Collectors.toMap(RawMaterial::getName, r -> r));
-                Map<String, Product> prodMap = productRepository.findAll().stream()
-                                .collect(Collectors.toMap(Product::getName, p -> p));
-
-                RawMaterial thickMilk = rmMap.get("Thick Milk");
-
-                // Creamy Blends: 150g fruit + 200ml thick milk
-                Map<String, String> creamyBlendFruit = Map.of(
-                                "Coconut Charm", "Coconut",
-                                "Mango Melt", "Mango",
-                                "Blueberry Bliss", "Blueberry",
-                                "Mulberry Magic", "Mulberry",
-                                "Strawberry Spark", "Strawberry",
-                                "Avocado Affair", "Avocado",
-                                "Sitaphal Soul", "Sitaphal",
-                                "Jamun Joy", "Jamun");
-
-                for (Map.Entry<String, String> entry : creamyBlendFruit.entrySet()) {
-                        Product product = prodMap.get(entry.getKey());
-                        RawMaterial fruit = rmMap.get(entry.getValue());
-                        if (product != null && fruit != null) {
-                                createRecipe(product, fruit, 150);
-                                if (thickMilk != null)
-                                        createRecipe(product, thickMilk, 200);
-                        }
-                }
-
-                // Curated Blends: 100g each fruit + 150ml thick milk
-                String[][] curatedBlends = {
-                                { "Mango + Strawberry", "Mango", "Strawberry" },
-                                { "Blueberry + Jamun", "Blueberry", "Jamun" },
-                                { "Sitaphal + Mango", "Sitaphal", "Mango" },
-                                { "Coconut + Avocado", "Coconut", "Avocado" },
-                                { "Strawberry + Jamun", "Strawberry", "Jamun" },
-                                { "Mango + Coconut", "Mango", "Coconut" }
-                };
-
-                for (String[] combo : curatedBlends) {
-                        Product product = prodMap.get(combo[0]);
-                        RawMaterial fruit1 = rmMap.get(combo[1]);
-                        RawMaterial fruit2 = rmMap.get(combo[2]);
-                        if (product != null) {
-                                if (fruit1 != null)
-                                        createRecipe(product, fruit1, 100);
-                                if (fruit2 != null)
-                                        createRecipe(product, fruit2, 100);
-                                if (thickMilk != null)
-                                        createRecipe(product, thickMilk, 150);
-                        }
-                }
-
-                // Shots: 60g fruit, no milk
-                Map<String, String> shotFruit = Map.of(
-                                "Jamun Detoxer", "Jamun",
-                                "Kiwi Green Gut", "Kiwi",
-                                "Mango Delight", "Mango");
-
-                for (Map.Entry<String, String> entry : shotFruit.entrySet()) {
-                        Product product = prodMap.get(entry.getKey());
-                        RawMaterial fruit = rmMap.get(entry.getValue());
-                        if (product != null && fruit != null) {
-                                createRecipe(product, fruit, 60);
-                        }
-                }
-
-                logger.info("Seeded recipes for all products");
-        }
-
-        private void createRecipe(Product product, RawMaterial rawMaterial, double qty) {
-                recipeRepository.save(Recipe.builder()
-                                .product(product)
-                                .rawMaterial(rawMaterial)
-                                .quantityRequired(BigDecimal.valueOf(qty))
-                                .build());
-        }
-
-        private void assignFruitShortCodes() {
+                        private void assignFruitShortCodes() {
                 // Predefined order: Jamun=1, Mango=2, Kiwi=3, then rest
                 Map<String, Integer> codeMap = Map.of(
                                 "Jamun", 1, "Mango", 2, "Kiwi", 3, "Coconut", 4,
