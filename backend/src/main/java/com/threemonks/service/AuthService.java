@@ -3,6 +3,8 @@ package com.threemonks.service;
 import com.threemonks.dto.LoginRequest;
 import com.threemonks.dto.LoginResponse;
 import com.threemonks.entity.User;
+import com.threemonks.enums.Role;
+import com.threemonks.exception.BadRequestException;
 import com.threemonks.repository.UserRepository;
 import com.threemonks.security.JwtTokenProvider;
 import com.threemonks.security.UserPrincipal;
@@ -31,6 +33,10 @@ public class AuthService {
 
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         User user = userRepository.findByUsername(principal.getUsername()).orElseThrow();
+        // Shop staff get their shop when the admin registers them as an employee
+        if (user.getRole() != Role.SUPER_ADMIN && user.getShop() == null) {
+            throw new BadRequestException("Your account is not assigned to a shop yet. Please ask the admin to register you as an employee.");
+        }
 
         return LoginResponse.builder()
                 .token(token)

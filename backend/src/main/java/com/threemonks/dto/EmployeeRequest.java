@@ -1,5 +1,8 @@
 package com.threemonks.dto;
 
+import com.threemonks.enums.Role;
+import com.threemonks.enums.Station;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -7,11 +10,20 @@ import java.math.BigDecimal;
 
 @Data
 public class EmployeeRequest {
-    @NotNull(message = "Please select a user")
+    // On create, give either an existing login (userId) or a new one (newUser); ignored on update
     private Long userId;
+
+    @Valid
+    private EmployeeLoginRequest newUser;
 
     @NotNull(message = "Please select a shop")
     private Long shopId;
+
+    @NotNull(message = "Please select a role")
+    private Role role;
+
+    // Shop operators only; null means both stations
+    private Station station;
 
     @NotNull(message = "Salary is required")
     @DecimalMin(value = "1.00", message = "Salary must be at least ₹1")

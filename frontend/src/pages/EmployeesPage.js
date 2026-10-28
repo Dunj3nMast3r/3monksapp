@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../services/dataService';
-import { formatCurrency, getISTMonthString } from '../utils/helpers';
+import { formatCurrency, getISTMonthString, roleLabels } from '../utils/helpers';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
+
+const STATION_OPTIONS = [
+    { value: '', label: 'Both stations' },
+    { value: 'SHOT', label: '⚡ Shots' },
+    { value: 'BLEND', label: '🥤 Blends' },
+];
+const STATION_LABELS = { SHOT: '⚡ Shots', BLEND: '🥤 Blends' };
+
+const EMPTY_FORM = {
+    loginMode: 'new', userId: '', fullName: '', username: '', password: '', email: '', phone: '',
+    shopId: '', role: 'SHOP_OPERATOR', station: '', salary: '', incentivePercentage: '',
+};
 
 const EmployeesPage = () => {
     const [employees, setEmployees] = useState([]);
@@ -13,7 +25,7 @@ const EmployeesPage = () => {
     const [showSalary, setShowSalary] = useState(false);
     const [editing, setEditing] = useState(null);
     const [submitting, setSubmitting] = useState(false);
-    const [form, setForm] = useState({ userId: '', shopId: '', salary: '', incentivePercentage: '' });
+    const [form, setForm] = useState(EMPTY_FORM);
     const [errors, setErrors] = useState({});
     const [salaryMonth, setSalaryMonth] = useState(getISTMonthString());
     const [salarySheet, setSalarySheet] = useState(null);
@@ -36,22 +48,35 @@ const EmployeesPage = () => {
 
     const openAdd = () => {
         setEditing(null);
-        setForm({ userId: '', shopId: '', salary: '', incentivePercentage: '' });
+        setForm(EMPTY_FORM);
         setErrors({});
         setShowModal(true);
     };
 
     const openEdit = (e) => {
         setEditing(e);
-        setForm({ userId: e.userId, shopId: e.shopId, salary: e.salary || '', incentivePercentage: e.incentivePercentage || '' });
+        setForm({
+            ...EMPTY_FORM, userId: e.userId, shopId: e.shopId, role: e.role, station: e.station || '',
+            salary: e.salary || '', incentivePercentage: e.incentivePercentage || '',
+        });
         setErrors({});
         setShowModal(true);
     };
 
     const validateForm = () => {
         const errs = {};
-        if (!editing && !form.userId) errs.userId = 'Please select a user';
-        if (!editing && !form.shopId) errs.shopId = 'Please select a shop';
+        if (!editing && form.loginMode === 'existing' && !form.userId) errs.userId = 'Please select a user';
+        if (!editing && form.loginMode === 'new') {
+            if (!form.fullName || form.fullName.trim().length < 2) errs.fullName = 'Full name must be at least 2 characters';
+            if (!form.username || form.username.trim().length < 3) errs.username = 'Username must be at least 3 characters';
+            else if (!/^[a-zA-Z0-9._-]+$/.test(form.username)) errs.username = 'Username can only contain letters, numbers, dots, hyphens, and underscores';
+            if (!form.password || form.password.length < 6) errs.password = 'Password must be at least 6 characters';
+            if (!form.email) errs.email = 'Email is required';
+            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Please enter a valid email address';
+            if (form.phone && !/^[0-9]{10}$/.test(form.phone)) errs.phone = 'Phone number must be exactly 10 digits';
+        }
+        if (!form.shopId) errs.shopId = 'Please select a shop';
+        if (!form.role) errs.role = 'Please select a role';
         if (!form.salary) errs.salary = 'Salary is required';
         else if (isNaN(form.salary) || parseFloat(form.salary) < 1) errs.salary = 'Salary must be at least ₹1';
         else if (parseFloat(form.salary) > 9999999.99) errs.salary = 'Salary cannot exceed ₹99,99,999.99';
@@ -67,18 +92,28 @@ const EmployeesPage = () => {
         setSubmitting(true);
         try {
             const data = {
-                userId: parseInt(form.userId),
                 shopId: parseInt(form.shopId),
+                role: form.role,
+                station: form.role === 'SHOP_OPERATOR' ? (form.station || null) : null,
                 salary: parseFloat(form.salary),
                 incentivePercentage: form.incentivePercentage ? parseFloat(form.incentivePercentage) : 0,
             };
+            if (!editing && form.loginMode === 'new') {
+                data.newUser = {
+                    fullName: form.fullName, username: form.username, password: form.password,
+                    email: form.email, phone: form.phone,
+                };
+            } else if (!editing) {
+                data.userId = parseInt(form.userId);
+            }
             if (editing) { await adminService.updateEmployee(editing.id, data); toast.success('Employee updated'); }
             else { await adminService.createEmployee(data); toast.success('Employee created'); }
             setShowModal(false); fetchAll();
         } catch (err) {
             const resp = err.response?.data;
             if (resp?.data && typeof resp.data === 'object' && resp.message === 'Validation failed') {
-                setErrors(resp.data);
+                // New-login field errors come back as newUser.<field>
+                setErrors(Object.fromEntries(Object.entries(resp.data).map(([k, v]) => [k.replace(/^newUser\./, ''), v])));
                 const firstError = Object.values(resp.data)[0];
                 toast.error(firstError || 'Please fix the errors below');
             } else {
@@ -100,9 +135,15 @@ const EmployeesPage = () => {
         } catch (err) { toast.error('Failed to load salary sheet'); }
     };
 
-    // Get users not already employees
+    // Logins that can still be registered: not already employees, not admins
     const existingUserIds = employees.map(e => e.userId);
-    const availableUsers = users.filter(u => !existingUserIds.includes(u.id));
+    const availableUsers = users.filter(u => u.active && u.role !== 'SUPER_ADMIN' && !existingUserIds.includes(u.id));
+    const field = (key) => ({
+        className: `form-control${errors[key] ? ' input-error' : ''}`,
+        value: form[key],
+        onChange: (e) => { setForm({ ...form, [key]: e.target.value }); setErrors(prev => ({ ...prev, [key]: '' })); },
+    });
+    const fieldError = (key) => errors[key] && <span className="field-error">{errors[key]}</span>;
 
     return (
         <div>
@@ -120,12 +161,13 @@ const EmployeesPage = () => {
             ) : (
                 <div className="card"><div className="table-wrapper">
                     <table>
-                        <thead><tr><th>Name</th><th>Role</th><th>Shop</th><th>Salary</th><th>Incentive %</th><th>Status</th><th>Actions</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Role</th><th>Shop</th><th>Station</th><th>Salary</th><th>Incentive %</th><th>Status</th><th>Actions</th></tr></thead>
                         <tbody>{employees.map(e => (
                             <tr key={e.id}>
                                 <td style={{ fontWeight: 500 }}>{e.fullName}</td>
-                                <td>{e.role}</td>
+                                <td>{roleLabels[e.role] || e.role}</td>
                                 <td>{e.shopName}</td>
+                                <td>{e.role === 'SHOP_OPERATOR' ? (STATION_LABELS[e.station] || 'Both') : '-'}</td>
                                 <td>{formatCurrency(e.salary)}</td>
                                 <td>{e.incentivePercentage}%</td>
                                 <td><span className={`badge ${e.active ? 'badge-success' : 'badge-danger'}`}>{e.active ? 'Active' : 'Inactive'}</span></td>
@@ -142,25 +184,85 @@ const EmployeesPage = () => {
             {/* Add/Edit Modal */}
             <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit Employee' : 'Add Employee'}>
                 <form onSubmit={handleSubmit} noValidate>
-                    {!editing && (
+                    {editing ? (
                         <div className="form-group">
-                            <label>User *</label>
-                            <select className={`form-control${errors.userId ? ' input-error' : ''}`} value={form.userId} onChange={e => { setForm({ ...form, userId: e.target.value }); setErrors(prev => ({ ...prev, userId: '' })); }}>
-                                <option value="">Select user...</option>
-                                {availableUsers.filter(u => u.active).map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.role})</option>)}
-                            </select>
-                            {errors.userId && <span className="field-error">{errors.userId}</span>}
-                            {availableUsers.filter(u => u.active).length === 0 && <span className="field-hint">No available users. Create a user first.</span>}
+                            <label>Employee</label>
+                            <div className="form-static">{editing.fullName} ({editing.userName})</div>
                         </div>
+                    ) : (
+                        <>
+                            <div className="form-group">
+                                <label>Login</label>
+                                <div className="queue-filter">
+                                    {[['new', '➕ Create new login'], ['existing', '👤 Use existing login']].map(([mode, label]) => (
+                                        <button type="button" key={mode}
+                                            className={`btn btn-sm ${form.loginMode === mode ? 'btn-primary' : 'btn-outline'}`}
+                                            onClick={() => { setForm({ ...form, loginMode: mode }); setErrors({}); }}>
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            {form.loginMode === 'existing' ? (
+                                <div className="form-group">
+                                    <label>User *</label>
+                                    <select {...field('userId')}>
+                                        <option value="">Select user...</option>
+                                        {availableUsers.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.username})</option>)}
+                                    </select>
+                                    {fieldError('userId')}
+                                    {availableUsers.length === 0 && <span className="field-hint">No logins left to register. Create a new login instead.</span>}
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="form-group"><label>Full Name *</label>
+                                        <input {...field('fullName')} />{fieldError('fullName')}
+                                    </div>
+                                    <div className="grid-2">
+                                        <div className="form-group"><label>Username *</label>
+                                            <input {...field('username')} autoComplete="off" />{fieldError('username')}
+                                        </div>
+                                        <div className="form-group"><label>Password *</label>
+                                            <input {...field('password')} type="password" autoComplete="new-password" />{fieldError('password')}
+                                        </div>
+                                    </div>
+                                    <div className="grid-2">
+                                        <div className="form-group"><label>Email *</label>
+                                            <input {...field('email')} type="email" />{fieldError('email')}
+                                        </div>
+                                        <div className="form-group"><label>Phone</label>
+                                            <input {...field('phone')} placeholder="10 digits" />{fieldError('phone')}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </>
                     )}
-                    {!editing && (
+                    <div className="grid-2">
                         <div className="form-group">
                             <label>Shop *</label>
-                            <select className={`form-control${errors.shopId ? ' input-error' : ''}`} value={form.shopId} onChange={e => { setForm({ ...form, shopId: e.target.value }); setErrors(prev => ({ ...prev, shopId: '' })); }}>
+                            <select {...field('shopId')}>
                                 <option value="">Select shop...</option>
-                                {shops.filter(s => s.active).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                {shops.filter(s => s.active || s.id === editing?.shopId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
-                            {errors.shopId && <span className="field-error">{errors.shopId}</span>}
+                            {fieldError('shopId')}
+                        </div>
+                        <div className="form-group">
+                            <label>Role *</label>
+                            <select {...field('role')}>
+                                <option value="SHOP_MANAGER">Shop Manager</option>
+                                <option value="SHOP_OPERATOR">Shop Operator</option>
+                            </select>
+                            {fieldError('role')}
+                        </div>
+                    </div>
+                    {form.role === 'SHOP_OPERATOR' && (
+                        <div className="form-group">
+                            <label>Queue Station</label>
+                            <select {...field('station')}>
+                                {STATION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                            <span className="form-hint">The operator only sees, and gets alerts for, this station's queue.</span>
                         </div>
                     )}
                     <div className="grid-2">

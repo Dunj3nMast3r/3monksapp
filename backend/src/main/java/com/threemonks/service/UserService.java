@@ -5,7 +5,6 @@ import com.threemonks.dto.UserResponse;
 import com.threemonks.entity.Shop;
 import com.threemonks.entity.User;
 import com.threemonks.enums.Role;
-import com.threemonks.enums.Station;
 import com.threemonks.exception.BadRequestException;
 import com.threemonks.exception.ResourceNotFoundException;
 import com.threemonks.exception.UnauthorizedException;
@@ -63,11 +62,6 @@ public class UserService {
                     .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", request.getShopId()));
         }
 
-        // Non-admin users must have a shop
-        if (request.getRole() != Role.SUPER_ADMIN && shop == null) {
-            throw new BadRequestException("Shop is required for non-admin users");
-        }
-
         User user = User.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
@@ -76,7 +70,6 @@ public class UserService {
                 .phone(request.getPhone())
                 .role(request.getRole())
                 .shop(shop)
-                .station(request.getRole() == Role.SHOP_OPERATOR ? request.getStation() : null)
                 .active(true)
                 .build();
 
@@ -105,17 +98,6 @@ public class UserService {
             user.setShop(shop);
         }
 
-        return toResponse(userRepository.save(user));
-    }
-
-    // null station means the operator works both stations
-    @Transactional
-    public UserResponse updateStation(Long id, Station station) {
-        User user = findUserById(id);
-        if (user.getRole() != Role.SHOP_OPERATOR) {
-            throw new BadRequestException("Stations can only be assigned to shop operators");
-        }
-        user.setStation(station);
         return toResponse(userRepository.save(user));
     }
 

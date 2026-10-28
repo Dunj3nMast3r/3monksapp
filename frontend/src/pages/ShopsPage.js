@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { adminService } from '../services/dataService';
+import { roleLabels } from '../utils/helpers';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 
+const STATION_LABELS = { SHOT: '⚡ Shots', BLEND: '🥤 Blends' };
+
 const ShopsPage = () => {
     const [shops, setShops] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [staffShop, setStaffShop] = useState(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -16,11 +22,17 @@ const ShopsPage = () => {
 
     const fetchShops = async () => {
         try {
-            const res = await adminService.getShops();
+            const [res, userRes] = await Promise.all([adminService.getShops(), adminService.getUsers()]);
             setShops(res.data.data || []);
+            setUsers(userRes.data.data || []);
         } catch { toast.error('Failed to load shops'); }
         finally { setLoading(false); }
     };
+
+    // Managers first, then operators, by name
+    const staffOf = (shopId) => users
+        .filter(u => u.shopId === shopId && u.role !== 'SUPER_ADMIN')
+        .sort((a, b) => a.role.localeCompare(b.role) || a.fullName.localeCompare(b.fullName));
 
     const openAdd = () => { setEditing(null); setForm({ name: '', address: '', phone: '', email: '', gstNumber: '' }); setErrors({}); setShowModal(true); };
     const openEdit = (shop) => { setEditing(shop); setForm({ name: shop.name, address: shop.address || '', phone: shop.phone || '', email: shop.email || '', gstNumber: shop.gstNumber || '' }); setErrors({}); setShowModal(true); };
@@ -68,13 +80,18 @@ const ShopsPage = () => {
             {loading ? <div className="loading"><div className="spinner"></div></div> : (
                 <div className="card"><div className="table-wrapper">
                     <table>
-                        <thead><tr><th>Name</th><th>Address</th><th>Phone</th><th>GST</th><th>Status</th><th>Actions</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Address</th><th>Phone</th><th>GST</th><th>Staff</th><th>Status</th><th>Actions</th></tr></thead>
                         <tbody>{shops.map(s => (
                             <tr key={s.id}>
                                 <td style={{ fontWeight: 500 }}>{s.name}</td>
                                 <td>{s.address || '-'}</td>
                                 <td>{s.phone || '-'}</td>
                                 <td>{s.gstNumber || '-'}</td>
+                                <td>
+                                    <button className="btn btn-sm btn-outline" onClick={() => setStaffShop(s)}>
+                                        👥 {staffOf(s.id).length}
+                                    </button>
+                                </td>
                                 <td><span className={`badge ${s.active ? 'badge-success' : 'badge-danger'}`}>{s.active ? 'Active' : 'Inactive'}</span></td>
                                 <td style={{ display: 'flex', gap: '6px' }}>
                                     <button className="btn btn-sm btn-outline" onClick={() => openEdit(s)}>Edit</button>
@@ -116,6 +133,27 @@ const ShopsPage = () => {
                         </button>
                     </div>
                 </form>
+            </Modal>
+            <Modal isOpen={!!staffShop} onClose={() => setStaffShop(null)} title={`Staff - ${staffShop?.name || ''}`}>
+                {staffShop && (staffOf(staffShop.id).length === 0 ? (
+                    <p>No staff assigned yet. Register them under <Link to="/dashboard/employees">Employees</Link>.</p>
+                ) : (
+                    <div className="table-wrapper">
+                        <table>
+                            <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Station</th><th>Status</th></tr></thead>
+                            <tbody>{staffOf(staffShop.id).map(u => (
+                                <tr key={u.id}>
+                                    <td style={{ fontWeight: 500 }}>{u.fullName}</td>
+                                    <td>{u.username}</td>
+                                    <td><span className="badge badge-info">{roleLabels[u.role] || u.role}</span></td>
+                                    <td>{u.role === 'SHOP_OPERATOR' ? (STATION_LABELS[u.station] || 'Both') : '-'}</td>
+                                    <td><span className={`badge ${u.active ? 'badge-success' : 'badge-danger'}`}>{u.active ? 'Active' : 'Inactive'}</span></td>
+                                </tr>
+                            ))}</tbody>
+                        </table>
+                        <p className="form-hint">To move someone or change their role or station, edit them under <Link to="/dashboard/employees">Employees</Link>.</p>
+                    </div>
+                ))}
             </Modal>
         </div>
     );

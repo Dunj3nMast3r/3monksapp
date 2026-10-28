@@ -4,25 +4,17 @@ import { roleLabels } from '../utils/helpers';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 
-// Queue station for shop operators; '' means both stations
-const STATION_OPTIONS = [
-    { value: '', label: 'Both stations' },
-    { value: 'SHOT', label: '⚡ Shots' },
-    { value: 'BLEND', label: '🥤 Blends' },
-];
-
 const UsersPage = () => {
     const [users, setUsers] = useState([]);
-    const [shops, setShops] = useState([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
-    const [form, setForm] = useState({ fullName: '', username: '', password: '', email: '', phone: '', role: 'SHOP_OPERATOR', shopId: '', station: '' });
+    const [form, setForm] = useState({ fullName: '', username: '', password: '', email: '', phone: '', role: 'SHOP_OPERATOR' });
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
-        Promise.all([adminService.getUsers(), adminService.getShops()])
-            .then(([uRes, sRes]) => { setUsers(uRes.data.data || []); setShops(sRes.data.data || []); })
+        adminService.getUsers()
+            .then(uRes => setUsers(uRes.data.data || []))
             .catch(() => toast.error('Failed'))
             .finally(() => setLoading(false));
     }, []);
@@ -30,7 +22,7 @@ const UsersPage = () => {
     const fetchUsers = async () => { const res = await adminService.getUsers(); setUsers(res.data.data || []); };
 
     const openAdd = () => {
-        setForm({ fullName: '', username: '', password: '', email: '', phone: '', role: 'SHOP_OPERATOR', shopId: '', station: '' });
+        setForm({ fullName: '', username: '', password: '', email: '', phone: '', role: 'SHOP_OPERATOR' });
         setErrors({});
         setShowModal(true);
     };
@@ -47,7 +39,6 @@ const UsersPage = () => {
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Please enter a valid email address';
         if (form.phone && !/^[0-9]{10}$/.test(form.phone)) errs.phone = 'Phone number must be exactly 10 digits';
         if (!form.role) errs.role = 'Role is required';
-        if (form.role !== 'SUPER_ADMIN' && !form.shopId) errs.shopId = 'Shop is required for non-admin users';
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -57,7 +48,7 @@ const UsersPage = () => {
         if (!validateForm()) return;
         setSubmitting(true);
         try {
-            await adminService.createUser({ ...form, shopId: form.shopId ? parseInt(form.shopId) : null, station: form.station || null });
+            await adminService.createUser(form);
             toast.success('User created');
             setShowModal(false);
             fetchUsers();
@@ -72,16 +63,6 @@ const UsersPage = () => {
         } finally { setSubmitting(false); }
     };
 
-    const handleStationChange = async (id, station) => {
-        try {
-            await adminService.updateUserStation(id, station);
-            toast.success('Station updated');
-            fetchUsers();
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to update station');
-        }
-    };
-
     const handleToggle = async (id) => {
         try { await adminService.toggleUser(id); toast.success('Toggled'); fetchUsers(); }
         catch { toast.error('Failed'); }
@@ -93,20 +74,13 @@ const UsersPage = () => {
             {loading ? <div className="loading"><div className="spinner"></div></div> : (
                 <div className="card"><div className="table-wrapper">
                     <table>
-                        <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Shop</th><th>Station</th><th>Status</th><th>Actions</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Shop</th><th>Status</th><th>Actions</th></tr></thead>
                         <tbody>{users.map(u => (
                             <tr key={u.id}>
                                 <td style={{ fontWeight: 500 }}>{u.fullName}</td>
                                 <td>{u.username}</td>
                                 <td><span className="badge badge-info">{roleLabels[u.role] || u.role}</span></td>
-                                <td>{u.shopName || '-'}</td>
-                                <td>
-                                    {u.role === 'SHOP_OPERATOR' ? (
-                                        <select className="form-control form-control-sm" value={u.station || ''} onChange={e => handleStationChange(u.id, e.target.value)}>
-                                            {STATION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                        </select>
-                                    ) : '-'}
-                                </td>
+                                <td>{u.shopName || (u.role === 'SUPER_ADMIN' ? '-' : <span className="badge badge-warning">Not assigned</span>)}</td>
                                 <td><span className={`badge ${u.active ? 'badge-success' : 'badge-danger'}`}>{u.active ? 'Active' : 'Inactive'}</span></td>
                                 <td>
                                     <button className={`btn btn-sm ${u.active ? 'btn-danger' : 'btn-primary'}`} onClick={() => handleToggle(u.id)}>{u.active ? 'Disable' : 'Enable'}</button>
@@ -142,29 +116,15 @@ const UsersPage = () => {
                             {errors.phone && <span className="field-error">{errors.phone}</span>}
                         </div>
                     </div>
-                    <div className="grid-2">
-                        <div className="form-group"><label>Role *</label>
-                            <select className={`form-control${errors.role ? ' input-error' : ''}`} value={form.role} onChange={e => { setForm({ ...form, role: e.target.value }); setErrors(prev => ({ ...prev, role: '', shopId: '' })); }}>
-                                <option value="SUPER_ADMIN">Super Admin</option><option value="SHOP_MANAGER">Shop Manager</option><option value="SHOP_OPERATOR">Shop Operator</option>
-                            </select>
-                            {errors.role && <span className="field-error">{errors.role}</span>}
-                        </div>
-                        <div className="form-group"><label>Shop {form.role !== 'SUPER_ADMIN' ? '*' : ''}</label>
-                            <select className={`form-control${errors.shopId ? ' input-error' : ''}`} value={form.shopId} onChange={e => { setForm({ ...form, shopId: e.target.value }); setErrors(prev => ({ ...prev, shopId: '' })); }}>
-                                <option value="">-- Select --</option>
-                                {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-                            {errors.shopId && <span className="field-error">{errors.shopId}</span>}
-                        </div>
+                    <div className="form-group"><label>Role *</label>
+                        <select className={`form-control${errors.role ? ' input-error' : ''}`} value={form.role} onChange={e => { setForm({ ...form, role: e.target.value }); setErrors(prev => ({ ...prev, role: '' })); }}>
+                            <option value="SUPER_ADMIN">Super Admin</option><option value="SHOP_MANAGER">Shop Manager</option><option value="SHOP_OPERATOR">Shop Operator</option>
+                        </select>
+                        {errors.role && <span className="field-error">{errors.role}</span>}
+                        {form.role !== 'SUPER_ADMIN' && (
+                            <span className="form-hint">Assign the shop, role and station under Employees. They can log in once registered there.</span>
+                        )}
                     </div>
-                    {form.role === 'SHOP_OPERATOR' && (
-                        <div className="form-group"><label>Queue Station</label>
-                            <select className="form-control" value={form.station} onChange={e => setForm({ ...form, station: e.target.value })}>
-                                {STATION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
-                            <span className="form-hint">The operator only sees, and gets alerts for, this station's queue.</span>
-                        </div>
-                    )}
                     <div className="modal-actions">
                         <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
                         <button type="submit" className="btn btn-primary" disabled={submitting}>

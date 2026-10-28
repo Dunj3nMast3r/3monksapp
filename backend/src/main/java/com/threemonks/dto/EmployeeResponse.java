@@ -1,5 +1,6 @@
 package com.threemonks.dto;
 
+import com.threemonks.enums.Station;
 import lombok.Builder;
 import lombok.Data;
 
@@ -16,6 +17,7 @@ public class EmployeeResponse {
     private String phone;
     private String role;
     private Long shopId;
+    private Station station;
     private String shopName;
     private BigDecimal salary;
     private BigDecimal incentivePercentage;

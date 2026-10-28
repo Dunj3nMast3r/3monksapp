@@ -6,7 +6,9 @@ import com.threemonks.dto.SalarySheetResponse;
 import com.threemonks.entity.Employee;
 import com.threemonks.entity.Shop;
 import com.threemonks.entity.User;
+import com.threemonks.dto.EmployeeLoginRequest;
 import com.threemonks.enums.Role;
+import com.threemonks.enums.Station;
 import com.threemonks.exception.BadRequestException;
 import com.threemonks.exception.ResourceNotFoundException;
 import com.threemonks.exception.UnauthorizedException;
@@ -16,6 +18,7 @@ import com.threemonks.repository.ShopRepository;
 import com.threemonks.repository.UserRepository;
 import com.threemonks.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +41,7 @@ public class EmployeeService {
     private final UserRepository userRepository;
     private final ShopRepository shopRepository;
     private final OrderRepository orderRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public List<EmployeeResponse> getAllEmployees() {
         return employeeRepository.findAll().stream()
@@ -55,24 +59,35 @@ public class EmployeeService {
         return toResponse(findById(id));
     }
 
+    // Registers a person at a shop. The login's shop, role and station follow the
+    // employee record, so access and payroll always agree on where someone works.
     @Transactional
     public EmployeeResponse createEmployee(EmployeeRequest request) {
-        if (employeeRepository.existsByUserId(request.getUserId())) {
-            throw new BadRequestException(
-                    "This user is already registered as an employee. Please select a different user.");
+        if ((request.getUserId() == null) == (request.getNewUser() == null)) {
+            throw new BadRequestException("Select an existing login or enter details for a new one.");
         }
+        Shop shop = findActiveShop(request.getShopId());
+        validateRole(request.getRole());
 
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new BadRequestException("Selected user not found. Please refresh and try again."));
-        Shop shop = shopRepository.findById(request.getShopId())
-                .orElseThrow(() -> new BadRequestException("Selected shop not found. Please refresh and try again."));
-
-        if (!user.getActive()) {
-            throw new BadRequestException("Cannot add inactive user as employee. Please activate the user first.");
+        User user;
+        if (request.getNewUser() != null) {
+            user = newLogin(request.getNewUser());
+        } else {
+            if (employeeRepository.existsByUserId(request.getUserId())) {
+                throw new BadRequestException(
+                        "This user is already registered as an employee. Please select a different user.");
+            }
+            user = userRepository.findById(request.getUserId())
+                    .orElseThrow(() -> new BadRequestException("Selected user not found. Please refresh and try again."));
+            if (!user.getActive()) {
+                throw new BadRequestException("Cannot add inactive user as employee. Please activate the user first.");
+            }
+            if (user.getRole() == Role.SUPER_ADMIN) {
+                throw new BadRequestException("A super admin cannot be registered as a shop employee.");
+            }
         }
-        if (!shop.getActive()) {
-            throw new BadRequestException("Cannot assign employee to an inactive shop. Please select an active shop.");
-        }
+        applyAssignment(user, shop, request.getRole(), request.getStation());
+        userRepository.save(user);
 
         Employee employee = Employee.builder()
                 .user(user)
@@ -89,11 +104,58 @@ public class EmployeeService {
     @Transactional
     public EmployeeResponse updateEmployee(Long id, EmployeeRequest request) {
         Employee employee = findById(id);
+        Shop shop = employee.getShop().getId().equals(request.getShopId())
+                ? employee.getShop()
+                : findActiveShop(request.getShopId());
+        validateRole(request.getRole());
+
+        employee.setShop(shop);
         employee.setSalary(request.getSalary());
         if (request.getIncentivePercentage() != null) {
             employee.setIncentivePercentage(request.getIncentivePercentage());
         }
+        User user = employee.getUser();
+        applyAssignment(user, shop, request.getRole(), request.getStation());
+        userRepository.save(user);
         return toResponse(employeeRepository.save(employee));
+    }
+
+    private User newLogin(EmployeeLoginRequest login) {
+        if (userRepository.existsByUsername(login.getUsername())) {
+            throw new BadRequestException("Username already exists");
+        }
+        if (userRepository.existsByEmail(login.getEmail())) {
+            throw new BadRequestException("Email already exists");
+        }
+        return User.builder()
+                .username(login.getUsername())
+                .password(passwordEncoder.encode(login.getPassword()))
+                .fullName(login.getFullName())
+                .email(login.getEmail())
+                .phone(login.getPhone())
+                .active(true)
+                .build();
+    }
+
+    private void applyAssignment(User user, Shop shop, Role role, Station station) {
+        user.setShop(shop);
+        user.setRole(role);
+        user.setStation(role == Role.SHOP_OPERATOR ? station : null);
+    }
+
+    private void validateRole(Role role) {
+        if (role != Role.SHOP_MANAGER && role != Role.SHOP_OPERATOR) {
+            throw new BadRequestException("Employees must be a shop manager or a shop operator.");
+        }
+    }
+
+    private Shop findActiveShop(Long shopId) {
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new BadRequestException("Selected shop not found. Please refresh and try again."));
+        if (!shop.getActive()) {
+            throw new BadRequestException("Cannot assign employee to an inactive shop. Please select an active shop.");
+        }
+        return shop;
     }
 
     @Transactional
@@ -177,6 +239,7 @@ public class EmployeeService {
                 .phone(emp.getUser().getPhone())
                 .role(emp.getUser().getRole().name())
                 .shopId(emp.getShop().getId())
+                .station(emp.getUser().getStation())
                 .shopName(emp.getShop().getName())
                 .salary(emp.getSalary())
                 .incentivePercentage(emp.getIncentivePercentage())

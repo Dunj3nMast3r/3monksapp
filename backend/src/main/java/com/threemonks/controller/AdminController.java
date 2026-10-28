@@ -1,7 +1,6 @@
 package com.threemonks.controller;
 
 import com.threemonks.dto.*;
-import com.threemonks.enums.Station;
 import com.threemonks.entity.Feedback;
 import com.threemonks.entity.FranchiseEnquiry;
 import com.threemonks.repository.FeedbackRepository;
@@ -70,14 +69,6 @@ public class AdminController {
             @Valid @RequestBody UserRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         return ResponseEntity.ok(ApiResponse.success("User created", userService.createUser(request, currentUser)));
-    }
-
-    // Omit station to let the operator work both stations
-    @PatchMapping("/users/{id}/station")
-    public ResponseEntity<ApiResponse<UserResponse>> updateUserStation(
-            @PathVariable Long id,
-            @RequestParam(required = false) Station station) {
-        return ResponseEntity.ok(ApiResponse.success("Station updated", userService.updateStation(id, station)));
     }
 
     @PatchMapping("/users/{id}/toggle")

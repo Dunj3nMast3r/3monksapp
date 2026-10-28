@@ -284,6 +284,11 @@ select.form-control {
     font-weight: 500;
 }
 
+.form-static {
+    padding: 8px 0;
+    font-weight: 600;
+}
+
 .form-hint {
     display: block;
     margin-top: 4px;
