@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { orderService } from '../services/dataService';
 import { formatCurrency } from '../utils/helpers';
 import toast from 'react-hot-toast';
+import { unlockAudio, isAudioUnlocked, playChime, vibrate, requestWakeLock } from '../utils/stationAlerts';
 
 // Anything that is not a shot (creamy/curated blends) is made at the blends station
 const isShotItem = (item) => item.productCategory === 'SHOT';
@@ -14,6 +15,25 @@ const STATIONS = {
     BLEND: { label: '🥤 Blends', name: 'Blends', icon: '🥤', statusKey: 'blendStatus', doneAtKey: 'blendCompletedAt', isItem: isBlendItem },
 };
 const STATION_KEY = 'orderQueueStation';
+const ALERTS_KEY = 'orderQueueAlerts';
+// An order waiting longer than this at a station gets a reminder
+const REMINDER_MINUTES = 5;
+// New cards stay highlighted this long
+const NEW_HIGHLIGHT_MS = 15000;
+
+const loadAlertsOn = () => {
+    try {
+        return localStorage.getItem(ALERTS_KEY) !== 'off';
+    } catch (_) {
+        return true;
+    }
+};
+
+const stationQueue = (orders, key) => key === 'ALL'
+    ? orders
+    : orders.filter(o => o[STATIONS[key].statusKey] === 'PENDING');
+
+const minutesWaiting = (order) => Math.max(0, Math.floor((Date.now() - parseServerTime(order.orderDate)) / 60000));
 
 // Each device remembers its station (e.g. the shots counter tablet)
 const loadStation = () => {
@@ -25,7 +45,14 @@ const loadStation = () => {
     }
 };
 
-const formatTime = (date) => new Date(date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+// The server sends shop-local (IST) times without an offset; read them as IST so the
+// clock and wait times are right whatever timezone the tablet is set to
+const parseServerTime = (date) => {
+    const s = String(date).replace(' ', 'T');
+    return new Date(/([zZ]|[+-]\d\d:?\d\d)$/.test(s) ? s : `${s}+05:30`);
+};
+const formatTime = (date) => parseServerTime(date)
+    .toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' });
 const itemLabel = (item) => `${item.quantity}× ${item.customization || item.productName}`;
 
 const StationBadge = ({ station, order }) => {
@@ -45,6 +72,12 @@ const OrderQueuePage = () => {
     const [loading, setLoading] = useState(true);
     const [completing, setCompleting] = useState(null);
     const [station, setStation] = useState(loadStation);
+    const [alertsOn, setAlertsOn] = useState(loadAlertsOn);
+    const [audioReady, setAudioReady] = useState(isAudioUnlocked);
+    // Order ids already seen in the current station's queue; null station means not seeded yet
+    const seenRef = useRef({ station: null, ids: new Set() });
+    const remindedRef = useRef(new Set());
+    const [newUntil, setNewUntil] = useState(() => new Map());
 
     const fetchOrders = useCallback(async () => {
         try {
@@ -67,6 +100,95 @@ const OrderQueuePage = () => {
         const interval = setInterval(fetchOrders, 10000);
         return () => clearInterval(interval);
     }, [fetchOrders]);
+
+    // Compare each refresh with the previous one and alert on orders new to this station
+    useEffect(() => {
+        if (loading) return;
+        const queue = stationQueue(pendingOrders, station);
+        const seen = seenRef.current;
+        seenRef.current = { station, ids: new Set(queue.map(o => o.id)) };
+        // First load or station switch: just remember what is there, no alert flood
+        if (seen.station !== station) return;
+
+        const now = Date.now();
+        const fresh = queue.filter(o => !seen.ids.has(o.id));
+        if (fresh.length > 0) {
+            setNewUntil(prev => {
+                const next = new Map([...prev].filter(([, until]) => until > now));
+                fresh.forEach(o => next.set(o.id, now + NEW_HIGHLIGHT_MS));
+                return next;
+            });
+        }
+
+        const overdue = queue.filter(o =>
+            minutesWaiting(o) >= REMINDER_MINUTES && !remindedRef.current.has(`${station}:${o.id}`));
+        overdue.forEach(o => remindedRef.current.add(`${station}:${o.id}`));
+
+        if (!alertsOn) return;
+        const stationItems = (o) => (o.items || []).filter(station === 'ALL' ? () => true : STATIONS[station].isItem);
+        if (fresh.length > 0) {
+            playChime(station);
+            vibrate();
+            fresh.forEach(o => toast(
+                `🔔 New order #${o.tokenNumber}: ${stationItems(o).map(itemLabel).join(', ')}${o.parcel ? ' · 🛍️ Parcel' : ''}`,
+                { duration: 8000 }
+            ));
+        } else if (overdue.length > 0) {
+            playChime('REMINDER');
+            vibrate([400]);
+        }
+        if (overdue.length > 0) {
+            toast(`⏰ Waiting over ${REMINDER_MINUTES} min: ${overdue.map(o => `#${o.tokenNumber}`).join(', ')}`,
+                { duration: 8000, icon: '⏰' });
+        }
+    }, [pendingOrders, station, loading, alertsOn]);
+
+    // Browsers block sound until the page is touched; the first tap anywhere unlocks it.
+    // Uses click, not pointerdown: removing the banner mid-tap would shift the page and
+    // make the tap land on a different button.
+    useEffect(() => {
+        if (audioReady) return;
+        const unlock = () => unlockAudio().then(setAudioReady);
+        document.addEventListener('click', unlock);
+        return () => document.removeEventListener('click', unlock);
+    }, [audioReady]);
+
+    // Keep the station screen on while alerts are on; the lock drops when the tab is hidden
+    useEffect(() => {
+        if (!alertsOn) return;
+        let lock = null;
+        let active = true;
+        const acquire = async () => {
+            if (document.visibilityState !== 'visible') return;
+            const next = await requestWakeLock();
+            if (active) lock = next;
+            else if (next) next.release().catch(() => {});
+        };
+        acquire();
+        document.addEventListener('visibilitychange', acquire);
+        return () => {
+            active = false;
+            document.removeEventListener('visibilitychange', acquire);
+            if (lock) lock.release().catch(() => {});
+        };
+    }, [alertsOn]);
+
+    // Pending count in the tab title, restored when leaving the page
+    const queueCount = stationQueue(pendingOrders, station).length;
+    useEffect(() => {
+        const original = document.title;
+        return () => { document.title = original; };
+    }, []);
+    useEffect(() => {
+        document.title = queueCount > 0 ? `(${queueCount}) Order Queue` : 'Order Queue';
+    }, [queueCount]);
+
+    const toggleAlerts = () => {
+        const next = !alertsOn;
+        setAlertsOn(next);
+        try { localStorage.setItem(ALERTS_KEY, next ? 'on' : 'off'); } catch (_) { /* not persisted */ }
+        if (next) unlockAudio().then(setAudioReady);
+    };
 
     const selectStation = (key) => {
         setStation(key);
@@ -102,9 +224,7 @@ const OrderQueuePage = () => {
 
     const config = STATIONS[station];
     const isStationView = station !== 'ALL';
-    const queueFor = (key) => key === 'ALL'
-        ? pendingOrders
-        : pendingOrders.filter(o => o[STATIONS[key].statusKey] === 'PENDING');
+    const queueFor = (key) => stationQueue(pendingOrders, key);
     const queue = queueFor(station);
 
     // Most recent first, limit 20
@@ -124,10 +244,21 @@ const OrderQueuePage = () => {
         <div>
             <div className="page-header">
                 <h1>📋 Order Queue</h1>
-                <button className="btn btn-outline" onClick={() => { setLoading(true); fetchOrders(); }}>
-                    🔄 Refresh
-                </button>
+                <div className="queue-header-actions">
+                    <button className={`btn ${alertsOn ? 'btn-primary' : 'btn-outline'}`} onClick={toggleAlerts}>
+                        {alertsOn ? '🔔 Alerts On' : '🔕 Alerts Off'}
+                    </button>
+                    <button className="btn btn-outline" onClick={() => { setLoading(true); fetchOrders(); }}>
+                        🔄 Refresh
+                    </button>
+                </div>
             </div>
+
+            {alertsOn && !audioReady && (
+                <button className="btn btn-lg queue-alert-banner" onClick={() => unlockAudio().then(setAudioReady)}>
+                    🔔 Tap here to enable sound alerts
+                </button>
+            )}
 
             {/* Station selector */}
             <div className="queue-filter">
@@ -170,14 +301,27 @@ const OrderQueuePage = () => {
                     </div>
                 ) : (
                     <div className="queue-grid">
-                        {queue.map((order, index) => (
-                            <div key={order.id} className={`queue-card ${index === 0 ? 'queue-card-active' : ''}`}>
+                        {queue.map((order, index) => {
+                            const waited = minutesWaiting(order);
+                            const overdue = waited >= REMINDER_MINUTES;
+                            const isNew = (newUntil.get(order.id) || 0) > Date.now();
+                            return (
+                            <div
+                                key={order.id}
+                                className={`queue-card ${index === 0 ? 'queue-card-active' : ''} ${isNew ? 'queue-card-new' : ''} ${overdue ? 'queue-card-overdue' : ''}`}
+                            >
                                 <div className="queue-card-header">
                                     <span className="queue-card-token">
                                         #{order.tokenNumber}
                                         {order.parcel && <span className="badge badge-warning queue-parcel-badge">🛍️ Parcel</span>}
                                     </span>
-                                    <span className="queue-card-time">{formatTime(order.orderDate)}</span>
+                                    <span className="queue-card-time">
+                                        {isNew && <span className="badge badge-success queue-new-badge">NEW</span>}
+                                        {formatTime(order.orderDate)}
+                                        <span className={`queue-wait ${overdue ? 'queue-wait-overdue' : ''}`}>
+                                            {overdue ? '⏰ ' : ''}{waited} min
+                                        </span>
+                                    </span>
                                 </div>
                                 <div className="queue-card-items">
                                     {visibleItems(order).map((item, i) => (
@@ -210,7 +354,8 @@ const OrderQueuePage = () => {
                                         : isStationView ? `✅ ${config.name} Handed Over` : '✅ Complete Whole Order'}
                                 </button>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
