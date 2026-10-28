@@ -204,16 +204,38 @@ public class StockService {
                 }
                 Stock saved = stockRepository.save(stock);
 
-                stockTransactionRepository.save(StockTransaction.builder()
-                                .shop(shop)
-                                .rawMaterial(rm)
-                                .txnDate(txnDate != null ? txnDate : LocalDate.now())
-                                .txnType(type)
-                                .quantityChange(signedQuantity)
-                                .actualCount(actualCount)
-                                .notes(notes)
-                                .createdBy(user)
-                                .build());
+                // One row per material per day per type. Entering the same material
+                // again for the same date folds into that row instead of adding
+                // another, so a day always reads as a single figure.
+                LocalDate date = txnDate != null ? txnDate : LocalDate.now();
+                StockTransaction txn = stockTransactionRepository
+                                .findByShopIdAndRawMaterialIdAndTxnDateAndTxnType(shopId, rawMaterialId, date, type)
+                                .orElse(null);
+
+                if (txn == null) {
+                        txn = StockTransaction.builder()
+                                        .shop(shop)
+                                        .rawMaterial(rm)
+                                        .txnDate(date)
+                                        .txnType(type)
+                                        .quantityChange(signedQuantity)
+                                        .actualCount(actualCount)
+                                        .notes(notes)
+                                        .createdBy(user)
+                                        .updatedBy(user)
+                                        .build();
+                } else {
+                        txn.setQuantityChange(txn.getQuantityChange().add(signedQuantity));
+                        if (actualCount != null) {
+                                // An adjustment is absolute, so the latest count wins.
+                                txn.setActualCount(actualCount);
+                        }
+                        if (notes != null && !notes.isBlank()) {
+                                txn.setNotes(notes);
+                        }
+                        txn.setUpdatedBy(user);
+                }
+                stockTransactionRepository.save(txn);
 
                 return toStockResponse(saved);
         }

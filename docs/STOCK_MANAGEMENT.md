@@ -21,16 +21,20 @@ An adjustment takes the **actual count** from a physical stock check. The servic
 works out the difference against the current balance and stores both: the signed
 delta in `quantity_change` and the entered figure in `actual_count`.
 
-Multiple entries on the same day are all kept. The UI rolls them up into one row
-per material per day.
+There is **at most one row per material per day per type**. Entering the same
+material again for the same date folds into that row rather than adding another:
+quantities accumulate, and an adjustment's `actual_count` is replaced because the
+latest physical count is the one that applies. So a day always reads as a single
+figure, however many times it was entered.
 
 ## Entering stock
 
 The Stock Entry screen lists **every active raw material as a row** — material,
-current balance, a quantity box and a date — with one **Save** button for the
-whole table. Rows left blank are skipped, so you only fill in what moved. A date
-control above the table fills every row at once, and individual rows can still be
-changed if a day's figures are being backfilled separately.
+current balance and a quantity box — with one **Save** button for the whole
+table. Rows left blank are skipped, so you only fill in what moved.
+
+**One date applies to the whole table**, set above it and defaulting to today.
+Backdating is done by changing that one control, not per row.
 
 The three modes (Add Stock / Deduct Consumption / Adjust) share the table; only
 the quantity column changes meaning, so switching mode clears what was typed.
@@ -50,6 +54,8 @@ way you never end up with half a day's figures recorded.
   pass the check.
 - The negative check applies to the **current** balance, not the balance as it
   stood on a backdated date. Historical positions are not reconstructed.
+- A unique index on `(shop_id, raw_material_id, txn_date, txn_type)` makes a
+  duplicate day row impossible at the database level, not just in the service.
 
 ## What does *not* move stock
 

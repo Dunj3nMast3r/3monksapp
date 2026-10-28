@@ -34,8 +34,9 @@ const StockPage = () => {
     const [tab, setTab] = useState('entry');
     const [mode, setMode] = useState('PURCHASE');
 
-    // Keyed by raw material id: { qty, date }
+    // Quantity typed per raw material id. One date applies to the whole table.
     const [entries, setEntries] = useState({});
+    const [entryDate, setEntryDate] = useState(() => localDate());
 
     const [from, setFrom] = useState(() => daysAgo(7));
     const [to, setTo] = useState(() => localDate());
@@ -89,21 +90,8 @@ const StockPage = () => {
         return map;
     }, [stock]);
 
-    const setEntry = (materialId, patch) => {
-        setEntries(prev => ({
-            ...prev,
-            [materialId]: { qty: '', date: localDate(), ...prev[materialId], ...patch },
-        }));
-    };
-
-    const applyDateToAll = (date) => {
-        setEntries(prev => {
-            const next = { ...prev };
-            materials.forEach(m => {
-                next[m.id] = { qty: '', ...next[m.id], date };
-            });
-            return next;
-        });
+    const setQty = (materialId, qty) => {
+        setEntries(prev => ({ ...prev, [materialId]: qty }));
     };
 
     const switchMode = (next) => {
@@ -113,14 +101,13 @@ const StockPage = () => {
 
     const filledLines = useMemo(() => (
         materials
-            .map(m => ({ material: m, entry: entries[m.id] }))
-            .filter(({ entry }) => entry && entry.qty !== '' && entry.qty !== null)
-            .map(({ material, entry }) => ({
-                rawMaterialId: material.id,
-                quantity: parseFloat(entry.qty),
-                txnDate: entry.date || localDate(),
+            .filter(m => entries[m.id] !== undefined && entries[m.id] !== '')
+            .map(m => ({
+                rawMaterialId: m.id,
+                quantity: parseFloat(entries[m.id]),
+                txnDate: entryDate,
             }))
-    ), [materials, entries]);
+    ), [materials, entries, entryDate]);
 
     const handleSaveAll = async () => {
         if (filledLines.length === 0) {
@@ -134,7 +121,8 @@ const StockPage = () => {
                 type: mode,
                 lines: filledLines,
             });
-            toast.success(`Saved ${filledLines.length} ${filledLines.length === 1 ? 'entry' : 'entries'}`);
+            toast.success(
+                `Saved ${filledLines.length} ${filledLines.length === 1 ? 'entry' : 'entries'} for ${entryDate}`);
             setEntries({});
             fetchStock();
             if (tab === 'summary') fetchSummary();
@@ -164,10 +152,10 @@ const StockPage = () => {
                         </div>
                     )}
                     <div className="form-group" style={{ margin: 0 }}>
-                        <label>Set date for all rows</label>
+                        <label>Date</label>
                         <input type="date" className="form-control" max={localDate()}
-                            defaultValue={localDate()}
-                            onChange={e => applyDateToAll(e.target.value)}
+                            value={entryDate}
+                            onChange={e => setEntryDate(e.target.value)}
                             style={{ width: '170px' }} />
                     </div>
                 </div>
@@ -205,12 +193,10 @@ const StockPage = () => {
                                             <th>Material</th>
                                             <th>Current</th>
                                             <th>{MODES[mode].qtyHeader}</th>
-                                            <th>Date</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {materials.map(m => {
-                                            const row = entries[m.id] || {};
                                             const current = currentByMaterial[m.id];
                                             return (
                                                 <tr key={m.id}>
@@ -227,14 +213,8 @@ const StockPage = () => {
                                                     <td>
                                                         <input className="form-control" type="number" step="0.01" min="0"
                                                             placeholder="-" style={{ width: '110px' }}
-                                                            value={row.qty ?? ''}
-                                                            onChange={e => setEntry(m.id, { qty: e.target.value })} />
-                                                    </td>
-                                                    <td>
-                                                        <input className="form-control" type="date" max={localDate()}
-                                                            style={{ width: '160px' }}
-                                                            value={row.date || localDate()}
-                                                            onChange={e => setEntry(m.id, { date: e.target.value })} />
+                                                            value={entries[m.id] ?? ''}
+                                                            onChange={e => setQty(m.id, e.target.value)} />
                                                     </td>
                                                 </tr>
                                             );
@@ -247,8 +227,8 @@ const StockPage = () => {
                                 gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
                                 <span style={{ color: '#666' }}>
                                     {filledLines.length === 0
-                                        ? 'Leave a row blank to skip it'
-                                        : `${filledLines.length} row${filledLines.length === 1 ? '' : 's'} ready to save`}
+                                        ? `Leave a row blank to skip it — saving against ${entryDate}`
+                                        : `${filledLines.length} row${filledLines.length === 1 ? '' : 's'} ready to save for ${entryDate}`}
                                 </span>
                                 <button className="btn btn-primary" onClick={handleSaveAll}
                                     disabled={saving || filledLines.length === 0}>

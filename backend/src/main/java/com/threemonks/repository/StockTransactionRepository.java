@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface StockTransactionRepository extends JpaRepository<StockTransaction, Long> {
@@ -42,4 +43,8 @@ public interface StockTransactionRepository extends JpaRepository<StockTransacti
                                           @Param("to") LocalDate to);
 
     List<StockTransaction> findByShopIdAndTxnDateOrderByCreatedAtDesc(Long shopId, LocalDate txnDate);
+
+    /** The single row holding this day's figure, if one has been entered already. */
+    Optional<StockTransaction> findByShopIdAndRawMaterialIdAndTxnDateAndTxnType(
+            Long shopId, Long rawMaterialId, LocalDate txnDate, StockTransactionType txnType);
 }

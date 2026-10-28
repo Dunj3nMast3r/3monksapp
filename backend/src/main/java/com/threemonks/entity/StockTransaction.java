@@ -8,8 +8,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * One stock movement. Stock is managed manually — nothing in the ordering
- * flow writes here. Every change to a Stock balance has a row in this table.
+ * One day's stock movement of a given type, for one material in one shop.
+ *
+ * There is at most one row per (shop, material, txn_date, txn_type): entering
+ * the same material again for the same date updates that row rather than
+ * adding another, so a day always reads as a single figure. Stock is managed
+ * manually — nothing in the ordering flow writes here.
  */
 @Entity
 @Table(name = "stock_transactions")
@@ -36,11 +40,15 @@ public class StockTransaction {
     @Column(name = "txn_type", nullable = false)
     private StockTransactionType txnType;
 
-    /** Signed: positive for a purchase, negative for consumption, either way for an adjustment. */
+    /**
+     * The day's running total for this type: positive for a purchase, negative
+     * for consumption, either way for an adjustment. Repeat entries for the same
+     * date accumulate here.
+     */
     @Column(name = "quantity_change", nullable = false, precision = 10, scale = 2)
     private BigDecimal quantityChange;
 
-    /** Only set for ADJUSTMENT — the physical count that was entered. */
+    /** Only set for ADJUSTMENT — the latest physical count entered for the day. */
     @Column(name = "actual_count", precision = 10, scale = 2)
     private BigDecimal actualCount;
 
@@ -50,12 +58,26 @@ public class StockTransaction {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
-    /** When the row was entered, as opposed to the business date it applies to. */
+    /** When the row was first entered, as opposed to the business date it applies to. */
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    private User updatedBy;
+
+    /** When the day's figure was last changed. */
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        updatedAt = createdAt;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
