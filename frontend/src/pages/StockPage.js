@@ -1,23 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { managerService, adminService } from '../services/dataService';
-import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 
 // Local calendar date, not UTC — toISOString() would roll back a day for IST
 // in the early hours and file the entry against yesterday.
-const todayLocal = () => {
+const localDate = (d = new Date()) =>
+    new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+const daysAgo = (n) => {
     const d = new Date();
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    d.setDate(d.getDate() - n);
+    return localDate(d);
 };
 
-const ENTRY_TYPES = {
-    PURCHASE: { title: 'Add Purchased Stock', action: 'Add Stock', qtyLabel: 'Quantity Purchased' },
-    CONSUMPTION: { title: 'Deduct Consumed Stock', action: 'Deduct', qtyLabel: 'Quantity Consumed' },
-    ADJUSTMENT: { title: 'Adjust Stock', action: 'Adjust', qtyLabel: 'Actual Count (physical stock)' },
+const MODES = {
+    PURCHASE: { label: 'Add Stock', qtyHeader: 'Qty Purchased', action: 'Save Purchases' },
+    CONSUMPTION: { label: 'Deduct Consumption', qtyHeader: 'Qty Consumed', action: 'Save Consumption' },
+    ADJUSTMENT: { label: 'Adjust', qtyHeader: 'Actual Count', action: 'Save Adjustments' },
 };
-
-const emptyForm = { rawMaterialId: '', quantity: '', txnDate: todayLocal(), minimumThreshold: '', notes: '' };
 
 const StockPage = () => {
     const { user } = useAuth();
@@ -25,25 +26,24 @@ const StockPage = () => {
 
     const [shops, setShops] = useState([]);
     const [shopId, setShopId] = useState(user.shopId || '');
-    const [stock, setStock] = useState([]);
     const [materials, setMaterials] = useState([]);
+    const [stock, setStock] = useState([]);
     const [summary, setSummary] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [tab, setTab] = useState('current');
-    const [entryType, setEntryType] = useState(null);
-    const [form, setForm] = useState(emptyForm);
-    const [from, setFrom] = useState(() => {
-        const d = new Date();
-        d.setDate(d.getDate() - 7);
-        return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    });
-    const [to, setTo] = useState(todayLocal());
+    const [saving, setSaving] = useState(false);
+    const [tab, setTab] = useState('entry');
+    const [mode, setMode] = useState('PURCHASE');
 
-    // Admins pick a shop; everyone else is pinned to their own.
+    // Keyed by raw material id: { qty, date }
+    const [entries, setEntries] = useState({});
+
+    const [from, setFrom] = useState(() => daysAgo(7));
+    const [to, setTo] = useState(() => localDate());
+
     useEffect(() => {
         adminService.getRawMaterials()
-            .then(res => setMaterials(res.data.data || []))
-            .catch(() => { });
+            .then(res => setMaterials((res.data.data || []).filter(m => m.active)))
+            .catch(() => toast.error('Failed to load raw materials'));
 
         if (isAdmin) {
             adminService.getShops()
@@ -82,39 +82,68 @@ const StockPage = () => {
     useEffect(() => { fetchStock(); }, [fetchStock]);
     useEffect(() => { if (tab === 'summary') fetchSummary(); }, [tab, fetchSummary]);
 
-    const openEntry = (type) => {
-        setForm(emptyForm);
-        setEntryType(type);
+    // Current balance per material, so each row can show it next to the input.
+    const currentByMaterial = useMemo(() => {
+        const map = {};
+        stock.forEach(s => { map[s.rawMaterialId] = s; });
+        return map;
+    }, [stock]);
+
+    const setEntry = (materialId, patch) => {
+        setEntries(prev => ({
+            ...prev,
+            [materialId]: { qty: '', date: localDate(), ...prev[materialId], ...patch },
+        }));
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const base = {
-            shopId: parseInt(shopId, 10),
-            rawMaterialId: parseInt(form.rawMaterialId, 10),
-            txnDate: form.txnDate,
-            notes: form.notes,
-        };
+    const applyDateToAll = (date) => {
+        setEntries(prev => {
+            const next = { ...prev };
+            materials.forEach(m => {
+                next[m.id] = { qty: '', ...next[m.id], date };
+            });
+            return next;
+        });
+    };
 
+    const switchMode = (next) => {
+        setMode(next);
+        setEntries({});   // a quantity means something different in each mode
+    };
+
+    const filledLines = useMemo(() => (
+        materials
+            .map(m => ({ material: m, entry: entries[m.id] }))
+            .filter(({ entry }) => entry && entry.qty !== '' && entry.qty !== null)
+            .map(({ material, entry }) => ({
+                rawMaterialId: material.id,
+                quantity: parseFloat(entry.qty),
+                txnDate: entry.date || localDate(),
+            }))
+    ), [materials, entries]);
+
+    const handleSaveAll = async () => {
+        if (filledLines.length === 0) {
+            toast.error('Enter a quantity for at least one material');
+            return;
+        }
+        setSaving(true);
         try {
-            if (entryType === 'ADJUSTMENT') {
-                await managerService.adjustStock({ ...base, actualCount: parseFloat(form.quantity) });
-            } else {
-                const payload = {
-                    ...base,
-                    quantity: parseFloat(form.quantity),
-                    minimumThreshold: form.minimumThreshold ? parseFloat(form.minimumThreshold) : null,
-                };
-                if (entryType === 'PURCHASE') await managerService.recordPurchase(payload);
-                else await managerService.recordConsumption(payload);
-            }
-            toast.success(`${ENTRY_TYPES[entryType].action} recorded`);
-            setEntryType(null);
-            setForm(emptyForm);
+            await managerService.recordBulkStock({
+                shopId: parseInt(shopId, 10),
+                type: mode,
+                lines: filledLines,
+            });
+            toast.success(`Saved ${filledLines.length} ${filledLines.length === 1 ? 'entry' : 'entries'}`);
+            setEntries({});
             fetchStock();
             if (tab === 'summary') fetchSummary();
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to save stock entry');
+            // The batch is atomic, so nothing was saved — the message names the
+            // material that failed (usually insufficient stock).
+            toast.error(err.response?.data?.message || 'Failed to save stock entries');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -122,60 +151,113 @@ const StockPage = () => {
         <div>
             <div className="page-header">
                 <h1>Stock Management</h1>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <button className="btn btn-primary" onClick={() => openEntry('PURCHASE')}>+ Add Stock</button>
-                    <button className="btn btn-outline" onClick={() => openEntry('CONSUMPTION')}>- Deduct Consumption</button>
-                    <button className="btn btn-outline" onClick={() => openEntry('ADJUSTMENT')}>Adjust</button>
+            </div>
+
+            <div className="card" style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    {isAdmin && (
+                        <div className="form-group" style={{ margin: 0, minWidth: '200px' }}>
+                            <label>Shop</label>
+                            <select className="form-control" value={shopId} onChange={e => setShopId(e.target.value)}>
+                                {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                    )}
+                    <div className="form-group" style={{ margin: 0 }}>
+                        <label>Set date for all rows</label>
+                        <input type="date" className="form-control" max={localDate()}
+                            defaultValue={localDate()}
+                            onChange={e => applyDateToAll(e.target.value)}
+                            style={{ width: '170px' }} />
+                    </div>
                 </div>
             </div>
 
-            {isAdmin && (
-                <div className="card" style={{ marginBottom: '16px' }}>
-                    <div className="form-group" style={{ margin: 0, maxWidth: '320px' }}>
-                        <label>Shop</label>
-                        <select className="form-control" value={shopId} onChange={e => setShopId(e.target.value)}>
-                            {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
-                    </div>
-                </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                <button className={`btn ${tab === 'current' ? 'btn-primary' : 'btn-outline'}`}
-                    onClick={() => setTab('current')}>Current Stock</button>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                <button className={`btn ${tab === 'entry' ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => setTab('entry')}>Stock Entry</button>
                 <button className={`btn ${tab === 'summary' ? 'btn-primary' : 'btn-outline'}`}
                     onClick={() => setTab('summary')}>Daily Summary</button>
             </div>
 
-            {tab === 'current' && (
-                loading ? (
-                    <div className="loading"><div className="spinner"></div></div>
-                ) : stock.length === 0 ? (
-                    <div className="empty-state"><div className="icon">📦</div><p>No stock entries yet</p></div>
-                ) : (
-                    <div className="card">
-                        <div className="table-wrapper">
-                            <table>
-                                <thead><tr><th>Material</th><th>Current Qty</th><th>Unit</th><th>Min Threshold</th><th>Status</th></tr></thead>
-                                <tbody>
-                                    {stock.map(s => (
-                                        <tr key={s.id}>
-                                            <td style={{ fontWeight: 500 }}>{s.rawMaterialName}</td>
-                                            <td>{s.quantity}</td>
-                                            <td>{s.unitType}</td>
-                                            <td>{s.minimumThreshold || '-'}</td>
-                                            <td>
-                                                <span className={`badge ${s.lowStock ? 'badge-danger' : 'badge-success'}`}>
-                                                    {s.lowStock ? 'LOW' : 'OK'}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+            {tab === 'entry' && (
+                <>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                        {Object.keys(MODES).map(key => (
+                            <button key={key}
+                                className={`btn ${mode === key ? 'btn-primary' : 'btn-outline'}`}
+                                onClick={() => switchMode(key)}>
+                                {MODES[key].label}
+                            </button>
+                        ))}
                     </div>
-                )
+
+                    {loading ? (
+                        <div className="loading"><div className="spinner"></div></div>
+                    ) : materials.length === 0 ? (
+                        <div className="empty-state"><div className="icon">📦</div><p>No raw materials set up yet</p></div>
+                    ) : (
+                        <div className="card">
+                            <div className="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Material</th>
+                                            <th>Current</th>
+                                            <th>{MODES[mode].qtyHeader}</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {materials.map(m => {
+                                            const row = entries[m.id] || {};
+                                            const current = currentByMaterial[m.id];
+                                            return (
+                                                <tr key={m.id}>
+                                                    <td style={{ fontWeight: 500 }}>
+                                                        {m.name}
+                                                        <span style={{ color: '#888', fontWeight: 400 }}> ({m.unitType})</span>
+                                                    </td>
+                                                    <td>
+                                                        {current ? current.quantity : 0}
+                                                        {current && current.lowStock && (
+                                                            <span className="badge badge-danger" style={{ marginLeft: '6px' }}>LOW</span>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <input className="form-control" type="number" step="0.01" min="0"
+                                                            placeholder="-" style={{ width: '110px' }}
+                                                            value={row.qty ?? ''}
+                                                            onChange={e => setEntry(m.id, { qty: e.target.value })} />
+                                                    </td>
+                                                    <td>
+                                                        <input className="form-control" type="date" max={localDate()}
+                                                            style={{ width: '160px' }}
+                                                            value={row.date || localDate()}
+                                                            onChange={e => setEntry(m.id, { date: e.target.value })} />
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
+                                <span style={{ color: '#666' }}>
+                                    {filledLines.length === 0
+                                        ? 'Leave a row blank to skip it'
+                                        : `${filledLines.length} row${filledLines.length === 1 ? '' : 's'} ready to save`}
+                                </span>
+                                <button className="btn btn-primary" onClick={handleSaveAll}
+                                    disabled={saving || filledLines.length === 0}>
+                                    {saving ? 'Saving...' : MODES[mode].action}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
 
             {tab === 'summary' && (
@@ -220,55 +302,6 @@ const StockPage = () => {
                     )}
                 </>
             )}
-
-            <Modal isOpen={!!entryType} onClose={() => setEntryType(null)}
-                title={entryType ? ENTRY_TYPES[entryType].title : ''}>
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label>Raw Material *</label>
-                        <select className="form-control" value={form.rawMaterialId}
-                            onChange={e => setForm({ ...form, rawMaterialId: e.target.value })} required>
-                            <option value="">Select material...</option>
-                            {materials.filter(m => m.active).map(m => (
-                                <option key={m.id} value={m.id}>{m.name} ({m.unitType})</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="grid-2">
-                        <div className="form-group">
-                            <label>{entryType ? ENTRY_TYPES[entryType].qtyLabel : ''} *</label>
-                            <input className="form-control" type="number" step="0.01"
-                                min={entryType === 'ADJUSTMENT' ? '0' : '0.01'}
-                                value={form.quantity}
-                                onChange={e => setForm({ ...form, quantity: e.target.value })} required />
-                        </div>
-                        <div className="form-group">
-                            <label>Date *</label>
-                            <input className="form-control" type="date" value={form.txnDate}
-                                max={todayLocal()}
-                                onChange={e => setForm({ ...form, txnDate: e.target.value })} required />
-                        </div>
-                    </div>
-                    {entryType !== 'ADJUSTMENT' && (
-                        <div className="form-group">
-                            <label>Min Threshold</label>
-                            <input className="form-control" type="number" step="0.01" value={form.minimumThreshold}
-                                onChange={e => setForm({ ...form, minimumThreshold: e.target.value })} />
-                        </div>
-                    )}
-                    <div className="form-group">
-                        <label>Notes</label>
-                        <input className="form-control" value={form.notes}
-                            onChange={e => setForm({ ...form, notes: e.target.value })} />
-                    </div>
-                    <div className="modal-actions">
-                        <button type="button" className="btn btn-outline" onClick={() => setEntryType(null)}>Cancel</button>
-                        <button type="submit" className="btn btn-primary">
-                            {entryType ? ENTRY_TYPES[entryType].action : ''}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
         </div>
     );
 };

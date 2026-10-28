@@ -81,6 +81,7 @@ export const managerService = {
     recordPurchase: (data) => api.post('/api/manager/stock/purchase', data),
     recordConsumption: (data) => api.post('/api/manager/stock/consumption', data),
     adjustStock: (data) => api.post('/api/manager/stock/adjustment', data),
+    recordBulkStock: (data) => api.post('/api/manager/stock/bulk', data),
     getStockSummary: (shopId, from, to) =>
         api.get(`/api/manager/shop/${shopId}/stock/summary`, { params: { from, to } }),
     getLowStock: (shopId) => api.get(`/api/manager/shop/${shopId}/stock/low`),

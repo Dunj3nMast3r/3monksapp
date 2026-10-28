@@ -24,6 +24,22 @@ delta in `quantity_change` and the entered figure in `actual_count`.
 Multiple entries on the same day are all kept. The UI rolls them up into one row
 per material per day.
 
+## Entering stock
+
+The Stock Entry screen lists **every active raw material as a row** — material,
+current balance, a quantity box and a date — with one **Save** button for the
+whole table. Rows left blank are skipped, so you only fill in what moved. A date
+control above the table fills every row at once, and individual rows can still be
+changed if a day's figures are being backfilled separately.
+
+The three modes (Add Stock / Deduct Consumption / Adjust) share the table; only
+the quantity column changes meaning, so switching mode clears what was typed.
+
+A save goes through `POST /api/manager/stock/bulk` as a **single transaction**.
+If any line is rejected — almost always because a consumption would take a
+balance below zero — nothing is written and the error names the material. That
+way you never end up with half a day's figures recorded.
+
 ## Rules
 
 - **Stock can never go negative.** A consumption or downward adjustment that
@@ -60,6 +76,7 @@ to their own shop.
 | `POST` | `/api/manager/stock/purchase` |
 | `POST` | `/api/manager/stock/consumption` |
 | `POST` | `/api/manager/stock/adjustment` |
+| `POST` | `/api/manager/stock/bulk` |
 
 `from`/`to` are ISO dates and default to the last 30 days.
 

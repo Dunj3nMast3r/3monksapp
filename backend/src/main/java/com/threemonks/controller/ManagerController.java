@@ -71,6 +71,15 @@ public class ManagerController {
                 stockService.adjustToActualCount(request, currentUser)));
     }
 
+    /** Save a whole screen of entries at once. All or nothing. */
+    @PostMapping("/stock/bulk")
+    public ResponseEntity<ApiResponse<List<StockResponse>>> recordBulk(
+            @Valid @RequestBody BulkStockEntryRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success("Stock entries saved",
+                stockService.recordBulk(request, currentUser)));
+    }
+
     /** Day-wise roll-up: one row per material per day, however many entries were made. */
     @GetMapping("/shop/{shopId}/stock/summary")
     public ResponseEntity<ApiResponse<List<DailyStockSummaryResponse>>> getStockSummary(
