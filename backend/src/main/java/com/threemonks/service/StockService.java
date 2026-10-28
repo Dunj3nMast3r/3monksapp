@@ -1,5 +1,6 @@
 package com.threemonks.service;
 
+import com.threemonks.dto.BulkStockEntryRequest;
 import com.threemonks.dto.DailyStockSummaryResponse;
 import com.threemonks.dto.PurchaseRequest;
 import com.threemonks.dto.PurchaseResponse;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -95,6 +97,47 @@ public class StockService {
                                 delta, StockTransactionType.ADJUSTMENT,
                                 request.getTxnDate(), request.getNotes(), request.getActualCount(),
                                 null, currentUser);
+        }
+
+        /**
+         * Saves a whole screen of entries in one transaction. Lines are applied in
+         * order and any rejection rolls the entire batch back, so the user never
+         * ends up with half a day's figures recorded.
+         */
+        @Transactional
+        public List<StockResponse> recordBulk(BulkStockEntryRequest request, UserPrincipal currentUser) {
+                validateShopAccess(request.getShopId(), currentUser);
+
+                List<StockResponse> results = new ArrayList<>();
+                for (BulkStockEntryRequest.Line line : request.getLines()) {
+                        results.add(applyLine(request.getShopId(), request.getType(), line, currentUser));
+                }
+                return results;
+        }
+
+        private StockResponse applyLine(Long shopId, StockTransactionType type,
+                        BulkStockEntryRequest.Line line, UserPrincipal currentUser) {
+
+                if (type == StockTransactionType.ADJUSTMENT) {
+                        StockAdjustmentRequest adjustment = new StockAdjustmentRequest();
+                        adjustment.setShopId(shopId);
+                        adjustment.setRawMaterialId(line.getRawMaterialId());
+                        adjustment.setActualCount(line.getQuantity());
+                        adjustment.setTxnDate(line.getTxnDate());
+                        adjustment.setNotes(line.getNotes());
+                        return adjustToActualCount(adjustment, currentUser);
+                }
+
+                if (line.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                        throw new BadRequestException("Quantity must be greater than zero");
+                }
+
+                BigDecimal signed = type == StockTransactionType.CONSUMPTION
+                                ? line.getQuantity().negate()
+                                : line.getQuantity();
+
+                return applyMovement(shopId, line.getRawMaterialId(), signed, type,
+                                line.getTxnDate(), line.getNotes(), null, null, currentUser);
         }
 
         public List<DailyStockSummaryResponse> getDailySummary(Long shopId, LocalDate from, LocalDate to,
