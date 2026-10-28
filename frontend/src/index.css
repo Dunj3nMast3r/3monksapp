@@ -284,6 +284,19 @@ select.form-control {
     font-weight: 500;
 }
 
+.form-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.form-control-sm {
+    padding: 6px 10px;
+    font-size: 13px;
+    min-width: 140px;
+}
+
 .field-hint {
     display: block;
     color: var(--text-light);
@@ -3750,6 +3763,18 @@ tr:last-child td {
 
 .queue-station-badge {
     font-size: 11px;
+}
+
+.queue-assigned-station {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--info-bg);
+    color: var(--info-text);
+    font-weight: 600;
+    font-size: 14px;
 }
 
 .queue-header-actions {

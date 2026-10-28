@@ -71,7 +71,11 @@ const OrderQueuePage = () => {
     const [todayOrders, setTodayOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [completing, setCompleting] = useState(null);
-    const [station, setStation] = useState(loadStation);
+    const [chosenStation, setChosenStation] = useState(loadStation);
+    // Operators with an assigned station only see that queue; refreshed with each poll
+    // so an admin's change applies without logging out
+    const [assignedStation, setAssignedStation] = useState(user?.role === 'SHOP_OPERATOR' ? user?.station || null : null);
+    const station = assignedStation || chosenStation;
     const [alertsOn, setAlertsOn] = useState(loadAlertsOn);
     const [audioReady, setAudioReady] = useState(isAudioUnlocked);
     // Order ids already seen in the current station's queue; null station means not seeded yet
@@ -81,12 +85,14 @@ const OrderQueuePage = () => {
 
     const fetchOrders = useCallback(async () => {
         try {
-            const [pendingRes, todayRes] = await Promise.all([
+            const [pendingRes, todayRes, stationRes] = await Promise.all([
                 orderService.getPendingOrders(user?.shopId),
                 orderService.getTodayOrders(user?.shopId),
+                orderService.getMyStation().catch(() => null),
             ]);
             setPendingOrders(pendingRes.data.data || []);
             setTodayOrders(todayRes.data.data || []);
+            if (stationRes) setAssignedStation(stationRes.data.data?.station || null);
         } catch (err) {
             toast.error('Failed to load orders');
         } finally {
@@ -191,7 +197,7 @@ const OrderQueuePage = () => {
     };
 
     const selectStation = (key) => {
-        setStation(key);
+        setChosenStation(key);
         try { localStorage.setItem(STATION_KEY, key); } catch (_) { /* not persisted */ }
     };
 
@@ -260,9 +266,13 @@ const OrderQueuePage = () => {
                 </button>
             )}
 
-            {/* Station selector */}
+            {/* Station selector; operators assigned to a station are kept on it */}
             <div className="queue-filter">
-                {Object.entries(STATIONS).map(([key, s]) => (
+                {assignedStation ? (
+                    <span className="queue-assigned-station">
+                        {STATIONS[assignedStation].label} station ({queue.length})
+                    </span>
+                ) : Object.entries(STATIONS).map(([key, s]) => (
                     <button
                         key={key}
                         className={`btn btn-sm ${station === key ? 'btn-primary' : 'btn-outline'}`}

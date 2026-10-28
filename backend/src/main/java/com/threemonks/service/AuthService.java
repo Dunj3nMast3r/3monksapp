@@ -40,6 +40,7 @@ public class AuthService {
                 .role(user.getRole())
                 .shopId(user.getShop() != null ? user.getShop().getId() : null)
                 .shopName(user.getShop() != null ? user.getShop().getName() : null)
+                .station(user.getStation())
                 .build();
     }
 

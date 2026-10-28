@@ -1,6 +1,7 @@
 package com.threemonks.dto;
 
 import com.threemonks.enums.Role;
+import com.threemonks.enums.Station;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,4 +17,5 @@ public class LoginResponse {
     private Role role;
     private Long shopId;
     private String shopName;
+    private Station station;
 }

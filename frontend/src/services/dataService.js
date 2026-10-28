@@ -25,6 +25,8 @@ export const adminService = {
     getUsers: () => api.get('/api/admin/users'),
     createUser: (data) => api.post('/api/admin/users', data),
     toggleUser: (id) => api.patch(`/api/admin/users/${id}/toggle`),
+    // No station means the operator works both stations
+    updateUserStation: (id, station) => api.patch(`/api/admin/users/${id}/station`, null, { params: station ? { station } : {} }),
     // Fruits
     getFruits: () => api.get('/api/public/fruits'),
     createFruit: (data) => api.post('/api/admin/fruits', data),
@@ -99,6 +101,7 @@ export const orderService = {
     getOrdersByRange: (shopId, from, to) => api.get('/api/orders/range', { params: { shopId, from, to } }),
     cancelOrder: (id) => api.patch(`/api/orders/${id}/cancel`),
     completeOrder: (id) => api.patch(`/api/orders/${id}/complete`),
+    getMyStation: () => api.get('/api/orders/my-station'),
     completeStation: (id, station) => api.patch(`/api/orders/${id}/complete-station`, null, { params: { station } }),
 };
 

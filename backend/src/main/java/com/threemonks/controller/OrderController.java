@@ -12,7 +12,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -84,6 +86,14 @@ public class OrderController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         return ResponseEntity.ok(ApiResponse.success("Order delivered", orderService.completeOrder(id, currentUser)));
+    }
+
+    // Queue station assigned to the logged-in user; station is null when not restricted
+    @GetMapping("/my-station")
+    public ResponseEntity<ApiResponse<Map<String, Station>>> getMyStation(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(
+                Collections.singletonMap("station", orderService.getAssignedStation(currentUser))));
     }
 
     @PatchMapping("/{id}/complete-station")

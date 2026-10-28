@@ -209,8 +209,20 @@ public class OrderService {
         return toResponse(orderRepository.save(order));
     }
 
+    // Station a shop operator is assigned to; null for both stations, managers and admins
+    public Station getAssignedStation(UserPrincipal currentUser) {
+        if (currentUser.getRole() != Role.SHOP_OPERATOR) {
+            return null;
+        }
+        return userRepository.findById(currentUser.getId()).map(User::getStation).orElse(null);
+    }
+
     @Transactional
     public OrderResponse completeStation(Long id, Station station, UserPrincipal currentUser) {
+        Station assigned = getAssignedStation(currentUser);
+        if (assigned != null && assigned != station) {
+            throw new UnauthorizedException("You are assigned to the " + assigned.name().toLowerCase() + " station");
+        }
         Order order = findPendingForUpdate(id, currentUser);
 
         StationStatus current = stationStatus(order, station);

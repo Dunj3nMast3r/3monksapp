@@ -1,6 +1,7 @@
 package com.threemonks.dto;
 
 import com.threemonks.enums.Role;
+import com.threemonks.enums.Station;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -30,4 +31,7 @@ public class UserRequest {
     private Role role;
 
     private Long shopId;
+
+    // Only used for shop operators; null means both stations
+    private Station station;
 }
