@@ -5197,3 +5197,18 @@ tr:last-child td {
         width: 72mm !important;
     }
 }
+
+/* ============ STOCK OVERVIEW ============ */
+.stock-overview-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.stock-count-badge {
+    margin-left: 8px;
+}

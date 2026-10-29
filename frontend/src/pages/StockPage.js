@@ -31,7 +31,8 @@ const StockPage = () => {
     const [summary, setSummary] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [tab, setTab] = useState('entry');
+    // Current stock is what people look for first; entering stock is one tab over
+    const [tab, setTab] = useState('current');
     const [mode, setMode] = useState('PURCHASE');
 
     // Quantity typed per raw material id. One date applies to the whole table.
@@ -90,6 +91,26 @@ const StockPage = () => {
         return map;
     }, [stock]);
 
+    // Every active material with its balance, out-of-stock and low first
+    const overview = useMemo(() => {
+        const rank = (row) => (row.quantity <= 0 ? 0 : row.lowStock ? 1 : 2);
+        return materials
+            .map(m => {
+                const current = currentByMaterial[m.id];
+                return {
+                    id: m.id,
+                    name: m.name,
+                    unitType: m.unitType,
+                    quantity: current ? Number(current.quantity) : 0,
+                    minimum: current?.minimumThreshold,
+                    lowStock: !!current?.lowStock,
+                };
+            })
+            .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+    }, [materials, currentByMaterial]);
+    const outCount = overview.filter(r => r.quantity <= 0).length;
+    const lowCount = overview.filter(r => r.quantity > 0 && r.lowStock).length;
+
     const setQty = (materialId, qty) => {
         setEntries(prev => ({ ...prev, [materialId]: qty }));
     };
@@ -141,35 +162,88 @@ const StockPage = () => {
                 <h1>Stock Management</h1>
             </div>
 
-            <div className="card" style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                    {isAdmin && (
-                        <div className="form-group" style={{ margin: 0, minWidth: '200px' }}>
-                            <label>Shop</label>
-                            <select className="form-control" value={shopId} onChange={e => setShopId(e.target.value)}>
-                                {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-                        </div>
-                    )}
-                    <div className="form-group" style={{ margin: 0 }}>
-                        <label>Date</label>
-                        <input type="date" className="form-control" max={localDate()}
-                            value={entryDate}
-                            onChange={e => setEntryDate(e.target.value)}
-                            style={{ width: '170px' }} />
+            {isAdmin && (
+                <div className="card" style={{ marginBottom: '16px' }}>
+                    <div className="form-group" style={{ margin: 0, minWidth: '200px' }}>
+                        <label>Shop</label>
+                        <select className="form-control" value={shopId} onChange={e => setShopId(e.target.value)}>
+                            {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
                     </div>
                 </div>
-            </div>
+            )}
 
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                <button className={`btn ${tab === 'current' ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => setTab('current')}>Current Stock</button>
                 <button className={`btn ${tab === 'entry' ? 'btn-primary' : 'btn-outline'}`}
-                    onClick={() => setTab('entry')}>Stock Entry</button>
+                    onClick={() => setTab('entry')}>Update Stock</button>
                 <button className={`btn ${tab === 'summary' ? 'btn-primary' : 'btn-outline'}`}
                     onClick={() => setTab('summary')}>Daily Summary</button>
             </div>
 
+            {tab === 'current' && (
+                loading ? (
+                    <div className="loading"><div className="spinner"></div></div>
+                ) : overview.length === 0 ? (
+                    <div className="empty-state"><div className="icon">📦</div><p>No raw materials set up yet</p></div>
+                ) : (
+                    <div className="card">
+                        <div className="stock-overview-head">
+                            <span>
+                                {overview.length} materials
+                                {outCount > 0 && <span className="badge badge-danger stock-count-badge">{outCount} out of stock</span>}
+                                {lowCount > 0 && <span className="badge badge-warning stock-count-badge">{lowCount} low</span>}
+                            </span>
+                            <button className="btn btn-sm btn-primary" onClick={() => setTab('entry')}>+ Update Stock</button>
+                        </div>
+                        <div className="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Material</th>
+                                        <th>Current</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {overview.map(r => (
+                                        <tr key={r.id}>
+                                            <td style={{ fontWeight: 500 }}>
+                                                {r.name}
+                                                <span style={{ color: '#888', fontWeight: 400 }}> ({r.unitType})</span>
+                                            </td>
+                                            <td style={{ fontWeight: 600 }}>{r.quantity}</td>
+                                            <td>
+                                                {r.quantity <= 0 ? (
+                                                    <span className="badge badge-danger">Out of stock</span>
+                                                ) : r.lowStock ? (
+                                                    <span className="badge badge-warning">Low{r.minimum ? ` (min ${r.minimum})` : ''}</span>
+                                                ) : (
+                                                    <span className="badge badge-success">OK</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )
+            )}
+
             {tab === 'entry' && (
                 <>
+                    <div className="card" style={{ marginBottom: '16px' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                            <label>Date</label>
+                            <input type="date" className="form-control" max={localDate()}
+                                value={entryDate}
+                                onChange={e => setEntryDate(e.target.value)}
+                                style={{ width: '170px' }} />
+                        </div>
+                    </div>
+
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
                         {Object.keys(MODES).map(key => (
                             <button key={key}
