@@ -17,6 +17,8 @@ spring:
       max-request-size: 5MB
 
   jpa:
+    # Registered in OpenEntityManagerInViewConfig instead, which leaves out the live order stream
+    open-in-view: false
     hibernate:
       ddl-auto: update
     show-sql: false
