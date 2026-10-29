@@ -120,3 +120,10 @@ export const exportService = {
         responseType: 'blob',
     }),
 };
+
+// Phone notifications (Web Push)
+export const pushService = {
+    getPublicKey: () => api.get('/api/push/public-key'),
+    subscribe: (data) => api.post('/api/push/subscriptions', data),
+    unsubscribe: (endpoint) => api.post('/api/push/subscriptions/remove', { endpoint }),
+};

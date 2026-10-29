@@ -67,6 +67,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         List<Order> findCompletedOrdersByDateRange(@Param("start") LocalDateTime start,
                         @Param("end") LocalDateTime end);
 
+        // Pending orders that crossed the reminder age and have not been reminded yet
+        @Query("SELECT o FROM Order o WHERE o.status = 'PENDING' AND o.reminderSentAt IS NULL AND o.orderDate BETWEEN :oldest AND :due")
+        List<Order> findDueForReminder(@Param("oldest") LocalDateTime oldest, @Param("due") LocalDateTime due);
+
         @Query("SELECT o FROM Order o WHERE o.shop.id = :shopId AND o.orderDate BETWEEN :start AND :end AND o.status = 'PENDING' ORDER BY o.tokenNumber ASC")
         List<Order> findTodayPendingOrdersByShopId(@Param("shopId") Long shopId, @Param("start") LocalDateTime start,
                         @Param("end") LocalDateTime end);

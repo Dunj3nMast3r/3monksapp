@@ -34,6 +34,7 @@ public class OrderService {
     private final ShopRepository shopRepository;
     private final UserRepository userRepository;
     private final OrderEventService orderEventService;
+    private final PushNotificationService pushNotificationService;
     // Parcel (takeaway) packing charge per unit, by product type
     private static final BigDecimal SHOT_PARCEL_CHARGE = BigDecimal.valueOf(10);
     private static final BigDecimal BLEND_PARCEL_CHARGE = BigDecimal.valueOf(5);
@@ -113,6 +114,7 @@ public class OrderService {
         order.setTotalAmount(total.add(parcelCharge));
         Order saved = orderRepository.save(order);
         orderEventService.publishAfterCommit(saved.getShop().getId(), "CREATED", saved.getId());
+        pushNotificationService.notifyNewOrderAfterCommit(saved.getId());
 
         // Stock is NOT touched here. Stock is maintained manually through the
         // stock entry screens (purchase / consumption / adjustment), so placing
@@ -273,7 +275,7 @@ public class OrderService {
         }
     }
 
-    private static boolean belongsTo(Product product, Station station) {
+    static boolean belongsTo(Product product, Station station) {
         boolean shot = product.getCategory() == ProductCategory.SHOT;
         return station == Station.SHOT ? shot : !shot;
     }
@@ -283,7 +285,7 @@ public class OrderService {
     }
 
     // Stored status, or for orders created before stations existed, derived from items and order status
-    private static StationStatus stationStatus(Order order, Station station) {
+    static StationStatus stationStatus(Order order, Station station) {
         StationStatus stored = station == Station.SHOT ? order.getShotStatus() : order.getBlendStatus();
         if (stored != null) {
             return stored;

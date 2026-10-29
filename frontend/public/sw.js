@@ -103,3 +103,42 @@ self.addEventListener('fetch', (event) => {
             })
     );
 });
+
+// Phone notifications: a new order or a reminder pushed by the server
+self.addEventListener('push', (event) => {
+    let data = {};
+    try { data = event.data ? event.data.json() : {}; } catch (_) { /* not JSON */ }
+    // Apple requires every push to show a notification; elsewhere skip it when the queue is on screen
+    const isApple = /iPad|iPhone|iPod|Macintosh/.test(self.navigator.userAgent);
+    event.waitUntil((async () => {
+        if (!isApple) {
+            const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+            const queueVisible = windows.some(c => c.visibilityState === 'visible' && new URL(c.url).pathname === '/dashboard/orders/queue');
+            if (queueVisible) return;
+        }
+        await self.registration.showNotification(data.title || '3Monks', {
+            body: data.body || '',
+            tag: data.tag,
+            renotify: true,
+            icon: '/icons/icon-192.png',
+            badge: '/icons/icon-96.png',
+            vibrate: [200, 100, 200],
+            data: { url: data.url || '/dashboard/orders/queue' },
+        });
+    })());
+});
+
+// Tapping a notification opens the queue, reusing an open app window when there is one
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = new URL(event.notification.data?.url || '/dashboard/orders/queue', self.location.origin).href;
+    event.waitUntil((async () => {
+        const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        const existing = windows.find(c => new URL(c.url).origin === self.location.origin);
+        if (existing) {
+            await existing.focus();
+            return existing.navigate(url).catch(() => self.clients.openWindow(url));
+        }
+        return self.clients.openWindow(url);
+    })());
+});

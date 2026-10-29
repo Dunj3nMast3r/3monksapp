@@ -4,6 +4,7 @@ import { orderService } from '../services/dataService';
 import { formatCurrency } from '../utils/helpers';
 import toast from 'react-hot-toast';
 import useOrderEvents from '../hooks/useOrderEvents';
+import { isIos, isStandalone, isPushSupported, getPushSubscription, enablePush, syncPush, disablePush } from '../services/push';
 import { unlockAudio, isAudioUnlocked, playChime, vibrate, requestWakeLock } from '../utils/stationAlerts';
 
 // Anything that is not a shot (creamy/curated blends) is made at the blends station
@@ -210,6 +211,40 @@ const OrderQueuePage = () => {
         document.title = queueCount > 0 ? `(${queueCount}) Order Queue` : 'Order Queue';
     }, [queueCount]);
 
+    // Phone notifications (work with the app closed or the device locked)
+    const [pushOn, setPushOn] = useState(false);
+    const [pushBusy, setPushBusy] = useState(false);
+    useEffect(() => {
+        getPushSubscription()
+            .then(sub => setPushOn(!!sub))
+            .catch(() => {});
+    }, []);
+    // The server sends this device the orders of the station view it shows
+    useEffect(() => {
+        if (pushOn) syncPush(station, user?.shopId).catch(() => {});
+    }, [pushOn, station, user?.shopId]);
+
+    const togglePush = async () => {
+        setPushBusy(true);
+        try {
+            if (pushOn) {
+                await disablePush();
+                setPushOn(false);
+                toast.success('Phone notifications off for this device');
+            } else {
+                await enablePush(station, user?.shopId);
+                setPushOn(true);
+                toast.success('Phone notifications on for this device');
+            }
+        } catch (err) {
+            toast.error(Notification.permission === 'denied'
+                ? 'Notifications are blocked. Allow them for this app in the browser or device settings.'
+                : (err.response?.data?.message || err.message || 'Could not change phone notifications'));
+        } finally {
+            setPushBusy(false);
+        }
+    };
+
     const toggleAlerts = () => {
         const next = !alertsOn;
         setAlertsOn(next);
@@ -276,14 +311,26 @@ const OrderQueuePage = () => {
                         title={live ? 'Updates arrive instantly' : 'Reconnecting; refreshing every 5 seconds meanwhile'}>
                         {live ? '● Live' : '○ Reconnecting'}
                     </span>
+                    {isPushSupported() && (
+                        <button className={`btn ${pushOn ? 'btn-primary' : 'btn-outline'}`} onClick={togglePush} disabled={pushBusy}
+                            title="Notifications on this device even when the app is closed or the screen is locked">
+                            {pushOn ? '📱 Phone Alerts On' : '📱 Phone Alerts Off'}
+                        </button>
+                    )}
                     <button className={`btn ${alertsOn ? 'btn-primary' : 'btn-outline'}`} onClick={toggleAlerts}>
-                        {alertsOn ? '🔔 Alerts On' : '🔕 Alerts Off'}
+                        {alertsOn ? '🔔 Screen Alerts On' : '🔕 Screen Alerts Off'}
                     </button>
                     <button className="btn btn-outline" onClick={() => { setLoading(true); fetchOrders(); }}>
                         🔄 Refresh
                     </button>
                 </div>
             </div>
+
+            {!isPushSupported() && isIos() && !isStandalone() && (
+                <p className="form-hint queue-push-hint">
+                    📱 For phone alerts on iPad/iPhone: tap Share → <strong>Add to Home Screen</strong>, then open 3Monks from the home screen icon.
+                </p>
+            )}
 
             {alertsOn && !audioReady && (
                 <button className="btn btn-lg queue-alert-banner" onClick={() => unlockAudio().then(setAudioReady)}>
