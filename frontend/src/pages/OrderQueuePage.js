@@ -25,7 +25,7 @@ const NEW_HIGHLIGHT_MS = 15000;
 // even when nothing changes on the server
 const CLOCK_TICK_MS = 15000;
 // Backup refresh: frequent without the live stream, occasional with it
-const POLL_MS = 10000;
+const POLL_MS = 5000;
 const LIVE_POLL_MS = 60000;
 
 const loadAlertsOn = () => {
@@ -273,7 +273,7 @@ const OrderQueuePage = () => {
                 <h1>📋 Order Queue</h1>
                 <div className="queue-header-actions">
                     <span className={`badge ${live ? 'badge-success' : 'badge-warning'} queue-live-badge`}
-                        title={live ? 'Updates arrive instantly' : 'Reconnecting; refreshing every 10 seconds meanwhile'}>
+                        title={live ? 'Updates arrive instantly' : 'Reconnecting; refreshing every 5 seconds meanwhile'}>
                         {live ? '● Live' : '○ Reconnecting'}
                     </span>
                     <button className={`btn ${alertsOn ? 'btn-primary' : 'btn-outline'}`} onClick={toggleAlerts}>
