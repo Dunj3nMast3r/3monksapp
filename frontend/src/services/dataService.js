@@ -99,6 +99,7 @@ export const orderService = {
     getOrdersByRange: (shopId, from, to) => api.get('/api/orders/range', { params: { shopId, from, to } }),
     cancelOrder: (id) => api.patch(`/api/orders/${id}/cancel`),
     completeOrder: (id) => api.patch(`/api/orders/${id}/complete`),
+    getMyStation: () => api.get('/api/orders/my-station'),
     completeStation: (id, station) => api.patch(`/api/orders/${id}/complete-station`, null, { params: { station } }),
 };
 
@@ -118,4 +119,11 @@ export const exportService = {
         params: { from, to },
         responseType: 'blob',
     }),
+};
+
+// Phone notifications (Web Push)
+export const pushService = {
+    getPublicKey: () => api.get('/api/push/public-key'),
+    subscribe: (data) => api.post('/api/push/subscriptions', data),
+    unsubscribe: (endpoint) => api.post('/api/push/subscriptions/remove', { endpoint }),
 };

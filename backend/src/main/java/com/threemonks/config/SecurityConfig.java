@@ -4,6 +4,7 @@ import com.threemonks.security.JwtAuthenticationEntryPoint;
 import com.threemonks.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -53,6 +54,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("SUPER_ADMIN")
                 // Manager + Admin
                 .requestMatchers("/api/manager/**").hasAnyRole("SUPER_ADMIN", "SHOP_MANAGER")
+                // Container dispatches of a request that was already authorized: async continuation of
+                // the order event stream, and the error page Tomcat includes when its client disconnects
+                .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR, DispatcherType.INCLUDE).permitAll()
                 // All authenticated users
                 .anyRequest().authenticated()
             );

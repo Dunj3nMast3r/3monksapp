@@ -62,11 +62,6 @@ public class UserService {
                     .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", request.getShopId()));
         }
 
-        // Non-admin users must have a shop
-        if (request.getRole() != Role.SUPER_ADMIN && shop == null) {
-            throw new BadRequestException("Shop is required for non-admin users");
-        }
-
         User user = User.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
@@ -141,6 +136,7 @@ public class UserService {
                 .shopId(user.getShop() != null ? user.getShop().getId() : null)
                 .shopName(user.getShop() != null ? user.getShop().getName() : null)
                 .active(user.getActive())
+                .station(user.getStation())
                 .build();
     }
 }

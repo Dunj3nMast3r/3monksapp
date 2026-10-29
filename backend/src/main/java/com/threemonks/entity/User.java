@@ -1,6 +1,7 @@
 package com.threemonks.entity;
 
 import com.threemonks.enums.Role;
+import com.threemonks.enums.Station;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -38,6 +39,10 @@ public class User {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "shop_id")
     private Shop shop;
+
+    // Queue station a shop operator works at; null means both stations
+    @Enumerated(EnumType.STRING)
+    private Station station;
 
     @Column(nullable = false)
     private Boolean active = true;

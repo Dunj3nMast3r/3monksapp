@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../services/dataService';
-import { formatCurrency, getISTMonthString } from '../utils/helpers';
+import { formatCurrency, getISTMonthString, roleLabels } from '../utils/helpers';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
+
+const STATION_OPTIONS = [
+    { value: '', label: 'Both stations' },
+    { value: 'SHOT', label: '⚡ Shots' },
+    { value: 'BLEND', label: '🥤 Blends' },
+];
+const STATION_LABELS = { SHOT: '⚡ Shots', BLEND: '🥤 Blends' };
+
+const EMPTY_FORM = { userId: '', shopId: '', role: 'SHOP_OPERATOR', station: '', salary: '', incentivePercentage: '' };
 
 const EmployeesPage = () => {
     const [employees, setEmployees] = useState([]);
@@ -13,7 +22,7 @@ const EmployeesPage = () => {
     const [showSalary, setShowSalary] = useState(false);
     const [editing, setEditing] = useState(null);
     const [submitting, setSubmitting] = useState(false);
-    const [form, setForm] = useState({ userId: '', shopId: '', salary: '', incentivePercentage: '' });
+    const [form, setForm] = useState(EMPTY_FORM);
     const [errors, setErrors] = useState({});
     const [salaryMonth, setSalaryMonth] = useState(getISTMonthString());
     const [salarySheet, setSalarySheet] = useState(null);
@@ -36,14 +45,17 @@ const EmployeesPage = () => {
 
     const openAdd = () => {
         setEditing(null);
-        setForm({ userId: '', shopId: '', salary: '', incentivePercentage: '' });
+        setForm(EMPTY_FORM);
         setErrors({});
         setShowModal(true);
     };
 
     const openEdit = (e) => {
         setEditing(e);
-        setForm({ userId: e.userId, shopId: e.shopId, salary: e.salary || '', incentivePercentage: e.incentivePercentage || '' });
+        setForm({
+            ...EMPTY_FORM, userId: e.userId, shopId: e.shopId, role: e.role, station: e.station || '',
+            salary: e.salary || '', incentivePercentage: e.incentivePercentage || '',
+        });
         setErrors({});
         setShowModal(true);
     };
@@ -51,7 +63,8 @@ const EmployeesPage = () => {
     const validateForm = () => {
         const errs = {};
         if (!editing && !form.userId) errs.userId = 'Please select a user';
-        if (!editing && !form.shopId) errs.shopId = 'Please select a shop';
+        if (!form.shopId) errs.shopId = 'Please select a shop';
+        if (!form.role) errs.role = 'Please select a role';
         if (!form.salary) errs.salary = 'Salary is required';
         else if (isNaN(form.salary) || parseFloat(form.salary) < 1) errs.salary = 'Salary must be at least ₹1';
         else if (parseFloat(form.salary) > 9999999.99) errs.salary = 'Salary cannot exceed ₹99,99,999.99';
@@ -67,11 +80,13 @@ const EmployeesPage = () => {
         setSubmitting(true);
         try {
             const data = {
-                userId: parseInt(form.userId),
                 shopId: parseInt(form.shopId),
+                role: form.role,
+                station: form.role === 'SHOP_OPERATOR' ? (form.station || null) : null,
                 salary: parseFloat(form.salary),
                 incentivePercentage: form.incentivePercentage ? parseFloat(form.incentivePercentage) : 0,
             };
+            if (!editing) data.userId = parseInt(form.userId);
             if (editing) { await adminService.updateEmployee(editing.id, data); toast.success('Employee updated'); }
             else { await adminService.createEmployee(data); toast.success('Employee created'); }
             setShowModal(false); fetchAll();
@@ -100,9 +115,15 @@ const EmployeesPage = () => {
         } catch (err) { toast.error('Failed to load salary sheet'); }
     };
 
-    // Get users not already employees
+    // Logins that can still be registered: not already employees, not admins
     const existingUserIds = employees.map(e => e.userId);
-    const availableUsers = users.filter(u => !existingUserIds.includes(u.id));
+    const availableUsers = users.filter(u => u.active && u.role !== 'SUPER_ADMIN' && !existingUserIds.includes(u.id));
+    const field = (key) => ({
+        className: `form-control${errors[key] ? ' input-error' : ''}`,
+        value: form[key],
+        onChange: (e) => { setForm({ ...form, [key]: e.target.value }); setErrors(prev => ({ ...prev, [key]: '' })); },
+    });
+    const fieldError = (key) => errors[key] && <span className="field-error">{errors[key]}</span>;
 
     return (
         <div>
@@ -120,12 +141,13 @@ const EmployeesPage = () => {
             ) : (
                 <div className="card"><div className="table-wrapper">
                     <table>
-                        <thead><tr><th>Name</th><th>Role</th><th>Shop</th><th>Salary</th><th>Incentive %</th><th>Status</th><th>Actions</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Role</th><th>Shop</th><th>Station</th><th>Salary</th><th>Incentive %</th><th>Status</th><th>Actions</th></tr></thead>
                         <tbody>{employees.map(e => (
                             <tr key={e.id}>
                                 <td style={{ fontWeight: 500 }}>{e.fullName}</td>
-                                <td>{e.role}</td>
+                                <td>{roleLabels[e.role] || e.role}</td>
                                 <td>{e.shopName}</td>
+                                <td>{e.role === 'SHOP_OPERATOR' ? (STATION_LABELS[e.station] || 'Both') : '-'}</td>
                                 <td>{formatCurrency(e.salary)}</td>
                                 <td>{e.incentivePercentage}%</td>
                                 <td><span className={`badge ${e.active ? 'badge-success' : 'badge-danger'}`}>{e.active ? 'Active' : 'Inactive'}</span></td>
@@ -142,25 +164,47 @@ const EmployeesPage = () => {
             {/* Add/Edit Modal */}
             <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit Employee' : 'Add Employee'}>
                 <form onSubmit={handleSubmit} noValidate>
-                    {!editing && (
+                    {editing ? (
+                        <div className="form-group">
+                            <label>Employee</label>
+                            <div className="form-static">{editing.fullName} ({editing.userName})</div>
+                        </div>
+                    ) : (
                         <div className="form-group">
                             <label>User *</label>
-                            <select className={`form-control${errors.userId ? ' input-error' : ''}`} value={form.userId} onChange={e => { setForm({ ...form, userId: e.target.value }); setErrors(prev => ({ ...prev, userId: '' })); }}>
+                            <select {...field('userId')}>
                                 <option value="">Select user...</option>
-                                {availableUsers.filter(u => u.active).map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.role})</option>)}
+                                {availableUsers.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.username})</option>)}
                             </select>
-                            {errors.userId && <span className="field-error">{errors.userId}</span>}
-                            {availableUsers.filter(u => u.active).length === 0 && <span className="field-hint">No available users. Create a user first.</span>}
+                            {fieldError('userId')}
+                            {availableUsers.length === 0 && <span className="field-hint">No available users. Create a user first.</span>}
                         </div>
                     )}
-                    {!editing && (
+                    <div className="grid-2">
                         <div className="form-group">
                             <label>Shop *</label>
-                            <select className={`form-control${errors.shopId ? ' input-error' : ''}`} value={form.shopId} onChange={e => { setForm({ ...form, shopId: e.target.value }); setErrors(prev => ({ ...prev, shopId: '' })); }}>
+                            <select {...field('shopId')}>
                                 <option value="">Select shop...</option>
-                                {shops.filter(s => s.active).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                {shops.filter(s => s.active || s.id === editing?.shopId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
-                            {errors.shopId && <span className="field-error">{errors.shopId}</span>}
+                            {fieldError('shopId')}
+                        </div>
+                        <div className="form-group">
+                            <label>Role *</label>
+                            <select {...field('role')}>
+                                <option value="SHOP_MANAGER">Shop Manager</option>
+                                <option value="SHOP_OPERATOR">Shop Operator</option>
+                            </select>
+                            {fieldError('role')}
+                        </div>
+                    </div>
+                    {form.role === 'SHOP_OPERATOR' && (
+                        <div className="form-group">
+                            <label>Queue Station</label>
+                            <select {...field('station')}>
+                                {STATION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                            <span className="form-hint">The operator only sees, and gets alerts for, this station's queue.</span>
                         </div>
                     )}
                     <div className="grid-2">

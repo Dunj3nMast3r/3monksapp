@@ -17,6 +17,8 @@ spring:
       max-request-size: 5MB
 
   jpa:
+    # Registered in OpenEntityManagerInViewConfig instead, which leaves out the live order stream
+    open-in-view: false
     hibernate:
       ddl-auto: update
     show-sql: false
@@ -51,6 +53,12 @@ app:
 
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+
+  push:
+    # Contact the push services (Google, Apple) can reach about our notifications
+    subject: ${PUSH_SUBJECT:mailto:3monks.official@gmail.com}
+    # Only for local testing with a mock push service; real push endpoints are https
+    allow-insecure-endpoints: ${PUSH_ALLOW_INSECURE_ENDPOINTS:false}
 
   default-admin:
     username: admin

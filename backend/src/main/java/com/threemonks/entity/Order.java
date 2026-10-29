@@ -58,6 +58,9 @@ public class Order {
     private LocalDateTime shotCompletedAt;
     private LocalDateTime blendCompletedAt;
 
+    // When the "waiting too long" phone notification went out, so it is sent once
+    private LocalDateTime reminderSentAt;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentMode paymentMode;

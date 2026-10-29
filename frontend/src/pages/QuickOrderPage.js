@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { publicService, orderService } from '../services/dataService';
+import useOrderEvents from '../hooks/useOrderEvents';
 import { formatCurrency, getParcelCharge, PARCEL_CHARGES } from '../utils/helpers';
 import Receipt from '../components/Receipt';
 import toast from 'react-hot-toast';
@@ -40,6 +41,8 @@ const QuickOrderPage = () => {
             setPendingOrders(res.data.data || []);
         } catch (_) { /* silent */ }
     }, [user?.shopId]);
+    // Queue panel updates instantly on live order events; polling stays as backup
+    const live = useOrderEvents(user?.shopId, fetchPendingOrders);
 
     useEffect(() => {
         Promise.all([
@@ -49,10 +52,14 @@ const QuickOrderPage = () => {
             setProducts(menuRes.data.data || []);
             setFruits(fruitRes.data.data || []);
         }).catch(() => toast.error('Failed to load menu'));
+    }, []);
+
+    // Backup refresh: every 5 s while the live stream is down, every 60 s while it is up
+    useEffect(() => {
         fetchPendingOrders();
-        const interval = setInterval(fetchPendingOrders, 10000);
+        const interval = setInterval(fetchPendingOrders, live ? 60000 : 5000);
         return () => clearInterval(interval);
-    }, [fetchPendingOrders]);
+    }, [fetchPendingOrders, live]);
 
     const handleComplete = async (orderId) => {
         setCompleting(orderId);

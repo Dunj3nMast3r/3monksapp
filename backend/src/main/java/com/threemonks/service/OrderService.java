@@ -33,6 +33,8 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ShopRepository shopRepository;
     private final UserRepository userRepository;
+    private final OrderEventService orderEventService;
+    private final PushNotificationService pushNotificationService;
     // Parcel (takeaway) packing charge per unit, by product type
     private static final BigDecimal SHOT_PARCEL_CHARGE = BigDecimal.valueOf(10);
     private static final BigDecimal BLEND_PARCEL_CHARGE = BigDecimal.valueOf(5);
@@ -111,6 +113,8 @@ public class OrderService {
         order.setParcelCharge(parcelCharge);
         order.setTotalAmount(total.add(parcelCharge));
         Order saved = orderRepository.save(order);
+        orderEventService.publishAfterCommit(saved.getShop().getId(), "CREATED", saved.getId());
+        pushNotificationService.notifyNewOrderAfterCommit(saved.getId());
 
         // Stock is NOT touched here. Stock is maintained manually through the
         // stock entry screens (purchase / consumption / adjustment), so placing
@@ -206,11 +210,25 @@ public class OrderService {
             }
         }
         order.setStatus(OrderStatus.COMPLETED);
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        orderEventService.publishAfterCommit(saved.getShop().getId(), "UPDATED", saved.getId());
+        return toResponse(saved);
+    }
+
+    // Station a shop operator is assigned to; null for both stations, managers and admins
+    public Station getAssignedStation(UserPrincipal currentUser) {
+        if (currentUser.getRole() != Role.SHOP_OPERATOR) {
+            return null;
+        }
+        return userRepository.findById(currentUser.getId()).map(User::getStation).orElse(null);
     }
 
     @Transactional
     public OrderResponse completeStation(Long id, Station station, UserPrincipal currentUser) {
+        Station assigned = getAssignedStation(currentUser);
+        if (assigned != null && assigned != station) {
+            throw new UnauthorizedException("You are assigned to the " + assigned.name().toLowerCase() + " station");
+        }
         Order order = findPendingForUpdate(id, currentUser);
 
         StationStatus current = stationStatus(order, station);
@@ -228,7 +246,9 @@ public class OrderService {
         if (order.getShotStatus() != StationStatus.PENDING && order.getBlendStatus() != StationStatus.PENDING) {
             order.setStatus(OrderStatus.COMPLETED);
         }
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        orderEventService.publishAfterCommit(saved.getShop().getId(), "UPDATED", saved.getId());
+        return toResponse(saved);
     }
 
     private Order findPendingForUpdate(Long id, UserPrincipal currentUser) {
@@ -255,7 +275,7 @@ public class OrderService {
         }
     }
 
-    private static boolean belongsTo(Product product, Station station) {
+    static boolean belongsTo(Product product, Station station) {
         boolean shot = product.getCategory() == ProductCategory.SHOT;
         return station == Station.SHOT ? shot : !shot;
     }
@@ -265,7 +285,7 @@ public class OrderService {
     }
 
     // Stored status, or for orders created before stations existed, derived from items and order status
-    private static StationStatus stationStatus(Order order, Station station) {
+    static StationStatus stationStatus(Order order, Station station) {
         StationStatus stored = station == Station.SHOT ? order.getShotStatus() : order.getBlendStatus();
         if (stored != null) {
             return stored;
@@ -288,6 +308,7 @@ public class OrderService {
 
         order.setStatus(OrderStatus.CANCELLED);
         Order saved = orderRepository.save(order);
+        orderEventService.publishAfterCommit(saved.getShop().getId(), "UPDATED", saved.getId());
 
         // Stock is NOT restored here. Stock is maintained manually through the
         // stock entry screens, so cancelling an order must have no effect on
@@ -296,7 +317,14 @@ public class OrderService {
         return toResponse(saved);
     }
 
-        private Long resolveShopId(Long requestShopId, UserPrincipal currentUser) {
+    // Shop whose queue the user may follow: their own, or for an admin the requested/first active shop
+    public Long resolveAccessibleShopId(Long requestShopId, UserPrincipal currentUser) {
+        Long shopId = resolveShopId(requestShopId, currentUser);
+        validateShopAccess(shopId, currentUser);
+        return shopId;
+    }
+
+    private Long resolveShopId(Long requestShopId, UserPrincipal currentUser) {
         if (currentUser.getRole() == Role.SUPER_ADMIN) {
             return requestShopId != null ? requestShopId
                     : shopRepository.findByActiveTrue().stream().findFirst()

@@ -30,4 +30,5 @@ public class UserRequest {
     private Role role;
 
     private Long shopId;
+
 }

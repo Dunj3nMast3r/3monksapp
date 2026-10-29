@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/dataService';
+import { disablePush } from '../services/push';
 
 const AuthContext = createContext(null);
 
@@ -26,7 +27,9 @@ export const AuthProvider = ({ children }) => {
         return data;
     };
 
-    const logout = () => {
+    const logout = async () => {
+        // Stop phone notifications for this device while the token is still valid; never block logout on it
+        await Promise.race([disablePush(), new Promise(resolve => setTimeout(resolve, 2000))]).catch(() => {});
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);

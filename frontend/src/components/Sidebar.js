@@ -8,8 +8,8 @@ const Sidebar = ({ isOpen, onClose, collapsed }) => {
     const { user, logout, isAdmin, isManager, hasRole } = useAuth();
     const navigate = useNavigate();
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         navigate('/login');
     };
 

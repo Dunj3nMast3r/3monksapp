@@ -3,7 +3,9 @@ package com.threemonks.exception;
 import com.threemonks.dto.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -71,6 +74,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleMultipart(MultipartException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error("Error processing uploaded file. Please try again."));
+    }
+
+    // A client that closed its connection (e.g. a live order stream) cannot be answered,
+    // and the stream's content type cannot carry a JSON error, so nothing is written
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<ApiResponse<?>> handleClientGone(IOException ex, HttpServletResponse response) {
+        String contentType = response.getContentType();
+        if (contentType != null && contentType.startsWith(MediaType.TEXT_EVENT_STREAM_VALUE)) {
+            logger.debug("Client disconnected: {}", ex.getMessage());
+            return null;
+        }
+        return handleGeneral(ex);
     }
 
     @ExceptionHandler(Exception.class)
