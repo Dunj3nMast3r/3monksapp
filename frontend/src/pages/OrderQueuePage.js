@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { orderService } from '../services/dataService';
 import { formatCurrency } from '../utils/helpers';
 import toast from 'react-hot-toast';
+import useOrderEvents from '../hooks/useOrderEvents';
 import { unlockAudio, isAudioUnlocked, playChime, vibrate, requestWakeLock } from '../utils/stationAlerts';
 
 // Anything that is not a shot (creamy/curated blends) is made at the blends station
@@ -20,6 +21,12 @@ const ALERTS_KEY = 'orderQueueAlerts';
 const REMINDER_MINUTES = 5;
 // New cards stay highlighted this long
 const NEW_HIGHLIGHT_MS = 15000;
+// Re-check waiting times locally (no network), so reminders and "x min" stay current
+// even when nothing changes on the server
+const CLOCK_TICK_MS = 15000;
+// Backup refresh: frequent without the live stream, occasional with it
+const POLL_MS = 10000;
+const LIVE_POLL_MS = 60000;
 
 const loadAlertsOn = () => {
     try {
@@ -83,31 +90,45 @@ const OrderQueuePage = () => {
     const remindedRef = useRef(new Set());
     const [newUntil, setNewUntil] = useState(() => new Map());
 
+    // Live events and polling can overlap; only the newest response is applied
+    const requestSeq = useRef(0);
     const fetchOrders = useCallback(async () => {
+        const seq = ++requestSeq.current;
         try {
             const [pendingRes, todayRes, stationRes] = await Promise.all([
                 orderService.getPendingOrders(user?.shopId),
                 orderService.getTodayOrders(user?.shopId),
                 orderService.getMyStation().catch(() => null),
             ]);
+            if (seq !== requestSeq.current) return;
             setPendingOrders(pendingRes.data.data || []);
             setTodayOrders(todayRes.data.data || []);
             if (stationRes) setAssignedStation(stationRes.data.data?.station || null);
         } catch (err) {
             toast.error('Failed to load orders');
         } finally {
-            setLoading(false);
+            // A superseded response must not end loading: the alert logic would see an
+            // empty queue and then treat every existing order as new
+            if (seq === requestSeq.current) setLoading(false);
         }
     }, [user?.shopId]);
 
+    // Live events from the server reload the queue instantly; polling is the backup
+    const live = useOrderEvents(user?.shopId, fetchOrders);
     useEffect(() => {
         fetchOrders();
-        // Auto-refresh every 10 seconds
-        const interval = setInterval(fetchOrders, 10000);
+        const interval = setInterval(fetchOrders, live ? LIVE_POLL_MS : POLL_MS);
         return () => clearInterval(interval);
-    }, [fetchOrders]);
+    }, [fetchOrders, live]);
 
-    // Compare each refresh with the previous one and alert on orders new to this station
+    const [clock, setClock] = useState(Date.now);
+    useEffect(() => {
+        const timer = setInterval(() => setClock(Date.now()), CLOCK_TICK_MS);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Compare each refresh with the previous one and alert on orders new to this station;
+    // also re-runs on each clock tick to catch orders crossing the reminder time
     useEffect(() => {
         if (loading) return;
         const queue = stationQueue(pendingOrders, station);
@@ -126,9 +147,9 @@ const OrderQueuePage = () => {
             });
         }
 
-        const overdue = queue.filter(o =>
-            minutesWaiting(o) >= REMINDER_MINUTES && !remindedRef.current.has(`${station}:${o.id}`));
-        overdue.forEach(o => remindedRef.current.add(`${station}:${o.id}`));
+        // Once per order, even if the view is switched
+        const overdue = queue.filter(o => minutesWaiting(o) >= REMINDER_MINUTES && !remindedRef.current.has(o.id));
+        overdue.forEach(o => remindedRef.current.add(o.id));
 
         if (!alertsOn) return;
         const stationItems = (o) => (o.items || []).filter(station === 'ALL' ? () => true : STATIONS[station].isItem);
@@ -147,7 +168,7 @@ const OrderQueuePage = () => {
             toast(`⏰ Waiting over ${REMINDER_MINUTES} min: ${overdue.map(o => `#${o.tokenNumber}`).join(', ')}`,
                 { duration: 8000, icon: '⏰' });
         }
-    }, [pendingOrders, station, loading, alertsOn]);
+    }, [pendingOrders, station, loading, alertsOn, clock]);
 
     // Browsers block sound until the page is touched; the first tap anywhere unlocks it.
     // Uses click, not pointerdown: removing the banner mid-tap would shift the page and
@@ -251,6 +272,10 @@ const OrderQueuePage = () => {
             <div className="page-header">
                 <h1>📋 Order Queue</h1>
                 <div className="queue-header-actions">
+                    <span className={`badge ${live ? 'badge-success' : 'badge-warning'} queue-live-badge`}
+                        title={live ? 'Updates arrive instantly' : 'Reconnecting; refreshing every 10 seconds meanwhile'}>
+                        {live ? '● Live' : '○ Reconnecting'}
+                    </span>
                     <button className={`btn ${alertsOn ? 'btn-primary' : 'btn-outline'}`} onClick={toggleAlerts}>
                         {alertsOn ? '🔔 Alerts On' : '🔕 Alerts Off'}
                     </button>

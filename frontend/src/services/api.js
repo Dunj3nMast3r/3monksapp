@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // In production (Docker), nginx proxies /api/ to backend — use empty baseURL
 // For local dev without Docker, set REACT_APP_API_URL=http://localhost:8080 in .env
-const API_BASE_URL = process.env.REACT_APP_API_URL || '';
+export const API_BASE_URL = process.env.REACT_APP_API_URL || '';
 
 const api = axios.create({
     baseURL: API_BASE_URL,

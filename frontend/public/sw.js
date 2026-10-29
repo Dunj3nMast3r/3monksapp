@@ -45,6 +45,9 @@ self.addEventListener('fetch', (event) => {
     // Skip Chrome extensions and external URLs
     if (!url.origin.includes(self.location.origin)) return;
 
+    // Live order events: long-lived stream, leave it to the browser
+    if (url.pathname === '/api/orders/stream') return;
+
     // API calls: Network-first, no caching
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(

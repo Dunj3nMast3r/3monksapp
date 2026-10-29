@@ -2,14 +2,18 @@ package com.threemonks.controller;
 
 import com.threemonks.dto.*;
 import com.threemonks.enums.Station;
+import com.threemonks.service.OrderEventService;
 import com.threemonks.service.OrderService;
 import com.threemonks.security.UserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -22,6 +26,7 @@ import java.util.Map;
 public class OrderController {
 
     private final OrderService orderService;
+    private final OrderEventService orderEventService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
@@ -86,6 +91,17 @@ public class OrderController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         return ResponseEntity.ok(ApiResponse.success("Order delivered", orderService.completeOrder(id, currentUser)));
+    }
+
+    // Live "orders changed" events for the user's shop queue (server-sent events)
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamOrderEvents(
+            @RequestParam(required = false) Long shopId,
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            HttpServletResponse response) {
+        // Tell nginx not to buffer the stream
+        response.setHeader("X-Accel-Buffering", "no");
+        return orderEventService.subscribe(orderService.resolveAccessibleShopId(shopId, currentUser));
     }
 
     // Queue station assigned to the logged-in user; station is null when not restricted

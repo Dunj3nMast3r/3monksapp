@@ -3782,6 +3782,11 @@ tr:last-child td {
     font-size: 14px;
 }
 
+.queue-live-badge {
+    align-self: center;
+    font-size: 12px;
+}
+
 .queue-header-actions {
     display: flex;
     gap: 8px;

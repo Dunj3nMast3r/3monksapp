@@ -39,6 +39,7 @@ public class EmployeeService {
     private final UserRepository userRepository;
     private final ShopRepository shopRepository;
     private final OrderRepository orderRepository;
+    private final OrderEventService orderEventService;
 
     public List<EmployeeResponse> getAllEmployees() {
         return employeeRepository.findAll().stream()
@@ -95,6 +96,7 @@ public class EmployeeService {
     @Transactional
     public EmployeeResponse updateEmployee(Long id, EmployeeRequest request) {
         Employee employee = findById(id);
+        Long previousShopId = employee.getShop().getId();
         Shop shop = employee.getShop().getId().equals(request.getShopId())
                 ? employee.getShop()
                 : findActiveShop(request.getShopId());
@@ -108,6 +110,11 @@ public class EmployeeService {
         User user = employee.getUser();
         applyAssignment(user, shop, request.getRole(), request.getStation());
         userRepository.save(user);
+        // Open queue screens reload, so a changed station or shop applies at once
+        orderEventService.publishAfterCommit(shop.getId(), "STAFF", null);
+        if (!previousShopId.equals(shop.getId())) {
+            orderEventService.publishAfterCommit(previousShopId, "STAFF", null);
+        }
         return toResponse(employeeRepository.save(employee));
     }
 

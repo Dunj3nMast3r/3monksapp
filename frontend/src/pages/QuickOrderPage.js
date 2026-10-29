@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { publicService, orderService } from '../services/dataService';
+import useOrderEvents from '../hooks/useOrderEvents';
 import { formatCurrency, getParcelCharge, PARCEL_CHARGES } from '../utils/helpers';
 import Receipt from '../components/Receipt';
 import toast from 'react-hot-toast';
@@ -40,6 +41,8 @@ const QuickOrderPage = () => {
             setPendingOrders(res.data.data || []);
         } catch (_) { /* silent */ }
     }, [user?.shopId]);
+    // Queue panel updates instantly on live order events; polling below stays as backup
+    useOrderEvents(user?.shopId, fetchPendingOrders);
 
     useEffect(() => {
         Promise.all([
