@@ -2,7 +2,6 @@ package com.threemonks.dto;
 
 import com.threemonks.enums.Role;
 import com.threemonks.enums.Station;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -10,11 +9,8 @@ import java.math.BigDecimal;
 
 @Data
 public class EmployeeRequest {
-    // On create, give either an existing login (userId) or a new one (newUser); ignored on update
+    // Login to register; required on create, ignored on update
     private Long userId;
-
-    @Valid
-    private EmployeeLoginRequest newUser;
 
     @NotNull(message = "Please select a shop")
     private Long shopId;

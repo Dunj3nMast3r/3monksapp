@@ -6,7 +6,6 @@ import com.threemonks.dto.SalarySheetResponse;
 import com.threemonks.entity.Employee;
 import com.threemonks.entity.Shop;
 import com.threemonks.entity.User;
-import com.threemonks.dto.EmployeeLoginRequest;
 import com.threemonks.enums.Role;
 import com.threemonks.enums.Station;
 import com.threemonks.exception.BadRequestException;
@@ -18,7 +17,6 @@ import com.threemonks.repository.ShopRepository;
 import com.threemonks.repository.UserRepository;
 import com.threemonks.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,7 +39,6 @@ public class EmployeeService {
     private final UserRepository userRepository;
     private final ShopRepository shopRepository;
     private final OrderRepository orderRepository;
-    private final PasswordEncoder passwordEncoder;
 
     public List<EmployeeResponse> getAllEmployees() {
         return employeeRepository.findAll().stream()
@@ -63,29 +60,23 @@ public class EmployeeService {
     // employee record, so access and payroll always agree on where someone works.
     @Transactional
     public EmployeeResponse createEmployee(EmployeeRequest request) {
-        if ((request.getUserId() == null) == (request.getNewUser() == null)) {
-            throw new BadRequestException("Select an existing login or enter details for a new one.");
+        if (request.getUserId() == null) {
+            throw new BadRequestException("Please select a user");
+        }
+        if (employeeRepository.existsByUserId(request.getUserId())) {
+            throw new BadRequestException(
+                    "This user is already registered as an employee. Please select a different user.");
+        }
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new BadRequestException("Selected user not found. Please refresh and try again."));
+        if (!user.getActive()) {
+            throw new BadRequestException("Cannot add inactive user as employee. Please activate the user first.");
+        }
+        if (user.getRole() == Role.SUPER_ADMIN) {
+            throw new BadRequestException("A super admin cannot be registered as a shop employee.");
         }
         Shop shop = findActiveShop(request.getShopId());
         validateRole(request.getRole());
-
-        User user;
-        if (request.getNewUser() != null) {
-            user = newLogin(request.getNewUser());
-        } else {
-            if (employeeRepository.existsByUserId(request.getUserId())) {
-                throw new BadRequestException(
-                        "This user is already registered as an employee. Please select a different user.");
-            }
-            user = userRepository.findById(request.getUserId())
-                    .orElseThrow(() -> new BadRequestException("Selected user not found. Please refresh and try again."));
-            if (!user.getActive()) {
-                throw new BadRequestException("Cannot add inactive user as employee. Please activate the user first.");
-            }
-            if (user.getRole() == Role.SUPER_ADMIN) {
-                throw new BadRequestException("A super admin cannot be registered as a shop employee.");
-            }
-        }
         applyAssignment(user, shop, request.getRole(), request.getStation());
         userRepository.save(user);
 
@@ -118,23 +109,6 @@ public class EmployeeService {
         applyAssignment(user, shop, request.getRole(), request.getStation());
         userRepository.save(user);
         return toResponse(employeeRepository.save(employee));
-    }
-
-    private User newLogin(EmployeeLoginRequest login) {
-        if (userRepository.existsByUsername(login.getUsername())) {
-            throw new BadRequestException("Username already exists");
-        }
-        if (userRepository.existsByEmail(login.getEmail())) {
-            throw new BadRequestException("Email already exists");
-        }
-        return User.builder()
-                .username(login.getUsername())
-                .password(passwordEncoder.encode(login.getPassword()))
-                .fullName(login.getFullName())
-                .email(login.getEmail())
-                .phone(login.getPhone())
-                .active(true)
-                .build();
     }
 
     private void applyAssignment(User user, Shop shop, Role role, Station station) {

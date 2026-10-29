@@ -11,10 +11,7 @@ const STATION_OPTIONS = [
 ];
 const STATION_LABELS = { SHOT: '⚡ Shots', BLEND: '🥤 Blends' };
 
-const EMPTY_FORM = {
-    loginMode: 'new', userId: '', fullName: '', username: '', password: '', email: '', phone: '',
-    shopId: '', role: 'SHOP_OPERATOR', station: '', salary: '', incentivePercentage: '',
-};
+const EMPTY_FORM = { userId: '', shopId: '', role: 'SHOP_OPERATOR', station: '', salary: '', incentivePercentage: '' };
 
 const EmployeesPage = () => {
     const [employees, setEmployees] = useState([]);
@@ -65,16 +62,7 @@ const EmployeesPage = () => {
 
     const validateForm = () => {
         const errs = {};
-        if (!editing && form.loginMode === 'existing' && !form.userId) errs.userId = 'Please select a user';
-        if (!editing && form.loginMode === 'new') {
-            if (!form.fullName || form.fullName.trim().length < 2) errs.fullName = 'Full name must be at least 2 characters';
-            if (!form.username || form.username.trim().length < 3) errs.username = 'Username must be at least 3 characters';
-            else if (!/^[a-zA-Z0-9._-]+$/.test(form.username)) errs.username = 'Username can only contain letters, numbers, dots, hyphens, and underscores';
-            if (!form.password || form.password.length < 6) errs.password = 'Password must be at least 6 characters';
-            if (!form.email) errs.email = 'Email is required';
-            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Please enter a valid email address';
-            if (form.phone && !/^[0-9]{10}$/.test(form.phone)) errs.phone = 'Phone number must be exactly 10 digits';
-        }
+        if (!editing && !form.userId) errs.userId = 'Please select a user';
         if (!form.shopId) errs.shopId = 'Please select a shop';
         if (!form.role) errs.role = 'Please select a role';
         if (!form.salary) errs.salary = 'Salary is required';
@@ -98,22 +86,14 @@ const EmployeesPage = () => {
                 salary: parseFloat(form.salary),
                 incentivePercentage: form.incentivePercentage ? parseFloat(form.incentivePercentage) : 0,
             };
-            if (!editing && form.loginMode === 'new') {
-                data.newUser = {
-                    fullName: form.fullName, username: form.username, password: form.password,
-                    email: form.email, phone: form.phone,
-                };
-            } else if (!editing) {
-                data.userId = parseInt(form.userId);
-            }
+            if (!editing) data.userId = parseInt(form.userId);
             if (editing) { await adminService.updateEmployee(editing.id, data); toast.success('Employee updated'); }
             else { await adminService.createEmployee(data); toast.success('Employee created'); }
             setShowModal(false); fetchAll();
         } catch (err) {
             const resp = err.response?.data;
             if (resp?.data && typeof resp.data === 'object' && resp.message === 'Validation failed') {
-                // New-login field errors come back as newUser.<field>
-                setErrors(Object.fromEntries(Object.entries(resp.data).map(([k, v]) => [k.replace(/^newUser\./, ''), v])));
+                setErrors(resp.data);
                 const firstError = Object.values(resp.data)[0];
                 toast.error(firstError || 'Please fix the errors below');
             } else {
@@ -190,53 +170,15 @@ const EmployeesPage = () => {
                             <div className="form-static">{editing.fullName} ({editing.userName})</div>
                         </div>
                     ) : (
-                        <>
-                            <div className="form-group">
-                                <label>Login</label>
-                                <div className="queue-filter">
-                                    {[['new', '➕ Create new login'], ['existing', '👤 Use existing login']].map(([mode, label]) => (
-                                        <button type="button" key={mode}
-                                            className={`btn btn-sm ${form.loginMode === mode ? 'btn-primary' : 'btn-outline'}`}
-                                            onClick={() => { setForm({ ...form, loginMode: mode }); setErrors({}); }}>
-                                            {label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            {form.loginMode === 'existing' ? (
-                                <div className="form-group">
-                                    <label>User *</label>
-                                    <select {...field('userId')}>
-                                        <option value="">Select user...</option>
-                                        {availableUsers.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.username})</option>)}
-                                    </select>
-                                    {fieldError('userId')}
-                                    {availableUsers.length === 0 && <span className="field-hint">No logins left to register. Create a new login instead.</span>}
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="form-group"><label>Full Name *</label>
-                                        <input {...field('fullName')} />{fieldError('fullName')}
-                                    </div>
-                                    <div className="grid-2">
-                                        <div className="form-group"><label>Username *</label>
-                                            <input {...field('username')} autoComplete="off" />{fieldError('username')}
-                                        </div>
-                                        <div className="form-group"><label>Password *</label>
-                                            <input {...field('password')} type="password" autoComplete="new-password" />{fieldError('password')}
-                                        </div>
-                                    </div>
-                                    <div className="grid-2">
-                                        <div className="form-group"><label>Email *</label>
-                                            <input {...field('email')} type="email" />{fieldError('email')}
-                                        </div>
-                                        <div className="form-group"><label>Phone</label>
-                                            <input {...field('phone')} placeholder="10 digits" />{fieldError('phone')}
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </>
+                        <div className="form-group">
+                            <label>User *</label>
+                            <select {...field('userId')}>
+                                <option value="">Select user...</option>
+                                {availableUsers.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.username})</option>)}
+                            </select>
+                            {fieldError('userId')}
+                            {availableUsers.length === 0 && <span className="field-hint">No available users. Create a user first.</span>}
+                        </div>
                     )}
                     <div className="grid-2">
                         <div className="form-group">
