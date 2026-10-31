@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { orderService } from '../services/dataService';
+import { orderService, adminService } from '../services/dataService';
 import { formatCurrency } from '../utils/helpers';
 import toast from 'react-hot-toast';
 import useOrderEvents from '../hooks/useOrderEvents';
@@ -17,6 +17,8 @@ const STATIONS = {
     BLEND: { label: '🥤 Blends', name: 'Blends', icon: '🥤', statusKey: 'blendStatus', doneAtKey: 'blendCompletedAt', isItem: isBlendItem },
 };
 const STATION_KEY = 'orderQueueStation';
+// Branch an admin is watching; admins belong to no branch and pick one per device
+const QUEUE_SHOP_KEY = 'orderQueueShop';
 const ALERTS_KEY = 'orderQueueAlerts';
 // An order waiting longer than this at a station gets a reminder
 const REMINDER_MINUTES = 5;
@@ -42,6 +44,14 @@ const stationQueue = (orders, key) => key === 'ALL'
     : orders.filter(o => o[STATIONS[key].statusKey] === 'PENDING');
 
 const minutesWaiting = (order) => Math.max(0, Math.floor((Date.now() - parseServerTime(order.orderDate)) / 60000));
+
+const loadQueueShop = () => {
+    try {
+        return localStorage.getItem(QUEUE_SHOP_KEY) || '';
+    } catch (_) {
+        return '';
+    }
+};
 
 // Each device remembers its station (e.g. the shots counter tablet)
 const loadStation = () => {
@@ -87,21 +97,50 @@ const OrderQueuePage = () => {
     const [alertsOn, setAlertsOn] = useState(loadAlertsOn);
     const [audioReady, setAudioReady] = useState(isAudioUnlocked);
     // Order ids already seen in the current station's queue; null station means not seeded yet
-    const seenRef = useRef({ station: null, ids: new Set() });
+    const seenRef = useRef({ key: null, ids: new Set() });
     const remindedRef = useRef(new Set());
     const [newUntil, setNewUntil] = useState(() => new Map());
 
     // Live events and polling can overlap; only the newest response is applied
+    const isAdmin = user?.role === 'SUPER_ADMIN';
+    const [shops, setShops] = useState([]);
+    const [adminShopId, setAdminShopId] = useState(loadQueueShop);
+    useEffect(() => {
+        if (!isAdmin) return;
+        adminService.getShops()
+            .then(res => {
+                const active = (res.data.data || []).filter(s => s.active);
+                setShops(active);
+                // Keep the saved branch if it still exists, else the first active one
+                setAdminShopId(prev => (active.some(s => String(s.id) === String(prev)) ? prev : String(active[0]?.id || '')));
+            })
+            .catch(() => toast.error('Failed to load branches'));
+    }, [isAdmin]);
+    const queueShopId = isAdmin ? adminShopId : user?.shopId;
+    const shopReady = !isAdmin || !!queueShopId;
+
+    const selectShop = (id) => {
+        // Loading ends when the new branch's orders arrive, so only a real change may start it
+        if (String(id) === String(adminShopId)) return;
+        setAdminShopId(id);
+        setLoading(true);
+        try { localStorage.setItem(QUEUE_SHOP_KEY, id); } catch (_) { /* not persisted */ }
+    };
+
+    // The branch the loaded orders belong to (lags the selection until they arrive)
+    const [ordersShop, setOrdersShop] = useState(null);
     const requestSeq = useRef(0);
     const fetchOrders = useCallback(async () => {
+        if (!shopReady) return;
         const seq = ++requestSeq.current;
         try {
             const [pendingRes, todayRes, stationRes] = await Promise.all([
-                orderService.getPendingOrders(user?.shopId),
-                orderService.getTodayOrders(user?.shopId),
+                orderService.getPendingOrders(queueShopId),
+                orderService.getTodayOrders(queueShopId),
                 orderService.getMyStation().catch(() => null),
             ]);
             if (seq !== requestSeq.current) return;
+            setOrdersShop(String(queueShopId));
             setPendingOrders(pendingRes.data.data || []);
             setTodayOrders(todayRes.data.data || []);
             if (stationRes) setAssignedStation(stationRes.data.data?.station || null);
@@ -112,10 +151,10 @@ const OrderQueuePage = () => {
             // empty queue and then treat every existing order as new
             if (seq === requestSeq.current) setLoading(false);
         }
-    }, [user?.shopId]);
+    }, [queueShopId, shopReady]);
 
     // Live events from the server reload the queue instantly; polling is the backup
-    const live = useOrderEvents(user?.shopId, fetchOrders);
+    const live = useOrderEvents(queueShopId, fetchOrders, shopReady);
     useEffect(() => {
         fetchOrders();
         const interval = setInterval(fetchOrders, live ? LIVE_POLL_MS : POLL_MS);
@@ -134,9 +173,10 @@ const OrderQueuePage = () => {
         if (loading) return;
         const queue = stationQueue(pendingOrders, station);
         const seen = seenRef.current;
-        seenRef.current = { station, ids: new Set(queue.map(o => o.id)) };
-        // First load or station switch: just remember what is there, no alert flood
-        if (seen.station !== station) return;
+        const key = `${ordersShop}:${station}`;
+        seenRef.current = { key, ids: new Set(queue.map(o => o.id)) };
+        // First load, or a station or branch switch: just remember what is there, no alert flood
+        if (seen.key !== key) return;
 
         const now = Date.now();
         const fresh = queue.filter(o => !seen.ids.has(o.id));
@@ -169,7 +209,7 @@ const OrderQueuePage = () => {
             toast(`⏰ Waiting over ${REMINDER_MINUTES} min: ${overdue.map(o => `#${o.tokenNumber}`).join(', ')}`,
                 { duration: 8000, icon: '⏰' });
         }
-    }, [pendingOrders, station, loading, alertsOn, clock]);
+    }, [pendingOrders, ordersShop, station, loading, alertsOn, clock]);
 
     // Browsers block sound until the page is touched; the first tap anywhere unlocks it.
     // Uses click, not pointerdown: removing the banner mid-tap would shift the page and
@@ -221,8 +261,8 @@ const OrderQueuePage = () => {
     }, []);
     // The server sends this device the orders of the station view it shows
     useEffect(() => {
-        if (pushOn) syncPush(station, user?.shopId).catch(() => {});
-    }, [pushOn, station, user?.shopId]);
+        if (pushOn && shopReady) syncPush(station, queueShopId).catch(() => {});
+    }, [pushOn, station, queueShopId, shopReady]);
 
     const togglePush = async () => {
         setPushBusy(true);
@@ -232,7 +272,7 @@ const OrderQueuePage = () => {
                 setPushOn(false);
                 toast.success('Phone notifications off for this device');
             } else {
-                await enablePush(station, user?.shopId);
+                await enablePush(station, queueShopId);
                 setPushOn(true);
                 toast.success('Phone notifications on for this device');
             }
@@ -336,6 +376,16 @@ const OrderQueuePage = () => {
                 <button className="btn btn-lg queue-alert-banner" onClick={() => unlockAudio().then(setAudioReady)}>
                     🔔 Tap here to enable sound alerts
                 </button>
+            )}
+
+            {isAdmin && (
+                <div className="queue-branch">
+                    <label htmlFor="queue-branch">Branch</label>
+                    <select id="queue-branch" className="form-control" value={adminShopId} onChange={e => selectShop(e.target.value)}>
+                        {shops.length === 0 && <option value="">No active branches</option>}
+                        {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                </div>
             )}
 
             {/* Station selector; operators assigned to a station are kept on it */}
