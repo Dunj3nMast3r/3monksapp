@@ -24,6 +24,7 @@ export const adminService = {
     // Users
     getUsers: () => api.get('/api/admin/users'),
     createUser: (data) => api.post('/api/admin/users', data),
+    updateUser: (id, data) => api.put(`/api/admin/users/${id}`, data),
     toggleUser: (id) => api.patch(`/api/admin/users/${id}/toggle`),
     // Fruits
     getFruits: () => api.get('/api/public/fruits'),

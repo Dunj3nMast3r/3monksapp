@@ -9,13 +9,15 @@ const RETRY_MAX_MS = 30000;
  * one, and once after every (re)connect so changes missed while offline are picked up.
  * Uses fetch rather than EventSource so the login token goes in the Authorization
  * header, not the URL. Returns whether the stream is currently connected.
+ * Pass enabled = false to hold off until the shop is known.
  */
-export default function useOrderEvents(shopId, onEvent) {
+export default function useOrderEvents(shopId, onEvent, enabled = true) {
     const [connected, setConnected] = useState(false);
     const onEventRef = useRef(onEvent);
     onEventRef.current = onEvent;
 
     useEffect(() => {
+        if (!enabled) return undefined;
         let stopped = false;
         let controller = null;
         let retryTimer = null;
@@ -75,7 +77,7 @@ export default function useOrderEvents(shopId, onEvent) {
             clearTimeout(retryTimer);
             if (controller) controller.abort();
         };
-    }, [shopId]);
+    }, [shopId, enabled]);
 
     return connected;
 }

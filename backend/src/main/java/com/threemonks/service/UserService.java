@@ -2,12 +2,15 @@ package com.threemonks.service;
 
 import com.threemonks.dto.UserRequest;
 import com.threemonks.dto.UserResponse;
+import com.threemonks.dto.UserUpdateRequest;
+import com.threemonks.entity.Employee;
 import com.threemonks.entity.Shop;
 import com.threemonks.entity.User;
 import com.threemonks.enums.Role;
 import com.threemonks.exception.BadRequestException;
 import com.threemonks.exception.ResourceNotFoundException;
 import com.threemonks.exception.UnauthorizedException;
+import com.threemonks.repository.EmployeeRepository;
 import com.threemonks.repository.ShopRepository;
 import com.threemonks.repository.UserRepository;
 import com.threemonks.security.UserPrincipal;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +30,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final ShopRepository shopRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmployeeRepository employeeRepository;
+    private final OrderEventService orderEventService;
 
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
@@ -76,29 +82,61 @@ public class UserService {
         return toResponse(userRepository.save(user));
     }
 
+    // Admin edit of every field. Admins belong to no branch. For someone registered as an
+    // employee, the employee record follows the new branch so login and payroll still agree.
     @Transactional
-    public UserResponse updateUser(Long id, UserRequest request) {
+    public UserResponse updateUser(Long id, UserUpdateRequest request, UserPrincipal currentUser) {
         User user = findUserById(id);
-
+        if (!user.getUsername().equals(request.getUsername()) && userRepository.existsByUsername(request.getUsername())) {
+            throw new BadRequestException("Username already exists");
+        }
         if (!user.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("Email already exists");
         }
+        if (user.getId().equals(currentUser.getId()) && request.getRole() != user.getRole()) {
+            throw new BadRequestException("You cannot change your own role");
+        }
 
+        Optional<Employee> employee = employeeRepository.findByUserId(user.getId());
+        Long previousShopId = user.getShop() != null ? user.getShop().getId() : null;
+        Shop shop = null;
+        if (request.getRole() == Role.SUPER_ADMIN) {
+            if (employee.isPresent()) {
+                throw new BadRequestException("This user is registered as an employee, so they cannot be a super admin.");
+            }
+        } else if (request.getShopId() != null) {
+            shop = request.getShopId().equals(previousShopId) ? user.getShop()
+                    : shopRepository.findById(request.getShopId())
+                            .filter(Shop::getActive)
+                            .orElseThrow(() -> new BadRequestException("Select an active branch"));
+        } else if (employee.isPresent()) {
+            throw new BadRequestException("This user is an employee, so a branch is required.");
+        }
+
+        user.setUsername(request.getUsername());
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
         user.setPhone(request.getPhone());
-
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
+        user.setRole(request.getRole());
+        user.setShop(shop);
+        user.setStation(request.getRole() == Role.SHOP_OPERATOR ? request.getStation() : null);
+        User saved = userRepository.save(user);
 
-        if (request.getShopId() != null) {
-            Shop shop = shopRepository.findById(request.getShopId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", request.getShopId()));
-            user.setShop(shop);
+        if (employee.isPresent()) {
+            employee.get().setShop(shop);
+            employeeRepository.save(employee.get());
         }
-
-        return toResponse(userRepository.save(user));
+        // Open queue screens reload, so a changed branch or station applies at once
+        if (shop != null) {
+            orderEventService.publishAfterCommit(shop.getId(), "STAFF", null);
+        }
+        if (previousShopId != null && (shop == null || !previousShopId.equals(shop.getId()))) {
+            orderEventService.publishAfterCommit(previousShopId, "STAFF", null);
+        }
+        return toResponse(saved);
     }
 
     @Transactional

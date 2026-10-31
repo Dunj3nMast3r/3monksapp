@@ -26,6 +26,8 @@ const EmployeesPage = () => {
     const [errors, setErrors] = useState({});
     const [salaryMonth, setSalaryMonth] = useState(getISTMonthString());
     const [salarySheet, setSalarySheet] = useState(null);
+    // Branch filter for the list and salary sheet; '' = all branches
+    const [branchId, setBranchId] = useState('');
 
     useEffect(() => { fetchAll(); }, []);
 
@@ -45,7 +47,7 @@ const EmployeesPage = () => {
 
     const openAdd = () => {
         setEditing(null);
-        setForm(EMPTY_FORM);
+        setForm({ ...EMPTY_FORM, shopId: branchId });
         setErrors({});
         setShowModal(true);
     };
@@ -109,7 +111,7 @@ const EmployeesPage = () => {
 
     const fetchSalarySheet = async () => {
         try {
-            const res = await adminService.getSalarySheet(null, salaryMonth);
+            const res = await adminService.getSalarySheet(branchId || null, salaryMonth);
             setSalarySheet(res.data.data);
             setShowSalary(true);
         } catch (err) { toast.error('Failed to load salary sheet'); }
@@ -125,24 +127,36 @@ const EmployeesPage = () => {
     });
     const fieldError = (key) => errors[key] && <span className="field-error">{errors[key]}</span>;
 
+    const branchName = shops.find(s => String(s.id) === String(branchId))?.name;
+    const visibleEmployees = branchId ? employees.filter(e => String(e.shopId) === String(branchId)) : employees;
+
     return (
         <div>
             <div className="page-header">
                 <h1>Employees</h1>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <select className="form-control" value={branchId} onChange={e => setBranchId(e.target.value)} style={{ width: '200px' }}
+                        aria-label="Branch">
+                        <option value="">All branches ({employees.length})</option>
+                        {shops.map(s => (
+                            <option key={s.id} value={s.id}>
+                                {s.name} ({employees.filter(e => e.shopId === s.id).length})
+                            </option>
+                        ))}
+                    </select>
                     <input type="month" className="form-control" value={salaryMonth} onChange={e => setSalaryMonth(e.target.value)} style={{ width: '160px' }} />
                     <button className="btn btn-outline" onClick={fetchSalarySheet}>Salary Sheet</button>
                     <button className="btn btn-primary" onClick={openAdd}>+ Add Employee</button>
                 </div>
             </div>
 
-            {loading ? <div className="loading"><div className="spinner"></div></div> : employees.length === 0 ? (
-                <div className="empty-state"><div className="icon">👤</div><p>No employees added yet</p></div>
+            {loading ? <div className="loading"><div className="spinner"></div></div> : visibleEmployees.length === 0 ? (
+                <div className="empty-state"><div className="icon">👤</div><p>{branchId ? `No employees in ${branchName} yet` : 'No employees added yet'}</p></div>
             ) : (
                 <div className="card"><div className="table-wrapper">
                     <table>
                         <thead><tr><th>Name</th><th>Role</th><th>Shop</th><th>Station</th><th>Salary</th><th>Incentive %</th><th>Status</th><th>Actions</th></tr></thead>
-                        <tbody>{employees.map(e => (
+                        <tbody>{visibleEmployees.map(e => (
                             <tr key={e.id}>
                                 <td style={{ fontWeight: 500 }}>{e.fullName}</td>
                                 <td>{roleLabels[e.role] || e.role}</td>
@@ -229,7 +243,7 @@ const EmployeesPage = () => {
             </Modal>
 
             {/* Salary Sheet Modal */}
-            <Modal isOpen={showSalary} onClose={() => setShowSalary(false)} title={`Salary Sheet - ${salaryMonth}`}>
+            <Modal isOpen={showSalary} onClose={() => setShowSalary(false)} title={`Salary Sheet - ${salaryMonth}${branchName ? ` - ${branchName}` : ''}`}>
                 {salarySheet ? (
                     <div>
                         <div className="table-wrapper">

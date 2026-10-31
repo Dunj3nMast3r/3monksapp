@@ -3786,6 +3786,19 @@ tr:last-child td {
     margin: -8px 0 16px;
 }
 
+.queue-branch {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    max-width: 360px;
+}
+
+.queue-branch label {
+    font-weight: 600;
+    margin: 0;
+}
+
 .queue-live-badge {
     align-self: center;
     font-size: 12px;

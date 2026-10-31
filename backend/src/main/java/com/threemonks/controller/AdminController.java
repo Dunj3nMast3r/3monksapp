@@ -71,6 +71,14 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("User created", userService.createUser(request, currentUser)));
     }
 
+    @PutMapping("/users/{id}")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody UserUpdateRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success("User updated", userService.updateUser(id, request, currentUser)));
+    }
+
     @PatchMapping("/users/{id}/toggle")
     public ResponseEntity<ApiResponse<Void>> toggleUser(@PathVariable Long id) {
         userService.toggleUserStatus(id);
