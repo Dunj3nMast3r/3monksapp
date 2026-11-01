@@ -244,7 +244,29 @@ Admin-level global dashboard with:
 - Low stock alerts across all shops
 
 ### GET /api/dashboard/shop/{shopId}
-Shop-level dashboard with same metrics scoped to one shop.
+Shop-level dashboard with same metrics scoped to one shop. This is what the
+Shop Manager dashboard renders; admins get `/overview` instead.
+
+### GET /api/dashboard/overview?date=
+**SUPER_ADMIN only.** The admin dashboard, today first.
+
+- `date` defaults to today and is echoed back as `date`, so client and server
+  cannot disagree about which day is being shown.
+- Counts every order that was **not cancelled**, PENDING ones included, matching
+  `/collection` and the till. `/admin`, `/profit-loss` and the Reports page count
+  COMPLETED orders only, so their revenue reads lower.
+
+| Field | What it holds |
+|-------|---------------|
+| `today`, `yesterday` | sales, orders, units, averageOrderValue |
+| `monthToDate` | the 1st to `date` |
+| `previousMonthToDate` | the same stretch of last month, clamped to that month's length so the 31st compares against something |
+| `peakHours` | all 24 hours, sales and orders, over `peakHourDays` (7) days ending `date` |
+| `dailyTrend` | 30 days ending `date`, empty days included |
+| `monthlyTrend` | 12 months ending `date`'s month, empty months included |
+| `topSellersToday` | up to 8 products by units sold |
+| `branchesToday` | per branch sales, orders, shots, blends, averageOrderValue, best first |
+| `lowStockAlerts` | raw materials under their threshold, across branches |
 
 ### GET /api/dashboard/profit-loss?shopId=&from=&to=
 P&L report for date range:

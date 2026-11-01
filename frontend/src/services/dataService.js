@@ -106,6 +106,8 @@ export const orderService = {
 
 export const dashboardService = {
     getAdminDashboard: (from, to) => api.get('/api/dashboard/admin', { params: { from, to } }),
+    // Today-first admin dashboard: peak hours, best sellers, branch leaderboard
+    getOverview: (date) => api.get('/api/dashboard/overview', { params: { date } }),
     getShopDashboard: (shopId, from, to) => api.get(`/api/dashboard/shop/${shopId}`, { params: { from, to } }),
     getProfitLoss: (shopId, from, to) => api.get('/api/dashboard/profit-loss', { params: { shopId, from, to } }),
     getAnalytics: (from, to) => api.get('/api/dashboard/analytics', { params: { from, to } }),

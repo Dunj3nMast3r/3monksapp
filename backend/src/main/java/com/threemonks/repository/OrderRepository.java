@@ -112,4 +112,49 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         GROUP BY 1, 2, 3
                         """, nativeQuery = true)
         List<Object[]> getUnitsSoldBreakdown(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+        /**
+         * Sales per day, cancelled orders left out, for the dashboard trends.
+         * Columns: the order date, order count, amount.
+         */
+        @Query(value = """
+                        SELECT CAST(o.order_date AS date) AS day,
+                               COUNT(*)                   AS order_count,
+                               COALESCE(SUM(o.total_amount), 0) AS amount
+                        FROM orders o
+                        WHERE o.order_date >= :start AND o.order_date <= :end
+                          AND o.status <> 'CANCELLED'
+                        GROUP BY 1
+                        """, nativeQuery = true)
+        List<Object[]> getDailyTotals(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+        /**
+         * Units sold per day, cancelled orders left out.
+         * Columns: the order date, quantity.
+         */
+        @Query(value = """
+                        SELECT CAST(o.order_date AS date) AS day,
+                               COALESCE(SUM(oi.quantity), 0) AS quantity
+                        FROM order_items oi
+                        JOIN orders o ON o.id = oi.order_id
+                        WHERE o.order_date >= :start AND o.order_date <= :end
+                          AND o.status <> 'CANCELLED'
+                        GROUP BY 1
+                        """, nativeQuery = true)
+        List<Object[]> getDailyUnits(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+        /**
+         * Sales by hour of day across the window, cancelled orders left out, so the
+         * counter rush is visible. Columns: hour (0-23), order count, amount.
+         */
+        @Query(value = """
+                        SELECT CAST(EXTRACT(HOUR FROM o.order_date) AS int) AS hour_of_day,
+                               COUNT(*)                                     AS order_count,
+                               COALESCE(SUM(o.total_amount), 0)             AS amount
+                        FROM orders o
+                        WHERE o.order_date >= :start AND o.order_date <= :end
+                          AND o.status <> 'CANCELLED'
+                        GROUP BY 1
+                        """, nativeQuery = true)
+        List<Object[]> getHourlyTotals(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }

@@ -3,11 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import { dashboardService } from '../services/dataService';
 import { formatCurrency } from '../utils/helpers';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
-import DailyCollectionWidget from '../components/DailyCollectionWidget';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Filler, Title, Tooltip, Legend } from 'chart.js';
+import AdminDashboard from '../components/AdminDashboard';
 import toast from 'react-hot-toast';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
+// Registered here because this page mounts first; the other chart pages rely on it.
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Filler, Title, Tooltip, Legend);
 
 const DashboardPage = () => {
     const { user, isAdmin, isManager } = useAuth();
@@ -15,21 +16,17 @@ const DashboardPage = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchDashboard();
+        if (!isAdmin()) fetchDashboard();
     }, []); // eslint-disable-line
 
     const fetchDashboard = async () => {
         try {
             setLoading(true);
-            let res;
-            if (isAdmin()) {
-                res = await dashboardService.getAdminDashboard();
-            } else if (isManager()) {
-                res = await dashboardService.getShopDashboard(user.shopId);
-            } else {
+            if (!isManager()) {
                 setLoading(false);
                 return;
             }
+            const res = await dashboardService.getShopDashboard(user.shopId);
             setDashboard(res.data.data);
         } catch (err) {
             toast.error('Failed to load dashboard');
@@ -37,6 +34,9 @@ const DashboardPage = () => {
             setLoading(false);
         }
     };
+
+    // Admins get the today-first dashboard; managers keep the shop view below.
+    if (isAdmin()) return <AdminDashboard />;
 
     if (loading) return <div className="loading"><div className="spinner"></div></div>;
 
@@ -86,7 +86,7 @@ const DashboardPage = () => {
     return (
         <div>
             <div className="page-header">
-                <h1>{isAdmin() ? 'Admin Dashboard' : 'Shop Dashboard'}</h1>
+                <h1>Shop Dashboard</h1>
             </div>
 
             <div className="stats-grid">
@@ -124,32 +124,6 @@ const DashboardPage = () => {
                     )}
                 </div>
             </div>
-
-            {isAdmin() && (
-                <div style={{ marginBottom: '24px' }}>
-                    <DailyCollectionWidget compact />
-                </div>
-            )}
-
-            {isAdmin() && dashboard.salesPerShop?.length > 0 && (
-                <div className="card">
-                    <h3 style={{ marginBottom: '16px' }}>Sales by Shop</h3>
-                    <div className="table-wrapper">
-                        <table>
-                            <thead><tr><th>Shop</th><th>Orders</th><th>Sales</th></tr></thead>
-                            <tbody>
-                                {dashboard.salesPerShop.map(shop => (
-                                    <tr key={shop.shopId}>
-                                        <td>{shop.shopName}</td>
-                                        <td>{shop.orderCount}</td>
-                                        <td>{formatCurrency(shop.totalSales)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
 
             {dashboard.lowStockAlerts?.length > 0 && (
                 <div className="card">
