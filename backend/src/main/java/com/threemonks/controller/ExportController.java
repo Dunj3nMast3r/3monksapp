@@ -14,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @RestController
@@ -24,6 +25,10 @@ public class ExportController {
 
     private final OrderRepository orderRepository;
     private final PurchaseRepository purchaseRepository;
+    private final FranchiseEnquiryRepository franchiseEnquiryRepository;
+
+    /** LocalDateTime.toString() carries microseconds, which reads as noise in a lead list. */
+    private static final DateTimeFormatter ENQUIRY_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     @GetMapping("/orders")
     public ResponseEntity<byte[]> exportOrders(
@@ -175,6 +180,88 @@ public class ExportController {
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
             headers.setContentDisposition(ContentDisposition.builder("attachment")
                     .filename("purchases_" + start + "_to_" + end + ".xlsx").build());
+
+            return new ResponseEntity<>(out.toByteArray(), headers, HttpStatus.OK);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Franchise enquiries as a spreadsheet, newest first. Unlike the order and
+     * purchase exports this defaults to every enquiry on record rather than the
+     * current month, because the point of the sheet is the whole lead list;
+     * pass from/to to narrow it.
+     */
+    @GetMapping("/franchise-enquiries")
+    public ResponseEntity<byte[]> exportFranchiseEnquiries(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+
+        List<FranchiseEnquiry> enquiries;
+        String period;
+        if (from == null && to == null) {
+            enquiries = franchiseEnquiryRepository.findAllByOrderByCreatedAtDesc();
+            period = "all";
+        } else {
+            LocalDate startDate = from != null ? from : LocalDate.of(2000, 1, 1);
+            LocalDate endDate = to != null ? to : LocalDate.now();
+            enquiries = franchiseEnquiryRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(
+                    startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX));
+            period = startDate + "_to_" + endDate;
+        }
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Franchise Enquiries");
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+
+            Row header = sheet.createRow(0);
+            String[] columns = { "Name", "Email", "Phone", "City", "Message", "Enquiry Date" };
+            for (int i = 0; i < columns.length; i++) {
+                Cell cell = header.createCell(i);
+                cell.setCellValue(columns[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // The message is free text from the website form, so let it wrap
+            // instead of running across the neighbouring columns.
+            CellStyle wrapStyle = workbook.createCellStyle();
+            wrapStyle.setWrapText(true);
+
+            int rowNum = 1;
+            for (FranchiseEnquiry enquiry : enquiries) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(enquiry.getName() != null ? enquiry.getName() : "");
+                row.createCell(1).setCellValue(enquiry.getEmail() != null ? enquiry.getEmail() : "");
+                // Keep the phone as text; Excel would otherwise eat a leading zero or plus
+                row.createCell(2).setCellValue(enquiry.getPhone() != null ? enquiry.getPhone() : "");
+                row.createCell(3).setCellValue(enquiry.getCity() != null ? enquiry.getCity() : "");
+
+                Cell messageCell = row.createCell(4);
+                messageCell.setCellValue(enquiry.getMessage() != null ? enquiry.getMessage() : "");
+                messageCell.setCellStyle(wrapStyle);
+
+                row.createCell(5).setCellValue(
+                        enquiry.getCreatedAt() != null ? ENQUIRY_DATE_FORMAT.format(enquiry.getCreatedAt()) : "");
+            }
+
+            for (int i = 0; i < columns.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            // autoSizeColumn ignores wrapping and would make this column enormous
+            sheet.setColumnWidth(4, 60 * 256);
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            workbook.write(out);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDisposition(ContentDisposition.builder("attachment")
+                    .filename("franchise_enquiries_" + period + ".xlsx").build());
 
             return new ResponseEntity<>(out.toByteArray(), headers, HttpStatus.OK);
         } catch (Exception e) {

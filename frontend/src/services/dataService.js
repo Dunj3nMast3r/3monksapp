@@ -123,6 +123,11 @@ export const exportService = {
         params: { from, to },
         responseType: 'blob',
     }),
+    // No dates exports every enquiry on record, which is what the lead list is for
+    downloadFranchiseEnquiries: (from, to) => api.get('/api/admin/export/franchise-enquiries', {
+        params: { from, to },
+        responseType: 'blob',
+    }),
 };
 
 // Phone notifications (Web Push)

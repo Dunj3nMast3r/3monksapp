@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../services/dataService';
+import { adminService, exportService } from '../services/dataService';
+import { getISTDateString } from '../utils/helpers';
+import { FiDownload } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const FranchiseEnquiriesPage = () => {
     const [enquiries, setEnquiries] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [downloading, setDownloading] = useState(false);
 
     const fetchEnquiries = async () => {
         try {
@@ -18,6 +21,29 @@ const FranchiseEnquiriesPage = () => {
     };
 
     useEffect(() => { fetchEnquiries(); }, []);
+
+    const handleDownload = async () => {
+        setDownloading(true);
+        try {
+            const res = await exportService.downloadFranchiseEnquiries();
+            const blob = new Blob([res.data], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `franchise_enquiries_${getISTDateString()}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            toast.success('Excel downloaded');
+        } catch {
+            toast.error('Failed to download');
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     const handleDelete = async (id) => {
         if (!window.confirm('Delete this enquiry?')) return;
@@ -34,8 +60,14 @@ const FranchiseEnquiriesPage = () => {
         <div>
             <div className="page-header">
                 <h1>Franchise Enquiries</h1>
-                <div className="stat-badge" style={{ background: 'rgba(168,85,247,0.1)', padding: '8px 16px', borderRadius: '8px', color: '#a855f7', fontWeight: 600 }}>
-                    {enquiries.length} Total
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div className="stat-badge" style={{ background: 'rgba(168,85,247,0.1)', padding: '8px 16px', borderRadius: '8px', color: '#a855f7', fontWeight: 600 }}>
+                        {enquiries.length} Total
+                    </div>
+                    <button className="btn btn-outline" onClick={handleDownload}
+                        disabled={downloading || enquiries.length === 0}>
+                        <FiDownload /> {downloading ? 'Preparing...' : 'Export Excel'}
+                    </button>
                 </div>
             </div>
 
