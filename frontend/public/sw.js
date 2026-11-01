@@ -1,0 +1,144 @@
+const CACHE_NAME = 'threemonks-v2';
+const OFFLINE_URL = '/offline.html';
+
+// Assets to pre-cache on install
+const PRECACHE_ASSETS = [
+    '/',
+    '/offline.html',
+    '/logo.svg',
+    '/manifest.json',
+];
+
+// Install: pre-cache critical assets
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => {
+            console.log('[SW] Pre-caching critical assets');
+            return cache.addAll(PRECACHE_ASSETS);
+        })
+    );
+    self.skipWaiting();
+});
+
+// Activate: clean up old caches
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames
+                    .filter((name) => name !== CACHE_NAME)
+                    .map((name) => caches.delete(name))
+            );
+        })
+    );
+    self.clients.claim();
+});
+
+// Fetch: Network-first for API calls, Cache-first for static assets
+self.addEventListener('fetch', (event) => {
+    const { request } = event;
+    const url = new URL(request.url);
+
+    // Skip non-GET requests
+    if (request.method !== 'GET') return;
+
+    // Skip Chrome extensions and external URLs
+    if (!url.origin.includes(self.location.origin)) return;
+
+    // Live order events: long-lived stream, leave it to the browser
+    if (url.pathname === '/api/orders/stream') return;
+
+    // API calls: Network-first, no caching
+    if (url.pathname.startsWith('/api/')) {
+        event.respondWith(
+            fetch(request).catch(() => {
+                return new Response(
+                    JSON.stringify({ error: 'You are offline. Please check your connection.' }),
+                    { status: 503, headers: { 'Content-Type': 'application/json' } }
+                );
+            })
+        );
+        return;
+    }
+
+    // Static assets (JS, CSS, images, fonts): Network-first with cache fallback
+    // CRA hashed filenames change on every build, so network-first ensures fresh content
+    if (
+        url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|gif|woff|woff2|ttf)$/) ||
+        url.pathname.startsWith('/static/')
+    ) {
+        event.respondWith(
+            fetch(request)
+                .then((response) => {
+                    if (response.ok) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    return caches.match(request).then((cached) => {
+                        return cached || new Response('', { status: 503 });
+                    });
+                })
+        );
+        return;
+    }
+
+    // HTML pages: Network-first with offline fallback
+    event.respondWith(
+        fetch(request)
+            .then((response) => {
+                // Cache successful HTML responses
+                if (response.ok) {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+                }
+                return response;
+            })
+            .catch(() => {
+                return caches.match(request).then((cached) => {
+                    return cached || caches.match(OFFLINE_URL);
+                });
+            })
+    );
+});
+
+// Phone notifications: a new order or a reminder pushed by the server
+self.addEventListener('push', (event) => {
+    let data = {};
+    try { data = event.data ? event.data.json() : {}; } catch (_) { /* not JSON */ }
+    // Apple requires every push to show a notification; elsewhere skip it when the queue is on screen
+    const isApple = /iPad|iPhone|iPod|Macintosh/.test(self.navigator.userAgent);
+    event.waitUntil((async () => {
+        if (!isApple) {
+            const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+            const queueVisible = windows.some(c => c.visibilityState === 'visible' && new URL(c.url).pathname === '/dashboard/orders/queue');
+            if (queueVisible) return;
+        }
+        await self.registration.showNotification(data.title || '3Monks', {
+            body: data.body || '',
+            tag: data.tag,
+            renotify: true,
+            icon: '/icons/icon-192.png',
+            badge: '/icons/icon-96.png',
+            vibrate: [200, 100, 200],
+            data: { url: data.url || '/dashboard/orders/queue' },
+        });
+    })());
+});
+
+// Tapping a notification opens the queue, reusing an open app window when there is one
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = new URL(event.notification.data?.url || '/dashboard/orders/queue', self.location.origin).href;
+    event.waitUntil((async () => {
+        const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        const existing = windows.find(c => new URL(c.url).origin === self.location.origin);
+        if (existing) {
+            await existing.focus();
+            return existing.navigate(url).catch(() => self.clients.openWindow(url));
+        }
+        return self.clients.openWindow(url);
+    })());
+});
