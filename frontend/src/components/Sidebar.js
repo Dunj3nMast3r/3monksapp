@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getInitials, roleLabels } from '../utils/helpers';
-import { FiHome, FiShoppingCart, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiBox, FiLayers, FiMapPin, FiUserCheck, FiList, FiTrendingUp, FiX, FiMessageSquare, FiBriefcase, FiZap, FiClock, FiRefreshCw } from 'react-icons/fi';
+import { FiHome, FiShoppingCart, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiBox, FiLayers, FiMapPin, FiUserCheck, FiList, FiTrendingUp, FiX, FiMessageSquare, FiBriefcase, FiZap, FiClock, FiRefreshCw, FiDollarSign } from 'react-icons/fi';
 
 const Sidebar = ({ isOpen, onClose, collapsed }) => {
     const { user, logout, isAdmin, isManager, hasRole } = useAuth();
@@ -56,7 +56,10 @@ const Sidebar = ({ isOpen, onClose, collapsed }) => {
                             <div className="sidebar-section">Reports</div>
                             <NavLink to="/dashboard/reports" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiBarChart2 /> Reports</NavLink>
                             {isAdmin() && (
-                                <NavLink to="/dashboard/analytics" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiTrendingUp /> Analytics</NavLink>
+                                <>
+                                    <NavLink to="/dashboard/collections" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiDollarSign /> Daily Collection</NavLink>
+                                    <NavLink to="/dashboard/analytics" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiTrendingUp /> Analytics</NavLink>
+                                </>
                             )}
                         </>
                     )}

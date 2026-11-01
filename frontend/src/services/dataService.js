@@ -106,9 +106,14 @@ export const orderService = {
 
 export const dashboardService = {
     getAdminDashboard: (from, to) => api.get('/api/dashboard/admin', { params: { from, to } }),
+    // Today-first admin dashboard: peak hours, best sellers, branch leaderboard
+    getOverview: (date) => api.get('/api/dashboard/overview', { params: { date } }),
     getShopDashboard: (shopId, from, to) => api.get(`/api/dashboard/shop/${shopId}`, { params: { from, to } }),
     getProfitLoss: (shopId, from, to) => api.get('/api/dashboard/profit-loss', { params: { shopId, from, to } }),
     getAnalytics: (from, to) => api.get('/api/dashboard/analytics', { params: { from, to } }),
+    // Day-end reconciliation per branch (admin only); shopId optional
+    getDailyCollection: (from, to, shopId) =>
+        api.get('/api/dashboard/collection', { params: { from, to, shopId: shopId || undefined } }),
 };
 
 export const exportService = {
@@ -117,6 +122,11 @@ export const exportService = {
         responseType: 'blob',
     }),
     downloadPurchases: (from, to) => api.get('/api/admin/export/purchases', {
+        params: { from, to },
+        responseType: 'blob',
+    }),
+    // No dates exports every enquiry on record, which is what the lead list is for
+    downloadFranchiseEnquiries: (from, to) => api.get('/api/admin/export/franchise-enquiries', {
         params: { from, to },
         responseType: 'blob',
     }),
