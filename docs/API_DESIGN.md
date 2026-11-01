@@ -260,6 +260,44 @@ P&L report for date range:
 }
 ```
 
+### GET /api/dashboard/collection?from=&to=&shopId=
+**SUPER_ADMIN only.** Day-end reconciliation: shots and blends sold against the
+cash and UPI collected, per branch and per day.
+
+- `from` / `to` default to today; `to` defaults to `from`. The range is capped at 92 days.
+- `shopId` is optional and narrows the response to one branch.
+- Cash and UPI are counted on every order that was **not cancelled**, PENDING ones
+  included, because payment is taken when the order is placed rather than when the
+  stations hand it over. (`/admin` and `/profit-loss` count COMPLETED orders only,
+  so their totals are deliberately lower.)
+- Amounts include the parcel charge, i.e. what the customer actually paid.
+- `shots` and `blends` are units sold, not orders: `SHOT` products against
+  `CREAMY_BLEND` + `CURATED_BLEND`.
+- Cancelled orders are excluded from every figure and reported in `cancelledOrders` /
+  `cancelledAmount`.
+
+`branches` carries `shopId`/`shopName`, `days` carries `date`, `totals` carries neither;
+every row otherwise has the same shape. Active branches appear even when they sold
+nothing, and every day in the range appears even when it is empty.
+
+```json
+{
+  "fromDate": "2026-11-01",
+  "toDate": "2026-11-01",
+  "branches": [
+    {
+      "shopId": 1, "shopName": "3Monks - Main Branch", "date": null,
+      "shots": 6, "blends": 4,
+      "cashOrders": 2, "upiOrders": 1, "totalOrders": 3,
+      "cashAmount": 170.00, "upiAmount": 445.00, "totalAmount": 615.00,
+      "cancelledOrders": 1, "cancelledAmount": 40.00
+    }
+  ],
+  "days": [ { "shopId": null, "shopName": null, "date": "2026-11-01", "...": "same fields" } ],
+  "totals": { "shopId": null, "shopName": null, "date": null, "...": "same fields" }
+}
+```
+
 ---
 
 ## HTTP Status Codes

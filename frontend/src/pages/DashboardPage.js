@@ -4,6 +4,7 @@ import { dashboardService } from '../services/dataService';
 import { formatCurrency } from '../utils/helpers';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
+import DailyCollectionWidget from '../components/DailyCollectionWidget';
 import toast from 'react-hot-toast';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
@@ -123,6 +124,12 @@ const DashboardPage = () => {
                     )}
                 </div>
             </div>
+
+            {isAdmin() && (
+                <div style={{ marginBottom: '24px' }}>
+                    <DailyCollectionWidget compact />
+                </div>
+            )}
 
             {isAdmin() && dashboard.salesPerShop?.length > 0 && (
                 <div className="card">

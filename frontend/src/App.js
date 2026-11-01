@@ -16,6 +16,7 @@ import OrderHistoryPage from './pages/OrderHistoryPage';
 import StockPage from './pages/StockPage';
 import PurchasesPage from './pages/PurchasesPage';
 import ReportsPage from './pages/ReportsPage';
+import CollectionsPage from './pages/CollectionsPage';
 import ShopsPage from './pages/ShopsPage';
 import ProductsPage from './pages/ProductsPage';
 import FruitsPage from './pages/FruitsPage';
@@ -58,6 +59,11 @@ function App() {
                         {/* Reports - Admin & Manager */}
                         <Route path="reports" element={
                             <ProtectedRoute roles={['SUPER_ADMIN', 'SHOP_MANAGER']}><ReportsPage /></ProtectedRoute>
+                        } />
+
+                        {/* Day-end collection / reconciliation - Admin only */}
+                        <Route path="collections" element={
+                            <ProtectedRoute roles={['SUPER_ADMIN']}><CollectionsPage /></ProtectedRoute>
                         } />
 
                         {/* Admin only */}

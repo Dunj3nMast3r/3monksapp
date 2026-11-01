@@ -109,6 +109,9 @@ export const dashboardService = {
     getShopDashboard: (shopId, from, to) => api.get(`/api/dashboard/shop/${shopId}`, { params: { from, to } }),
     getProfitLoss: (shopId, from, to) => api.get('/api/dashboard/profit-loss', { params: { shopId, from, to } }),
     getAnalytics: (from, to) => api.get('/api/dashboard/analytics', { params: { from, to } }),
+    // Day-end reconciliation per branch (admin only); shopId optional
+    getDailyCollection: (from, to, shopId) =>
+        api.get('/api/dashboard/collection', { params: { from, to, shopId: shopId || undefined } }),
 };
 
 export const exportService = {
