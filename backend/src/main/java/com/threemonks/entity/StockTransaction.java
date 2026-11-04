@@ -45,11 +45,11 @@ public class StockTransaction {
      * for consumption, either way for an adjustment. Repeat entries for the same
      * date accumulate here.
      */
-    @Column(name = "quantity_change", nullable = false, precision = 10, scale = 2)
+    @Column(name = "quantity_change", nullable = false, precision = 12, scale = 3)
     private BigDecimal quantityChange;
 
     /** Only set for ADJUSTMENT — the latest physical count entered for the day. */
-    @Column(name = "actual_count", precision = 10, scale = 2)
+    @Column(name = "actual_count", precision = 12, scale = 3)
     private BigDecimal actualCount;
 
     private String notes;

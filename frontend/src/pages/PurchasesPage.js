@@ -159,8 +159,11 @@ const PurchasesPage = () => {
                     </div>
                     <div className="grid-2">
                         <div className="form-group">
-                            <label>Quantity *</label>
-                            <input className="form-control" type="number" step="0.01" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} required />
+                            <label>Quantity{(() => {
+                                const unit = materials.find(m => String(m.id) === String(form.rawMaterialId))?.unitType;
+                                return unit ? ` (${unit.toLowerCase()})` : '';
+                            })()} *</label>
+                            <input className="form-control" type="number" step="0.001" inputMode="decimal" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} required />
                         </div>
                         <div className="form-group">
                             <label>Total Cost (₹) *</label>

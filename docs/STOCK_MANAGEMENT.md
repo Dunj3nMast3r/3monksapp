@@ -9,9 +9,28 @@ per shop × raw material lives in `stocks`.
 
 | Entry | Effect | Recorded as |
 |-------|--------|-------------|
-| **Add purchased stock** | increases the balance | `PURCHASE` |
-| **Deduct consumed stock** | decreases the balance | `CONSUMPTION` |
-| **Adjust** | sets the balance to a physical count | `ADJUSTMENT` |
+| **📤 Used** (consumed today) | decreases the balance | `CONSUMPTION` |
+| **📥 Received** (purchased stock) | increases the balance | `PURCHASE` |
+| **🔄 Correct Count** | sets the balance to a physical count | `ADJUSTMENT` |
+
+## Units
+
+Raw materials have a category. **Fruits are always in KG**: the service stores KG
+whatever unit is sent, and the form locks it. Other materials (milk, pulp,
+packaging) keep their own unit. A material's unit cannot change once stock has
+been recorded for it, because the existing balances and history are in that unit.
+
+Quantities are stored with 3 decimals, so KG keeps gram precision (0.250 kg).
+At startup `DatabaseMigration` gives older raw materials a category (weight-based
+or named like a fruit → FRUIT, else OTHER) and converts any fruit still in GRAM to
+KG: balances, history, purchases and reorder level divided by 1000, price per unit
+multiplied by 1000, in one transaction. It only touches rows not yet converted.
+
+## Low stock
+
+A balance is **low** when it is at or below the shop's own minimum, if one was set,
+otherwise the material's **Reorder Level** (Raw Materials page). In practice that
+is the reorder level, since no screen sets a per-shop minimum.
 
 Each entry carries a **business date** (`txn_date`) that the user picks — it
 defaults to today and can be backdated. That is kept separate from `created_at`,
@@ -29,15 +48,20 @@ figure, however many times it was entered.
 
 ## Entering stock
 
-The Stock Entry screen lists **every active raw material as a row** — material,
-current balance and a quantity box — with one **Save** button for the whole
-table. Rows left blank are skipped, so you only fill in what moved.
+Stock Management opens on **Current Stock** (balance, unit and Out of stock / Low /
+OK status, problems first). **Update Stock** lists **every active raw material as a
+row** — material, current balance and a quantity box with its unit — with one
+**Save** for the whole table. Rows left blank are skipped, so you only fill in what
+moved. Each filled row shows the balance it will leave ("→ 7 kg"), a row that would
+go below zero is flagged before saving, and saving first shows a review of every
+change (before → after).
 
 **One date applies to the whole table**, set above it and defaulting to today.
 Backdating is done by changing that one control, not per row.
 
-The three modes (Add Stock / Deduct Consumption / Adjust) share the table; only
-the quantity column changes meaning, so switching mode clears what was typed.
+The three modes (Used / Received / Correct Count) share the table; only the
+quantity column changes meaning. Each mode keeps its own typed values, so switching
+loses nothing; only the mode being saved is cleared.
 
 A save goes through `POST /api/manager/stock/bulk` as a **single transaction**.
 If any line is rejected — almost always because a consumption would take a

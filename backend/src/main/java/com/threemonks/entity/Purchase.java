@@ -23,7 +23,7 @@ public class Purchase {
     @JoinColumn(name = "raw_material_id", nullable = false)
     private RawMaterial rawMaterial;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(nullable = false, precision = 12, scale = 3)
     private BigDecimal quantity;
 
     @Column(nullable = false, precision = 10, scale = 2)

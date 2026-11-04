@@ -1,5 +1,6 @@
 package com.threemonks.dto;
 
+import com.threemonks.enums.RawMaterialCategory;
 import com.threemonks.enums.UnitType;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +14,7 @@ public class RawMaterialResponse {
     private Long id;
     private String name;
     private UnitType unitType;
+    private RawMaterialCategory category;
     private BigDecimal costPerUnit;
     private String vendorName;
     private String vendorContact;

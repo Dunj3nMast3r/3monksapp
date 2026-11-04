@@ -10,7 +10,7 @@ const RawMaterialsPage = () => {
     const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', unitType: 'KG', costPerUnit: '', vendorName: '', vendorContact: '', reorderLevel: '' });
+    const [form, setForm] = useState({ name: '', category: 'FRUIT', unitType: 'KG', costPerUnit: '', vendorName: '', vendorContact: '', reorderLevel: '' });
     const [errors, setErrors] = useState({});
 
     useEffect(() => { fetchMaterials(); }, []);
@@ -21,8 +21,8 @@ const RawMaterialsPage = () => {
         finally { setLoading(false); }
     };
 
-    const openAdd = () => { setEditing(null); setForm({ name: '', unitType: 'KG', costPerUnit: '', vendorName: '', vendorContact: '', reorderLevel: '' }); setErrors({}); setShowModal(true); };
-    const openEdit = (m) => { setEditing(m); setForm({ name: m.name, unitType: m.unitType, costPerUnit: m.costPerUnit || '', vendorName: m.vendorName || '', vendorContact: m.vendorContact || '', reorderLevel: m.reorderLevel || '' }); setErrors({}); setShowModal(true); };
+    const openAdd = () => { setEditing(null); setForm({ name: '', category: 'FRUIT', unitType: 'KG', costPerUnit: '', vendorName: '', vendorContact: '', reorderLevel: '' }); setErrors({}); setShowModal(true); };
+    const openEdit = (m) => { setEditing(m); setForm({ name: m.name, category: m.category || 'OTHER', unitType: m.unitType, costPerUnit: m.costPerUnit || '', vendorName: m.vendorName || '', vendorContact: m.vendorContact || '', reorderLevel: m.reorderLevel || '' }); setErrors({}); setShowModal(true); };
 
     const validateForm = () => {
         const errs = {};
@@ -42,7 +42,8 @@ const RawMaterialsPage = () => {
         if (!validateForm()) return;
         setSubmitting(true);
         try {
-            const data = { ...form, costPerUnit: parseFloat(form.costPerUnit), reorderLevel: form.reorderLevel ? parseFloat(form.reorderLevel) : null };
+            // Fruits are always kept in KG
+            const data = { ...form, unitType: form.category === 'FRUIT' ? 'KG' : form.unitType, costPerUnit: parseFloat(form.costPerUnit), reorderLevel: form.reorderLevel ? parseFloat(form.reorderLevel) : null };
             if (editing) { await adminService.updateRawMaterial(editing.id, data); toast.success('Updated'); }
             else { await adminService.createRawMaterial(data); toast.success('Created'); }
             setShowModal(false); fetchMaterials();
@@ -68,10 +69,11 @@ const RawMaterialsPage = () => {
             {loading ? <div className="loading"><div className="spinner"></div></div> : (
                 <div className="card"><div className="table-wrapper">
                     <table>
-                        <thead><tr><th>Name</th><th>Unit</th><th>Cost/Unit</th><th>Vendor</th><th>Reorder Level</th><th>Last Purchase</th><th>Status</th><th>Actions</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Category</th><th>Unit</th><th>Cost/Unit</th><th>Vendor</th><th>Reorder Level</th><th>Last Purchase</th><th>Status</th><th>Actions</th></tr></thead>
                         <tbody>{materials.map(m => (
                             <tr key={m.id}>
                                 <td style={{ fontWeight: 500 }}>{m.name}</td>
+                                <td><span className={`badge ${m.category === 'FRUIT' ? 'badge-success' : 'badge-info'}`}>{m.category === 'FRUIT' ? '🍓 Fruit' : 'Other'}</span></td>
                                 <td>{m.unitType}</td>
                                 <td>₹{m.costPerUnit}</td>
                                 <td>{m.vendorName || '-'}</td>
@@ -94,13 +96,27 @@ const RawMaterialsPage = () => {
                         {errors.name && <span className="field-error">{errors.name}</span>}
                     </div>
                     <div className="grid-2">
+                        <div className="form-group"><label>Category *</label>
+                            <select className="form-control" value={form.category}
+                                onChange={e => setForm({ ...form, category: e.target.value, unitType: e.target.value === 'FRUIT' ? 'KG' : form.unitType })}>
+                                <option value="FRUIT">🍓 Fruit</option>
+                                <option value="OTHER">Other (milk, pulp, packaging…)</option>
+                            </select>
+                        </div>
                         <div className="form-group"><label>Unit Type *</label>
-                            <select className="form-control" value={form.unitType} onChange={e => setForm({ ...form, unitType: e.target.value })}>
+                            {form.category === 'FRUIT' ? (
+                                <>
+                                    <input className="form-control" value="KG" disabled />
+                                    <span className="form-hint">Fruits are always measured in kg.</span>
+                                </>
+                            ) : (
+                                <select className="form-control" value={form.unitType} onChange={e => setForm({ ...form, unitType: e.target.value })}>
                                 <option value="KG">KG</option><option value="GRAM">GRAM</option><option value="LITRE">LITRE</option>
                                 <option value="ML">ML</option><option value="PIECE">PIECE</option><option value="DOZEN">DOZEN</option>
                             </select>
+                            )}
                         </div>
-                        <div className="form-group"><label>Cost per Unit (₹) *</label>
+                        <div className="form-group"><label>{form.category === 'FRUIT' ? 'Cost per kg (₹) *' : 'Cost per Unit (₹) *'}</label>
                             <input className={`form-control${errors.costPerUnit ? ' input-error' : ''}`} type="number" step="0.01" value={form.costPerUnit} onChange={e => { setForm({ ...form, costPerUnit: e.target.value }); setErrors(prev => ({ ...prev, costPerUnit: '' })); }} />
                             {errors.costPerUnit && <span className="field-error">{errors.costPerUnit}</span>}
                         </div>
@@ -114,8 +130,8 @@ const RawMaterialsPage = () => {
                             {errors.vendorContact && <span className="field-error">{errors.vendorContact}</span>}
                         </div>
                     </div>
-                    <div className="form-group"><label>Reorder Level</label>
-                        <input className={`form-control${errors.reorderLevel ? ' input-error' : ''}`} type="number" step="0.01" value={form.reorderLevel} onChange={e => { setForm({ ...form, reorderLevel: e.target.value }); setErrors(prev => ({ ...prev, reorderLevel: '' })); }} placeholder="Alert when stock drops below this" />
+                    <div className="form-group"><label>Reorder Level{form.category === 'FRUIT' ? ' (kg)' : ''}</label>
+                        <input className={`form-control${errors.reorderLevel ? ' input-error' : ''}`} type="number" step="0.001" inputMode="decimal" value={form.reorderLevel} onChange={e => { setForm({ ...form, reorderLevel: e.target.value }); setErrors(prev => ({ ...prev, reorderLevel: '' })); }} placeholder="Alert when stock drops below this" />
                         {errors.reorderLevel && <span className="field-error">{errors.reorderLevel}</span>}
                     </div>
                     <div className="modal-actions">
