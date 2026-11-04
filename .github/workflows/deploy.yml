@@ -247,8 +247,6 @@ jobs:
             sudo docker compose -f ${{ env.COMPOSE_FILE }} up -d
             echo '── Services started ──'
             sudo docker compose -f ${{ env.COMPOSE_FILE }} ps
-            # Old image layers left by the rebuild; the build cache is kept for the next deploy
-            sudo docker image prune -f
           "
 
       - name: Provision SSL certificates (if needed)
@@ -309,6 +307,10 @@ jobs:
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             echo '── Pruning dangling images ──'
             sudo docker image prune -f
+            # Builds now keep their cache; drop layers unused for a week so the disk cannot fill up
+            echo '── Pruning build cache older than 7 days ──'
+            sudo docker builder prune -f --filter until=168h
+            sudo docker system df
             echo '── Cleanup done ──'
           "
 
