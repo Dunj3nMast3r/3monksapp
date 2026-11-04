@@ -47,7 +47,6 @@ const Sidebar = ({ isOpen, onClose, collapsed }) => {
                         <>
                             <div className="sidebar-section">Inventory</div>
                             <NavLink to="/dashboard/stock" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiPackage /> Stock</NavLink>
-                            <NavLink to="/dashboard/purchases" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiBox /> Purchases</NavLink>
                         </>
                     )}
 

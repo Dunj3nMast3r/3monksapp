@@ -90,6 +90,8 @@ Deliberately, and marked with comments in the code so it stays that way:
 - **Recording or deleting a purchase** (`StockService.createPurchase`,
   `deletePurchase`) — the purchase ledger keeps vendor, invoice, GST and cost,
   but has no stock side effect.
+  The Purchases screen is hidden from the app for now (its old link opens Stock);
+  the purchase API and the recorded data are kept.
 
 Recipes have been removed entirely; products no longer map to raw materials.
 
