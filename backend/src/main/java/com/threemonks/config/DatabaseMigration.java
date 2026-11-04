@@ -7,6 +7,10 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -16,10 +20,68 @@ public class DatabaseMigration implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseMigration.class);
 
     private final JdbcTemplate jdbcTemplate;
+    private final PlatformTransactionManager transactionManager;
 
     @Override
     public void run(String... args) {
         migrateProductImageColumn();
+        widenStockQuantities();
+        classifyRawMaterials();
+    }
+
+    // Quantities to 3 decimals, so stock in KG keeps gram precision (0.250 kg)
+    private void widenStockQuantities() {
+        String[][] columns = {
+                {"stocks", "quantity"}, {"stocks", "minimum_threshold"},
+                {"stock_transactions", "quantity_change"}, {"stock_transactions", "actual_count"},
+                {"purchases", "quantity"}, {"raw_materials", "reorder_level"}};
+        for (String[] c : columns) {
+            List<Integer> scale = jdbcTemplate.queryForList(
+                    "SELECT numeric_scale FROM information_schema.columns WHERE table_name = ? AND column_name = ?",
+                    Integer.class, c[0], c[1]);
+            if (!scale.isEmpty() && scale.get(0) != null && scale.get(0) < 3) {
+                jdbcTemplate.execute("ALTER TABLE " + c[0] + " ALTER COLUMN " + c[1] + " TYPE NUMERIC(12,3)");
+                logger.info("Widened {}.{} to NUMERIC(12,3)", c[0], c[1]);
+            }
+        }
+    }
+
+    /**
+     * Gives raw materials from before categories a category: weight-based ones and those named like
+     * a fruit become FRUIT, the rest OTHER. Fruits are kept in KG, so any recorded in GRAM are
+     * converted, balances, history, purchases, reorder level and price included, in one transaction.
+     * Idempotent: only rows without a category, and fruits still in GRAM, are touched.
+     */
+    private void classifyRawMaterials() {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            int fruits = jdbcTemplate.update("UPDATE raw_materials SET category = 'FRUIT' WHERE category IS NULL"
+                    + " AND (unit_type IN ('KG', 'GRAM') OR LOWER(name) IN (SELECT LOWER(name) FROM fruits))");
+            int others = jdbcTemplate.update("UPDATE raw_materials SET category = 'OTHER' WHERE category IS NULL");
+            if (fruits + others > 0) {
+                logger.info("Classified raw materials: {} fruit, {} other", fruits, others);
+            }
+
+            String inGram = "(SELECT id FROM raw_materials WHERE category = 'FRUIT' AND unit_type = 'GRAM')";
+            jdbcTemplate.update("UPDATE stocks SET quantity = quantity / 1000, minimum_threshold = minimum_threshold / 1000"
+                    + " WHERE raw_material_id IN " + inGram);
+            jdbcTemplate.update("UPDATE stock_transactions SET quantity_change = quantity_change / 1000,"
+                    + " actual_count = actual_count / 1000 WHERE raw_material_id IN " + inGram);
+            jdbcTemplate.update("UPDATE purchases SET quantity = quantity / 1000 WHERE raw_material_id IN " + inGram);
+            int converted = jdbcTemplate.update("UPDATE raw_materials SET unit_type = 'KG', reorder_level = reorder_level / 1000,"
+                    + " cost_per_unit = cost_per_unit * 1000 WHERE category = 'FRUIT' AND unit_type = 'GRAM'");
+            if (converted > 0) {
+                logger.info("Converted {} fruit raw materials from GRAM to KG", converted);
+            }
+
+            // Fruits in a unit that cannot be converted (e.g. PIECE) are switched to KG as-is
+            List<String> other = jdbcTemplate.queryForList(
+                    "SELECT name || ' (' || unit_type || ')' FROM raw_materials WHERE category = 'FRUIT' AND unit_type <> 'KG'",
+                    String.class);
+            if (!other.isEmpty()) {
+                jdbcTemplate.update("UPDATE raw_materials SET unit_type = 'KG' WHERE category = 'FRUIT' AND unit_type <> 'KG'");
+                logger.warn("Fruit raw materials switched to KG without conversion, check their stock: {}", other);
+            }
+        });
     }
 
     /**

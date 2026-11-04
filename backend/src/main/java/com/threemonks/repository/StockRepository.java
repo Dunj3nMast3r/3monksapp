@@ -14,6 +14,8 @@ import java.util.Optional;
 @Repository
 public interface StockRepository extends JpaRepository<Stock, Long> {
     List<Stock> findByShopId(Long shopId);
+
+    boolean existsByRawMaterialId(Long rawMaterialId);
     Optional<Stock> findByShopIdAndRawMaterialId(Long shopId, Long rawMaterialId);
 
     /**
@@ -25,9 +27,10 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
     @Query("SELECT s FROM Stock s WHERE s.shop.id = :shopId AND s.rawMaterial.id = :rawMaterialId")
     Optional<Stock> findForUpdate(@Param("shopId") Long shopId, @Param("rawMaterialId") Long rawMaterialId);
 
-    @Query("SELECT s FROM Stock s WHERE s.shop.id = :shopId AND s.quantity <= s.minimumThreshold")
+    // Low = at or below the shop's own minimum if set, else the material's reorder level
+    @Query("SELECT s FROM Stock s WHERE s.shop.id = :shopId AND s.quantity <= COALESCE(s.minimumThreshold, s.rawMaterial.reorderLevel)")
     List<Stock> findLowStockByShopId(@Param("shopId") Long shopId);
 
-    @Query("SELECT s FROM Stock s WHERE s.quantity <= s.minimumThreshold")
+    @Query("SELECT s FROM Stock s WHERE s.quantity <= COALESCE(s.minimumThreshold, s.rawMaterial.reorderLevel)")
     List<Stock> findAllLowStock();
 }

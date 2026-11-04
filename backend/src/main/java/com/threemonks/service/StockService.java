@@ -311,8 +311,10 @@ public class StockService {
         }
 
         private StockResponse toStockResponse(Stock stock) {
-                boolean isLow = stock.getMinimumThreshold() != null
-                                && stock.getQuantity().compareTo(stock.getMinimumThreshold()) <= 0;
+                // The shop's own minimum if one was set, else the material's reorder level
+                BigDecimal minimum = stock.getMinimumThreshold() != null
+                                ? stock.getMinimumThreshold() : stock.getRawMaterial().getReorderLevel();
+                boolean isLow = minimum != null && stock.getQuantity().compareTo(minimum) <= 0;
 
                 return StockResponse.builder()
                                 .id(stock.getId())
@@ -322,7 +324,7 @@ public class StockService {
                                 .rawMaterialName(stock.getRawMaterial().getName())
                                 .unitType(stock.getRawMaterial().getUnitType().name())
                                 .quantity(stock.getQuantity())
-                                .minimumThreshold(stock.getMinimumThreshold())
+                                .minimumThreshold(minimum)
                                 .lowStock(isLow)
                                 .build();
         }

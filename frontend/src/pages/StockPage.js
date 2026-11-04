@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { managerService, adminService } from '../services/dataService';
+import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 
 // Local calendar date, not UTC — toISOString() would roll back a day for IST
@@ -14,11 +15,27 @@ const daysAgo = (n) => {
     return localDate(d);
 };
 
+// Daily usage first: it is what staff record every day
 const MODES = {
-    PURCHASE: { label: 'Add Stock', qtyHeader: 'Qty Purchased', action: 'Save Purchases' },
-    CONSUMPTION: { label: 'Deduct Consumption', qtyHeader: 'Qty Consumed', action: 'Save Consumption' },
-    ADJUSTMENT: { label: 'Adjust', qtyHeader: 'Actual Count', action: 'Save Adjustments' },
+    CONSUMPTION: {
+        label: '📤 Used', help: 'How much was used. It is taken off the stock.',
+        qtyHeader: 'Used', action: 'Save Usage', apply: (current, qty) => current - qty,
+    },
+    PURCHASE: {
+        label: '📥 Received', help: 'Stock that arrived. It is added to the stock.',
+        qtyHeader: 'Received', action: 'Save Received', apply: (current, qty) => current + qty,
+    },
+    ADJUSTMENT: {
+        label: '🔄 Correct Count', help: 'What is actually there after a physical check. The stock is set to it.',
+        qtyHeader: 'Actual count', action: 'Save Count', apply: (current, qty) => qty,
+    },
 };
+
+const UNIT_LABELS = { KG: 'kg', GRAM: 'g', LITRE: 'L', ML: 'ml', PIECE: 'pcs', DOZEN: 'dozen' };
+const unitLabel = (unitType) => UNIT_LABELS[unitType] || (unitType || '').toLowerCase();
+// Up to 3 decimals (kg to the gram), no trailing zeros
+const formatQty = (q) => Number(q || 0).toLocaleString('en-IN', { maximumFractionDigits: 3 });
+const withUnit = (q, unitType) => `${formatQty(q)} ${unitLabel(unitType)}`;
 
 const StockPage = () => {
     const { user } = useAuth();
@@ -33,10 +50,13 @@ const StockPage = () => {
     const [saving, setSaving] = useState(false);
     // Current stock is what people look for first; entering stock is one tab over
     const [tab, setTab] = useState('current');
-    const [mode, setMode] = useState('PURCHASE');
+    const [mode, setMode] = useState('CONSUMPTION');
+    const [search, setSearch] = useState('');
+    const [confirming, setConfirming] = useState(false);
 
-    // Quantity typed per raw material id. One date applies to the whole table.
-    const [entries, setEntries] = useState({});
+    // Quantities typed per mode and raw material id, so switching mode loses nothing.
+    // One date applies to the whole table.
+    const [entries, setEntries] = useState({ CONSUMPTION: {}, PURCHASE: {}, ADJUSTMENT: {} });
     const [entryDate, setEntryDate] = useState(() => localDate());
 
     const [from, setFrom] = useState(() => daysAgo(7));
@@ -91,6 +111,9 @@ const StockPage = () => {
         return map;
     }, [stock]);
 
+    const matchesSearch = useCallback(
+        (name) => !search.trim() || name.toLowerCase().includes(search.trim().toLowerCase()), [search]);
+
     // Every active material with its balance, out-of-stock and low first
     const overview = useMemo(() => {
         const rank = (row) => (row.quantity <= 0 ? 0 : row.lowStock ? 1 : 2);
@@ -102,7 +125,8 @@ const StockPage = () => {
                     name: m.name,
                     unitType: m.unitType,
                     quantity: current ? Number(current.quantity) : 0,
-                    minimum: current?.minimumThreshold,
+                    // The shop's minimum if set, else the material's reorder level
+                    minimum: current ? current.minimumThreshold : m.reorderLevel,
                     lowStock: !!current?.lowStock,
                 };
             })
@@ -111,40 +135,36 @@ const StockPage = () => {
     const outCount = overview.filter(r => r.quantity <= 0).length;
     const lowCount = overview.filter(r => r.quantity > 0 && r.lowStock).length;
 
+    const modeEntries = entries[mode];
     const setQty = (materialId, qty) => {
-        setEntries(prev => ({ ...prev, [materialId]: qty }));
+        setEntries(prev => ({ ...prev, [mode]: { ...prev[mode], [materialId]: qty } }));
     };
 
-    const switchMode = (next) => {
-        setMode(next);
-        setEntries({});   // a quantity means something different in each mode
-    };
-
-    const filledLines = useMemo(() => (
+    // Every filled row of the current mode with its before/after, for the preview and the save
+    const changes = useMemo(() => (
         materials
-            .filter(m => entries[m.id] !== undefined && entries[m.id] !== '')
-            .map(m => ({
-                rawMaterialId: m.id,
-                quantity: parseFloat(entries[m.id]),
-                txnDate: entryDate,
-            }))
-    ), [materials, entries, entryDate]);
+            .filter(m => modeEntries[m.id] !== undefined && modeEntries[m.id] !== '')
+            .map(m => {
+                const qty = parseFloat(modeEntries[m.id]);
+                const before = currentByMaterial[m.id] ? Number(currentByMaterial[m.id].quantity) : 0;
+                const after = Number.isFinite(qty) ? MODES[mode].apply(before, qty) : NaN;
+                return { material: m, qty, before, after, invalid: !Number.isFinite(qty) || qty < 0 || after < 0 };
+            })
+    ), [materials, modeEntries, currentByMaterial, mode]);
+    const hasInvalid = changes.some(c => c.invalid);
 
     const handleSaveAll = async () => {
-        if (filledLines.length === 0) {
-            toast.error('Enter a quantity for at least one material');
-            return;
-        }
         setSaving(true);
         try {
             await managerService.recordBulkStock({
                 shopId: parseInt(shopId, 10),
                 type: mode,
-                lines: filledLines,
+                lines: changes.map(c => ({ rawMaterialId: c.material.id, quantity: c.qty, txnDate: entryDate })),
             });
             toast.success(
-                `Saved ${filledLines.length} ${filledLines.length === 1 ? 'entry' : 'entries'} for ${entryDate}`);
-            setEntries({});
+                `Saved ${changes.length} ${changes.length === 1 ? 'entry' : 'entries'} for ${entryDate}`);
+            setEntries(prev => ({ ...prev, [mode]: {} }));
+            setConfirming(false);
             fetchStock();
             if (tab === 'summary') fetchSummary();
         } catch (err) {
@@ -155,6 +175,11 @@ const StockPage = () => {
             setSaving(false);
         }
     };
+
+    const searchBox = (
+        <input className="form-control stock-search" type="search" placeholder="🔍 Search material"
+            value={search} onChange={e => setSearch(e.target.value)} />
+    );
 
     return (
         <div>
@@ -197,6 +222,7 @@ const StockPage = () => {
                             </span>
                             <button className="btn btn-sm btn-primary" onClick={() => setTab('entry')}>+ Update Stock</button>
                         </div>
+                        {searchBox}
                         <div className="table-wrapper">
                             <table>
                                 <thead>
@@ -207,18 +233,17 @@ const StockPage = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {overview.map(r => (
+                                    {overview.filter(r => matchesSearch(r.name)).map(r => (
                                         <tr key={r.id}>
-                                            <td style={{ fontWeight: 500 }}>
-                                                {r.name}
-                                                <span style={{ color: '#888', fontWeight: 400 }}> ({r.unitType})</span>
-                                            </td>
-                                            <td style={{ fontWeight: 600 }}>{r.quantity}</td>
+                                            <td style={{ fontWeight: 500 }}>{r.name}</td>
+                                            <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{withUnit(r.quantity, r.unitType)}</td>
                                             <td>
                                                 {r.quantity <= 0 ? (
                                                     <span className="badge badge-danger">Out of stock</span>
                                                 ) : r.lowStock ? (
-                                                    <span className="badge badge-warning">Low{r.minimum ? ` (min ${r.minimum})` : ''}</span>
+                                                    <span className="badge badge-warning">
+                                                        Low{r.minimum ? ` (reorder at ${withUnit(r.minimum, r.unitType)})` : ''}
+                                                    </span>
                                                 ) : (
                                                     <span className="badge badge-success">OK</span>
                                                 )}
@@ -234,7 +259,22 @@ const StockPage = () => {
 
             {tab === 'entry' && (
                 <>
-                    <div className="card" style={{ marginBottom: '16px' }}>
+                    <div className="stock-modes">
+                        {Object.keys(MODES).map(key => {
+                            const filled = Object.values(entries[key]).filter(v => v !== '').length;
+                            return (
+                                <button key={key}
+                                    className={`btn ${mode === key ? 'btn-primary' : 'btn-outline'}`}
+                                    onClick={() => setMode(key)}>
+                                    {MODES[key].label}
+                                    {filled > 0 && <span className="stock-mode-count">{filled}</span>}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <p className="form-hint stock-mode-help">{MODES[mode].help}</p>
+
+                    <div className="card stock-entry-controls">
                         <div className="form-group" style={{ margin: 0 }}>
                             <label>Date</label>
                             <input type="date" className="form-control" max={localDate()}
@@ -242,16 +282,7 @@ const StockPage = () => {
                                 onChange={e => setEntryDate(e.target.value)}
                                 style={{ width: '170px' }} />
                         </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                        {Object.keys(MODES).map(key => (
-                            <button key={key}
-                                className={`btn ${mode === key ? 'btn-primary' : 'btn-outline'}`}
-                                onClick={() => switchMode(key)}>
-                                {MODES[key].label}
-                            </button>
-                        ))}
+                        {searchBox}
                     </div>
 
                     {loading ? (
@@ -265,30 +296,42 @@ const StockPage = () => {
                                     <thead>
                                         <tr>
                                             <th>Material</th>
-                                            <th>Current</th>
+                                            <th>Now</th>
                                             <th>{MODES[mode].qtyHeader}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {materials.map(m => {
+                                        {materials.filter(m => matchesSearch(m.name)).map(m => {
                                             const current = currentByMaterial[m.id];
+                                            const change = changes.find(c => c.material.id === m.id);
                                             return (
                                                 <tr key={m.id}>
-                                                    <td style={{ fontWeight: 500 }}>
-                                                        {m.name}
-                                                        <span style={{ color: '#888', fontWeight: 400 }}> ({m.unitType})</span>
+                                                    <td style={{ fontWeight: 500 }}>{m.name}</td>
+                                                    <td style={{ whiteSpace: 'nowrap' }}>
+                                                        {withUnit(current ? current.quantity : 0, m.unitType)}
                                                     </td>
                                                     <td>
-                                                        {current ? current.quantity : 0}
-                                                        {current && current.lowStock && (
-                                                            <span className="badge badge-danger" style={{ marginLeft: '6px' }}>LOW</span>
+                                                        <div className="stock-qty-input">
+                                                            <input className={`form-control${change?.invalid ? ' input-error' : ''}`}
+                                                                type="number" inputMode="decimal" min="0"
+                                                                step={m.unitType === 'KG' || m.unitType === 'LITRE' ? '0.001' : '1'}
+                                                                placeholder="-"
+                                                                aria-label={`${MODES[mode].qtyHeader} ${m.name}`}
+                                                                value={modeEntries[m.id] ?? ''}
+                                                                onChange={e => setQty(m.id, e.target.value)} />
+                                                            <span className="stock-qty-unit">{unitLabel(m.unitType)}</span>
+                                                        </div>
+                                                        {change && (
+                                                            change.invalid ? (
+                                                                <span className="field-error">
+                                                                    {change.after < 0
+                                                                        ? `Only ${withUnit(change.before, m.unitType)} available`
+                                                                        : 'Enter a valid quantity'}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="stock-after">→ {withUnit(change.after, m.unitType)}</span>
+                                                            )
                                                         )}
-                                                    </td>
-                                                    <td>
-                                                        <input className="form-control" type="number" step="0.01" min="0"
-                                                            placeholder="-" style={{ width: '110px' }}
-                                                            value={entries[m.id] ?? ''}
-                                                            onChange={e => setQty(m.id, e.target.value)} />
                                                     </td>
                                                 </tr>
                                             );
@@ -297,22 +340,47 @@ const StockPage = () => {
                                 </table>
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
-                                <span style={{ color: '#666' }}>
-                                    {filledLines.length === 0
-                                        ? `Leave a row blank to skip it — saving against ${entryDate}`
-                                        : `${filledLines.length} row${filledLines.length === 1 ? '' : 's'} ready to save for ${entryDate}`}
+                            <div className="stock-save-bar">
+                                <span>
+                                    {changes.length === 0
+                                        ? 'Fill only the rows that changed'
+                                        : `${changes.length} ${changes.length === 1 ? 'change' : 'changes'} for ${entryDate}`}
                                 </span>
-                                <button className="btn btn-primary" onClick={handleSaveAll}
-                                    disabled={saving || filledLines.length === 0}>
-                                    {saving ? 'Saving...' : MODES[mode].action}
+                                <button className="btn btn-primary" onClick={() => setConfirming(true)}
+                                    disabled={saving || changes.length === 0 || hasInvalid}>
+                                    Review & {MODES[mode].action}
                                 </button>
                             </div>
                         </div>
                     )}
                 </>
             )}
+
+            <Modal isOpen={confirming} onClose={() => setConfirming(false)}
+                title={`${MODES[mode].label} · ${entryDate}`}>
+                <div className="table-wrapper">
+                    <table>
+                        <thead><tr><th>Material</th><th>{MODES[mode].qtyHeader}</th><th>Stock</th></tr></thead>
+                        <tbody>
+                            {changes.map(c => (
+                                <tr key={c.material.id}>
+                                    <td style={{ fontWeight: 500 }}>{c.material.name}</td>
+                                    <td>{withUnit(c.qty, c.material.unitType)}</td>
+                                    <td style={{ whiteSpace: 'nowrap' }}>
+                                        {formatQty(c.before)} → <strong>{withUnit(c.after, c.material.unitType)}</strong>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="modal-actions">
+                    <button type="button" className="btn btn-outline" onClick={() => setConfirming(false)}>Back</button>
+                    <button type="button" className="btn btn-primary" onClick={handleSaveAll} disabled={saving}>
+                        {saving ? 'Saving...' : MODES[mode].action}
+                    </button>
+                </div>
+            </Modal>
 
             {tab === 'summary' && (
                 <>
@@ -337,16 +405,15 @@ const StockPage = () => {
                         <div className="card">
                             <div className="table-wrapper">
                                 <table>
-                                    <thead><tr><th>Date</th><th>Material</th><th>Purchased</th><th>Consumed</th><th>Adjusted</th><th>Unit</th></tr></thead>
+                                    <thead><tr><th>Date</th><th>Material</th><th>Received</th><th>Used</th><th>Corrected</th></tr></thead>
                                     <tbody>
                                         {summary.map((r, i) => (
                                             <tr key={`${r.txnDate}-${r.rawMaterialId}-${i}`}>
                                                 <td>{r.txnDate}</td>
                                                 <td style={{ fontWeight: 500 }}>{r.rawMaterialName}</td>
-                                                <td>{Number(r.purchased) ? r.purchased : '-'}</td>
-                                                <td>{Number(r.consumed) ? r.consumed : '-'}</td>
-                                                <td>{Number(r.adjusted) ? r.adjusted : '-'}</td>
-                                                <td>{r.unitType}</td>
+                                                <td>{Number(r.purchased) ? withUnit(r.purchased, r.unitType) : '-'}</td>
+                                                <td>{Number(r.consumed) ? withUnit(r.consumed, r.unitType) : '-'}</td>
+                                                <td>{Number(r.adjusted) ? withUnit(r.adjusted, r.unitType) : '-'}</td>
                                             </tr>
                                         ))}
                                     </tbody>

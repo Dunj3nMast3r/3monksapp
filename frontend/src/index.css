@@ -5228,3 +5228,80 @@ tr:last-child td {
 .stock-count-badge {
     margin-left: 8px;
 }
+
+/* ============ STOCK ENTRY ============ */
+.stock-search {
+    margin-bottom: 12px;
+    max-width: 320px;
+}
+
+.stock-modes {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.stock-mode-count {
+    margin-left: 6px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--warning);
+    color: #fff;
+    font-size: 12px;
+}
+
+.stock-mode-help {
+    margin: 8px 0 16px;
+}
+
+.stock-entry-controls {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.stock-entry-controls .stock-search {
+    margin-bottom: 0;
+}
+
+.stock-qty-input {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stock-qty-input .form-control {
+    width: 100px;
+}
+
+.stock-qty-unit {
+    color: var(--text-secondary);
+    font-size: 13px;
+    min-width: 24px;
+}
+
+.stock-after {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--success-text);
+    font-weight: 600;
+}
+
+/* Stays in view at the bottom of the screen while scrolling a long list */
+.stock-save-bar {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    padding: 12px 0;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+}

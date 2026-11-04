@@ -17,7 +17,7 @@ public class StockEntryRequest {
     private Long rawMaterialId;
 
     @NotNull(message = "Quantity is required")
-    @DecimalMin(value = "0.01", message = "Quantity must be greater than zero")
+    @DecimalMin(value = "0.001", message = "Quantity must be greater than zero")
     private BigDecimal quantity;
 
     /** Business date. Defaults to today when omitted; may be in the past. */

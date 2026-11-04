@@ -3,8 +3,12 @@ package com.threemonks.service;
 import com.threemonks.dto.RawMaterialRequest;
 import com.threemonks.dto.RawMaterialResponse;
 import com.threemonks.entity.RawMaterial;
+import com.threemonks.enums.RawMaterialCategory;
+import com.threemonks.enums.UnitType;
+import com.threemonks.exception.BadRequestException;
 import com.threemonks.exception.ResourceNotFoundException;
 import com.threemonks.repository.RawMaterialRepository;
+import com.threemonks.repository.StockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +21,7 @@ import java.util.stream.Collectors;
 public class RawMaterialService {
 
     private final RawMaterialRepository rawMaterialRepository;
+    private final StockRepository stockRepository;
 
     public List<RawMaterialResponse> getAllRawMaterials() {
         return rawMaterialRepository.findAll().stream()
@@ -36,9 +41,11 @@ public class RawMaterialService {
 
     @Transactional
     public RawMaterialResponse createRawMaterial(RawMaterialRequest request) {
+        RawMaterialCategory category = categoryOf(request);
         RawMaterial rm = RawMaterial.builder()
                 .name(request.getName())
-                .unitType(request.getUnitType())
+                .category(category)
+                .unitType(unitFor(category, request.getUnitType()))
                 .costPerUnit(request.getCostPerUnit())
                 .vendorName(request.getVendorName())
                 .vendorContact(request.getVendorContact())
@@ -52,8 +59,16 @@ public class RawMaterialService {
     @Transactional
     public RawMaterialResponse updateRawMaterial(Long id, RawMaterialRequest request) {
         RawMaterial rm = findById(id);
+        RawMaterialCategory category = categoryOf(request);
+        UnitType unit = unitFor(category, request.getUnitType());
+        // Existing balances and history are in the old unit; changing it would silently rescale them
+        if (unit != rm.getUnitType() && stockRepository.existsByRawMaterialId(id)) {
+            throw new BadRequestException("The unit of " + rm.getName()
+                    + " cannot change because stock has already been recorded in " + rm.getUnitType() + ".");
+        }
         rm.setName(request.getName());
-        rm.setUnitType(request.getUnitType());
+        rm.setCategory(category);
+        rm.setUnitType(unit);
         rm.setCostPerUnit(request.getCostPerUnit());
         rm.setVendorName(request.getVendorName());
         rm.setVendorContact(request.getVendorContact());
@@ -69,6 +84,21 @@ public class RawMaterialService {
         rawMaterialRepository.save(rm);
     }
 
+    private static RawMaterialCategory categoryOf(RawMaterialRequest request) {
+        return request.getCategory() != null ? request.getCategory() : RawMaterialCategory.OTHER;
+    }
+
+    // Fruits are always kept in KG
+    private static UnitType unitFor(RawMaterialCategory category, UnitType requested) {
+        if (category == RawMaterialCategory.FRUIT) {
+            return UnitType.KG;
+        }
+        if (requested == null) {
+            throw new BadRequestException("Unit type is required");
+        }
+        return requested;
+    }
+
     private RawMaterial findById(Long id) {
         return rawMaterialRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("RawMaterial", "id", id));
@@ -79,6 +109,7 @@ public class RawMaterialService {
                 .id(rm.getId())
                 .name(rm.getName())
                 .unitType(rm.getUnitType())
+                .category(rm.getCategory())
                 .costPerUnit(rm.getCostPerUnit())
                 .vendorName(rm.getVendorName())
                 .vendorContact(rm.getVendorContact())

@@ -2,6 +2,7 @@ package com.threemonks.config;
 
 import com.threemonks.entity.*;
 import com.threemonks.enums.ProductCategory;
+import com.threemonks.enums.RawMaterialCategory;
 import com.threemonks.enums.Role;
 import com.threemonks.enums.UnitType;
 import com.threemonks.repository.*;
@@ -194,18 +195,19 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         private void seedRawMaterials() {
-                // Fruit-based raw materials (GRAM)
+                // Fruits, always in KG
                 String[] fruitMaterials = { "Coconut", "Mango", "Blueberry", "Mulberry", "Strawberry", "Avocado",
                                 "Sitaphal",
                                 "Jamun", "Kiwi" };
                 for (String name : fruitMaterials) {
                         rawMaterialRepository.save(RawMaterial.builder()
                                         .name(name)
-                                        .unitType(UnitType.GRAM)
-                                        .costPerUnit(BigDecimal.valueOf(0.50))
+                                        .category(RawMaterialCategory.FRUIT)
+                                        .unitType(UnitType.KG)
+                                        .costPerUnit(BigDecimal.valueOf(500))
                                         .vendorName("Fresh Fruits Supplier")
                                         .vendorContact("9876543210")
-                                        .reorderLevel(BigDecimal.valueOf(500))
+                                        .reorderLevel(BigDecimal.valueOf(0.5))
                                         .active(true)
                                         .build());
                 }
@@ -213,6 +215,7 @@ public class DataInitializer implements CommandLineRunner {
                 // Thick Milk (ML)
                 rawMaterialRepository.save(RawMaterial.builder()
                                 .name("Thick Milk")
+                                .category(RawMaterialCategory.OTHER)
                                 .unitType(UnitType.ML)
                                 .costPerUnit(BigDecimal.valueOf(0.08))
                                 .vendorName("Dairy Fresh")

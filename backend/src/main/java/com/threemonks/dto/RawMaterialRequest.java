@@ -1,5 +1,6 @@
 package com.threemonks.dto;
 
+import com.threemonks.enums.RawMaterialCategory;
 import com.threemonks.enums.UnitType;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -15,6 +16,9 @@ public class RawMaterialRequest {
 
     @NotNull(message = "Unit type is required")
     private UnitType unitType;
+
+    // Defaults to OTHER; FRUIT always uses KG
+    private RawMaterialCategory category;
 
     @NotNull(message = "Cost per unit is required")
     @DecimalMin(value = "0.01", message = "Cost per unit must be at least ₹0.01")
