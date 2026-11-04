@@ -161,7 +161,8 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     environment: prod
-    timeout-minutes: 15
+    # The first build after this change fills the build cache and takes longer
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -185,6 +186,24 @@ jobs:
           CFG
           chmod 644 ~/.ssh/config
 
+      # A small instance runs out of memory while building the images; once it does it stops
+      # answering, even SSH. Swap gives the build room. Created once, kept across reboots.
+      - name: Ensure swap space
+        run: |
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
+            if sudo swapon --show | grep -q .; then
+              echo '✓ Swap already active'
+            elif [ \$(df --output=avail -BG / | tail -1 | tr -dc 0-9) -lt 4 ]; then
+              echo '⚠ Less than 4 GB free disk: skipping swap'
+            else
+              echo '── Creating 2 GB swap ──'
+              sudo fallocate -l 2G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+              sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+              grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+            fi
+            free -h
+          "
+
       - name: Sync project files
         run: |
           echo "── Syncing files to ${{ env.APP_DIR }} ──"
@@ -202,8 +221,14 @@ jobs:
         run: |
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             cd ${{ env.APP_DIR }}
-            echo '── Building images (existing containers still serving traffic) ──'
-            sudo docker compose -f ${{ env.COMPOSE_FILE }} build --no-cache
+            set -e
+            echo '── Building images one at a time (existing containers still serving traffic) ──'
+            # One at a time and with the build cache: building all at once from scratch
+            # exhausted the server's memory and froze it
+            for service in backend frontend proxy; do
+              echo \"── Building \$service ──\"
+              sudo docker compose -f ${{ env.COMPOSE_FILE }} build \$service
+            done
             echo '── Build complete ──'
           "
 
@@ -282,6 +307,10 @@ jobs:
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "
             echo '── Pruning dangling images ──'
             sudo docker image prune -f
+            # Builds now keep their cache; drop layers unused for a week so the disk cannot fill up
+            echo '── Pruning build cache older than 7 days ──'
+            sudo docker builder prune -f --filter until=168h
+            sudo docker system df
             echo '── Cleanup done ──'
           "
 
