@@ -14,7 +14,6 @@ import QuickOrderPage from './pages/QuickOrderPage';
 import OrderQueuePage from './pages/OrderQueuePage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
 import StockPage from './pages/StockPage';
-import PurchasesPage from './pages/PurchasesPage';
 import ReportsPage from './pages/ReportsPage';
 import CollectionsPage from './pages/CollectionsPage';
 import ShopsPage from './pages/ShopsPage';
@@ -52,9 +51,8 @@ function App() {
                         <Route path="stock" element={
                             <ProtectedRoute roles={['SUPER_ADMIN', 'SHOP_MANAGER']}><StockPage /></ProtectedRoute>
                         } />
-                        <Route path="purchases" element={
-                            <ProtectedRoute roles={['SUPER_ADMIN', 'SHOP_MANAGER']}><PurchasesPage /></ProtectedRoute>
-                        } />
+                        {/* Purchases menu removed for now; old links land on Stock */}
+                        <Route path="purchases" element={<Navigate to="/dashboard/stock" replace />} />
 
                         {/* Reports - Admin & Manager */}
                         <Route path="reports" element={
