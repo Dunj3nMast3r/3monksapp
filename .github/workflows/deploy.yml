@@ -151,6 +151,10 @@ jobs:
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> ${{ env.APP_DIR }}/.env"
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo 'JWT_SECRET=${{ secrets.JWT_SECRET }}' >> ${{ env.APP_DIR }}/.env"
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo 'CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}' >> ${{ env.APP_DIR }}/.env"
+          # Email (Gmail App Password) and the 8 AM daily summary; empty values fall back to the defaults
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo 'MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}' >> ${{ env.APP_DIR }}/.env"
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo 'DAILY_SUMMARY_TO=${{ vars.DAILY_SUMMARY_TO }}' >> ${{ env.APP_DIR }}/.env"
+          ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo 'DAILY_SUMMARY_SHOPS=${{ vars.DAILY_SUMMARY_SHOPS }}' >> ${{ env.APP_DIR }}/.env"
           ssh ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} "echo '✓ .env written ('\$(wc -l < ${{ env.APP_DIR }}/.env)' lines)'"
 
   # ──────────────────────────────────────────────────────────

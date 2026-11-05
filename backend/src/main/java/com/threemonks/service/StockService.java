@@ -327,7 +327,11 @@ public class StockService {
                 if (start.isAfter(end)) {
                         throw new BadRequestException("Start date cannot be after end date");
                 }
+                return buildStockReport(shopId, start, end);
+        }
 
+        // Same report without an access check, for server-side jobs (daily summary email)
+        public List<StockReportResponse> buildStockReport(Long shopId, LocalDate start, LocalDate end) {
                 Map<Long, BigDecimal> balanceNow = new HashMap<>();
                 stockRepository.findByShopId(shopId).forEach(s -> balanceNow.put(s.getRawMaterial().getId(), s.getQuantity()));
                 Map<Long, BigDecimal> changedAfter = new HashMap<>();
@@ -373,6 +377,13 @@ public class StockService {
                                         .build());
                 }
                 return report;
+        }
+
+        // Current balances with Low status, without an access check, for server-side jobs
+        public List<StockResponse> currentStock(Long shopId) {
+                return stockRepository.findByShopId(shopId).stream()
+                                .map(this::toStockResponse)
+                                .collect(Collectors.toList());
         }
 
         public List<StockEntryResponse> getEntries(Long shopId, LocalDate date, UserPrincipal currentUser) {

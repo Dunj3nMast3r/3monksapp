@@ -131,6 +131,19 @@ const StockPage = () => {
     useEffect(() => { if (tab === 'report') fetchReport(); }, [tab, fetchReport]);
     useEffect(() => { if (tab === 'entry') fetchEntries(); }, [tab, fetchEntries]);
 
+    const [sendingSummary, setSendingSummary] = useState(false);
+    const sendDailySummary = async () => {
+        setSendingSummary(true);
+        try {
+            const res = await adminService.sendDailySummary();
+            toast.success(res.data.message || 'Daily summary sent');
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to send the daily summary');
+        } finally {
+            setSendingSummary(false);
+        }
+    };
+
     const pickRange = (key) => {
         setRange(key);
         setFrom(RANGES[key].from());
@@ -539,6 +552,17 @@ const StockPage = () => {
                             )}
                             <p className="form-hint">Opening + Received − Used ± count corrections = Closing.</p>
                         </div>
+
+                        {isAdmin && (
+                            <div className="card" style={{ marginTop: '16px' }}>
+                                <p className="form-hint" style={{ marginTop: 0 }}>
+                                    A summary of yesterday's sales and stock is emailed every day at 8 AM.
+                                </p>
+                                <button className="btn btn-outline btn-sm" onClick={sendDailySummary} disabled={sendingSummary}>
+                                    {sendingSummary ? 'Sending…' : '📧 Send daily summary now'}
+                                </button>
+                            </div>
+                        )}
                     </>
                 );
             })()}

@@ -30,6 +30,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-https://3monks.co.in}
       MAIL_USERNAME: ${MAIL_USERNAME:-3monks.official@gmail.com}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-changeme}
+      DAILY_SUMMARY_TO: ${DAILY_SUMMARY_TO:-3monks.official@gmail.com}
+      DAILY_SUMMARY_SHOPS: ${DAILY_SUMMARY_SHOPS:-Kharadi}
       JAVA_OPTS: "-Xms256m -Xmx512m"
     depends_on:
       postgres:

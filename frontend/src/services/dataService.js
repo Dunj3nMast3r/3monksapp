@@ -16,6 +16,8 @@ export const publicService = {
 };
 
 export const adminService = {
+    // Sends yesterday's 8 AM daily summary email right away
+    sendDailySummary: () => api.post('/api/admin/daily-summary/send'),
     // Shops
     getShops: () => api.get('/api/admin/shops'),
     createShop: (data) => api.post('/api/admin/shops', data),

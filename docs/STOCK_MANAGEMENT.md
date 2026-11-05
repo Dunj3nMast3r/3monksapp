@@ -129,17 +129,29 @@ to their own shop.
 
 `from`/`to` are ISO dates and default to the last 30 days.
 
-## Daily stock email (not built yet)
+## Daily summary email
 
-`StockReportService.buildReportForAllShops()` already produces the current stock
-position for every active shop. Sending the planned 8 AM IST email is then:
+`DailySummaryService` emails a summary every day at **8 AM IST** covering the
+previous day, one email per branch:
 
-1. `@EnableScheduling` on the application class.
-2. A `@Scheduled(cron = "0 0 8 * * *", zone = "Asia/Kolkata")` method that calls
-   `buildReportForAllShops()` and passes the result to `EmailService`.
+- Sales (₹, delivered orders only), order count, drinks sold, Cash / UPI split,
+  cancelled and not-delivered orders.
+- Current stock of every material with yesterday's received and used.
+  Out-of-stock rows are highlighted red and low rows amber, and listed first
+  (Low = below the reorder level, or the shop's own minimum if one is set).
 
-**Before it can send**, the deploy pipeline has to supply mail credentials.
-`.github/workflows/deploy.yml` rewrites `/opt/threemonks/.env` on every deploy
-with only five variables, so `MAIL_PASSWORD` falls back to `changeme` and Gmail
-rejects it. A Gmail app password needs to be added as a GitHub secret and
-written into `.env` alongside the others.
+Sender: **3Monks Daily Summary** `<3monks.official@gmail.com>` over Gmail SMTP
+(smtp.gmail.com:587, STARTTLS). Admins can send it straight away from
+**Stock → Report → Send daily summary now** (`POST /api/admin/daily-summary/send`).
+
+Settings (environment variables, comma-separated):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAIL_PASSWORD` | – | Gmail App Password for 3monks.official@gmail.com (GitHub secret) |
+| `DAILY_SUMMARY_TO` | `3monks.official@gmail.com` | Recipients (GitHub variable) |
+| `DAILY_SUMMARY_SHOPS` | `Kharadi` | Branches; a branch matches when its name contains one of these. `ALL` = every active branch (GitHub variable) |
+
+Without `MAIL_PASSWORD` the 8 AM run is skipped with a log line, and the
+"Send now" button says email is not set up.
+
