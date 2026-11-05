@@ -91,6 +91,30 @@ public class ManagerController {
                 stockService.getDailySummary(shopId, from, to, currentUser)));
     }
 
+    @GetMapping("/shop/{shopId}/stock/report")
+    public ResponseEntity<ApiResponse<List<StockReportResponse>>> getStockReport(
+            @PathVariable Long shopId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(stockService.getStockReport(shopId, from, to, currentUser)));
+    }
+
+    @GetMapping("/shop/{shopId}/stock/entries")
+    public ResponseEntity<ApiResponse<List<StockEntryResponse>>> getStockEntries(
+            @PathVariable Long shopId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(stockService.getEntries(shopId, date, currentUser)));
+    }
+
+    @DeleteMapping("/stock/entries/{id}")
+    public ResponseEntity<ApiResponse<StockResponse>> removeStockEntry(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success("Entry removed", stockService.removeEntry(id, currentUser)));
+    }
+
     @GetMapping("/shop/{shopId}/stock/low")
     public ResponseEntity<ApiResponse<List<StockResponse>>> getLowStock(
             @PathVariable Long shopId,

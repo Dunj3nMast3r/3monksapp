@@ -68,6 +68,21 @@ If any line is rejected — almost always because a consumption would take a
 balance below zero — nothing is written and the error names the material. That
 way you never end up with half a day's figures recorded.
 
+## Report and corrections
+
+The **Report** tab shows, per material and for a date range (Today, Yesterday,
+Last 7 days, This month or custom), **Opening + Received − Used ± count
+corrections = Closing**. It is anchored on today's balance: closing = balance now
+minus every change dated after the range, so it stays right for stock recorded
+before the ledger existed. By default it lists materials with stock or movement;
+"Show all materials" lists the rest.
+
+**Update Stock** lists the entries recorded on the chosen date. A wrong one can
+be **removed**, which reverses its effect on the balance
+(`DELETE /api/manager/stock/entries/{id}`). Removal is limited to the last 7 days
+(older mistakes are fixed with Correct Count) and refused when it would take the
+balance below zero, for example a delivery whose stock was already used.
+
 ## Rules
 
 - **Stock can never go negative.** A consumption or downward adjustment that
@@ -105,6 +120,9 @@ to their own shop.
 | `GET`  | `/api/manager/shop/{shopId}/stock` |
 | `GET`  | `/api/manager/shop/{shopId}/stock/low` |
 | `GET`  | `/api/manager/shop/{shopId}/stock/summary?from=&to=` |
+| `GET`  | `/api/manager/shop/{shopId}/stock/report?from=&to=` |
+| `GET`  | `/api/manager/shop/{shopId}/stock/entries?date=` |
+| `DELETE` | `/api/manager/stock/entries/{id}` |
 | `POST` | `/api/manager/stock/purchase` |
 | `POST` | `/api/manager/stock/consumption` |
 | `POST` | `/api/manager/stock/adjustment` |

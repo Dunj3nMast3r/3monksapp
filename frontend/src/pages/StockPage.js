@@ -15,6 +15,18 @@ const daysAgo = (n) => {
     return localDate(d);
 };
 
+const monthStart = () => `${localDate().slice(0, 8)}01`;
+
+// Report ranges people ask for most; a custom range is still possible
+const RANGES = {
+    today: { label: 'Today', from: () => localDate(), to: () => localDate() },
+    yesterday: { label: 'Yesterday', from: () => daysAgo(1), to: () => daysAgo(1) },
+    week: { label: 'Last 7 days', from: () => daysAgo(6), to: () => localDate() },
+    month: { label: 'This month', from: monthStart, to: () => localDate() },
+};
+
+const ENTRY_LABELS = { CONSUMPTION: '📤 Used', PURCHASE: '📥 Received', ADJUSTMENT: '🔄 Count' };
+
 // Daily usage first: it is what staff record every day
 const MODES = {
     CONSUMPTION: {
@@ -45,7 +57,11 @@ const StockPage = () => {
     const [shopId, setShopId] = useState(user.shopId || '');
     const [materials, setMaterials] = useState([]);
     const [stock, setStock] = useState([]);
-    const [summary, setSummary] = useState([]);
+    const [report, setReport] = useState([]);
+    const [reportAll, setReportAll] = useState(false);
+    const [range, setRange] = useState('today');
+    const [dayEntries, setDayEntries] = useState([]);
+    const [removing, setRemoving] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     // Current stock is what people look for first; entering stock is one tab over
@@ -59,7 +75,7 @@ const StockPage = () => {
     const [entries, setEntries] = useState({ CONSUMPTION: {}, PURCHASE: {}, ADJUSTMENT: {} });
     const [entryDate, setEntryDate] = useState(() => localDate());
 
-    const [from, setFrom] = useState(() => daysAgo(7));
+    const [from, setFrom] = useState(() => localDate());
     const [to, setTo] = useState(() => localDate());
 
     useEffect(() => {
@@ -91,18 +107,49 @@ const StockPage = () => {
         }
     }, [shopId]);
 
-    const fetchSummary = useCallback(async () => {
+    const fetchReport = useCallback(async () => {
         if (!shopId) return;
         try {
-            const res = await managerService.getStockSummary(shopId, from, to);
-            setSummary(res.data.data || []);
-        } catch {
-            toast.error('Failed to load daily summary');
+            const res = await managerService.getStockReport(shopId, from, to);
+            setReport(res.data.data || []);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to load stock report');
         }
     }, [shopId, from, to]);
 
+    // What has been recorded on the entry date, so a mistake can be seen and removed
+    const fetchEntries = useCallback(async () => {
+        if (!shopId) return;
+        try {
+            const res = await managerService.getStockEntries(shopId, entryDate);
+            setDayEntries(res.data.data || []);
+        } catch {
+            toast.error('Failed to load entries');
+        }
+    }, [shopId, entryDate]);
+
     useEffect(() => { fetchStock(); }, [fetchStock]);
-    useEffect(() => { if (tab === 'summary') fetchSummary(); }, [tab, fetchSummary]);
+    useEffect(() => { if (tab === 'report') fetchReport(); }, [tab, fetchReport]);
+    useEffect(() => { if (tab === 'entry') fetchEntries(); }, [tab, fetchEntries]);
+
+    const pickRange = (key) => {
+        setRange(key);
+        setFrom(RANGES[key].from());
+        setTo(RANGES[key].to());
+    };
+
+    const handleRemove = async () => {
+        if (!removing) return;
+        try {
+            await managerService.removeStockEntry(removing.id);
+            toast.success(`Removed ${removing.rawMaterialName} entry`);
+            setRemoving(null);
+            fetchEntries();
+            fetchStock();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to remove entry');
+        }
+    };
 
     // Current balance per material, so each row can show it next to the input.
     const currentByMaterial = useMemo(() => {
@@ -166,7 +213,7 @@ const StockPage = () => {
             setEntries(prev => ({ ...prev, [mode]: {} }));
             setConfirming(false);
             fetchStock();
-            if (tab === 'summary') fetchSummary();
+            fetchEntries();
         } catch (err) {
             // The batch is atomic, so nothing was saved — the message names the
             // material that failed (usually insufficient stock).
@@ -203,8 +250,8 @@ const StockPage = () => {
                     onClick={() => setTab('current')}>Current Stock</button>
                 <button className={`btn ${tab === 'entry' ? 'btn-primary' : 'btn-outline'}`}
                     onClick={() => setTab('entry')}>Update Stock</button>
-                <button className={`btn ${tab === 'summary' ? 'btn-primary' : 'btn-outline'}`}
-                    onClick={() => setTab('summary')}>Daily Summary</button>
+                <button className={`btn ${tab === 'report' ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => setTab('report')}>Report</button>
             </div>
 
             {tab === 'current' && (
@@ -353,8 +400,56 @@ const StockPage = () => {
                             </div>
                         </div>
                     )}
+
+                    <div className="card stock-entries">
+                        <h3>Entries on {entryDate}</h3>
+                        {dayEntries.length === 0 ? (
+                            <p className="form-hint">Nothing recorded on this date yet.</p>
+                        ) : (
+                            <div className="table-wrapper">
+                                <table>
+                                    <thead><tr><th>Material</th><th>Entry</th><th>By</th><th></th></tr></thead>
+                                    <tbody>
+                                        {dayEntries.map(e => (
+                                            <tr key={e.id}>
+                                                <td style={{ fontWeight: 500 }}>{e.rawMaterialName}</td>
+                                                <td style={{ whiteSpace: 'nowrap' }}>
+                                                    {ENTRY_LABELS[e.type]} {withUnit(e.quantity, e.unitType)}
+                                                </td>
+                                                <td>{e.enteredBy || '-'}</td>
+                                                <td>
+                                                    {e.removable && (
+                                                        <button className="btn btn-sm btn-outline" onClick={() => setRemoving(e)}>✕ Remove</button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                        <p className="form-hint">Entered something wrong? Remove it and enter it again. Entries older than 7 days are fixed with Correct Count.</p>
+                    </div>
                 </>
             )}
+
+            <Modal isOpen={!!removing} onClose={() => setRemoving(null)} title="Remove this entry?">
+                {removing && (
+                    <>
+                        <p>
+                            <strong>{removing.rawMaterialName}</strong>: {ENTRY_LABELS[removing.type]} {withUnit(removing.quantity, removing.unitType)} on {removing.txnDate}.
+                        </p>
+                        <p className="form-hint">
+                            The stock goes back by {withUnit(Math.abs(removing.balanceChange), removing.unitType)}
+                            {Number(removing.balanceChange) >= 0 ? ' (taken off)' : ' (added back)'}.
+                        </p>
+                    </>
+                )}
+                <div className="modal-actions">
+                    <button type="button" className="btn btn-outline" onClick={() => setRemoving(null)}>Keep</button>
+                    <button type="button" className="btn btn-danger" onClick={handleRemove}>Remove</button>
+                </div>
+            </Modal>
 
             <Modal isOpen={confirming} onClose={() => setConfirming(false)}
                 title={`${MODES[mode].label} · ${entryDate}`}>
@@ -382,47 +477,75 @@ const StockPage = () => {
                 </div>
             </Modal>
 
-            {tab === 'summary' && (
-                <>
-                    <div className="card" style={{ marginBottom: '16px' }}>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                            <div className="form-group" style={{ margin: 0 }}>
-                                <label>From</label>
-                                <input type="date" className="form-control" value={from}
-                                    onChange={e => setFrom(e.target.value)} style={{ width: '150px' }} />
+            {tab === 'report' && (() => {
+                const moved = (r) => [r.opening, r.received, r.used, r.corrected, r.closing].some(v => Number(v) !== 0);
+                const rows = report.filter(r => (reportAll || moved(r)) && matchesSearch(r.rawMaterialName));
+                return (
+                    <>
+                        <div className="card" style={{ marginBottom: '16px' }}>
+                            <div className="stock-modes" style={{ marginBottom: '12px' }}>
+                                {Object.entries(RANGES).map(([key, r]) => (
+                                    <button key={key} className={`btn btn-sm ${range === key ? 'btn-primary' : 'btn-outline'}`}
+                                        onClick={() => pickRange(key)}>{r.label}</button>
+                                ))}
                             </div>
-                            <div className="form-group" style={{ margin: 0 }}>
-                                <label>To</label>
-                                <input type="date" className="form-control" value={to}
-                                    onChange={e => setTo(e.target.value)} style={{ width: '150px' }} />
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                    <label>From</label>
+                                    <input type="date" className="form-control" value={from} max={to}
+                                        onChange={e => { setRange('custom'); setFrom(e.target.value); }} style={{ width: '150px' }} />
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                    <label>To</label>
+                                    <input type="date" className="form-control" value={to} min={from} max={localDate()}
+                                        onChange={e => { setRange('custom'); setTo(e.target.value); }} style={{ width: '150px' }} />
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {summary.length === 0 ? (
-                        <div className="empty-state"><div className="icon">📅</div><p>No stock movements in this period</p></div>
-                    ) : (
                         <div className="card">
-                            <div className="table-wrapper">
-                                <table>
-                                    <thead><tr><th>Date</th><th>Material</th><th>Received</th><th>Used</th><th>Corrected</th></tr></thead>
-                                    <tbody>
-                                        {summary.map((r, i) => (
-                                            <tr key={`${r.txnDate}-${r.rawMaterialId}-${i}`}>
-                                                <td>{r.txnDate}</td>
-                                                <td style={{ fontWeight: 500 }}>{r.rawMaterialName}</td>
-                                                <td>{Number(r.purchased) ? withUnit(r.purchased, r.unitType) : '-'}</td>
-                                                <td>{Number(r.consumed) ? withUnit(r.consumed, r.unitType) : '-'}</td>
-                                                <td>{Number(r.adjusted) ? withUnit(r.adjusted, r.unitType) : '-'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div className="stock-overview-head">
+                                <span>{from === to ? from : `${from} → ${to}`}</span>
+                                <label className="stock-report-all">
+                                    <input type="checkbox" checked={reportAll} onChange={e => setReportAll(e.target.checked)} /> Show all materials
+                                </label>
                             </div>
+                            {searchBox}
+                            {rows.length === 0 ? (
+                                <div className="empty-state"><div className="icon">📅</div><p>No stock or movements in this period</p></div>
+                            ) : (
+                                <div className="table-wrapper">
+                                    <table className="stock-report">
+                                        <thead><tr><th>Material</th><th>Opening</th><th>Received</th><th>Used</th><th>Closing</th></tr></thead>
+                                        <tbody>
+                                            {rows.map(r => (
+                                                <tr key={r.rawMaterialId}>
+                                                    <td style={{ fontWeight: 500 }}>
+                                                        {r.rawMaterialName}
+                                                        <span className="stock-report-unit"> {unitLabel(r.unitType)}</span>
+                                                    </td>
+                                                    <td>{formatQty(r.opening)}</td>
+                                                    <td className="stock-in">{Number(r.received) ? `+${formatQty(r.received)}` : '-'}</td>
+                                                    <td className="stock-out">{Number(r.used) ? `−${formatQty(r.used)}` : '-'}</td>
+                                                    <td style={{ fontWeight: 600 }}>
+                                                        {formatQty(r.closing)}
+                                                        {Number(r.corrected) !== 0 && (
+                                                            <span className="stock-corrected">
+                                                                count {Number(r.corrected) > 0 ? '+' : '−'}{formatQty(Math.abs(r.corrected))}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                            <p className="form-hint">Opening + Received − Used ± count corrections = Closing.</p>
                         </div>
-                    )}
-                </>
-            )}
+                    </>
+                );
+            })()}
         </div>
     );
 };
