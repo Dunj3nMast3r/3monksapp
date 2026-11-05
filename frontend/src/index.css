@@ -5315,14 +5315,6 @@ tr:last-child td {
     margin-bottom: 8px;
 }
 
-.stock-report-all {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 500;
-    font-size: 13px;
-}
-
 .stock-report-unit {
     color: var(--text-secondary);
     font-weight: 400;

@@ -74,8 +74,7 @@ The **Report** tab shows, per material and for a date range (Today, Yesterday,
 Last 7 days, This month or custom), **Opening + Received − Used ± count
 corrections = Closing**. It is anchored on today's balance: closing = balance now
 minus every change dated after the range, so it stays right for stock recorded
-before the ledger existed. By default it lists materials with stock or movement;
-"Show all materials" lists the rest.
+before the ledger existed. It lists every material; the search box narrows it down.
 
 **Update Stock** lists the entries recorded on the chosen date. A wrong one can
 be **removed**, which reverses its effect on the balance
