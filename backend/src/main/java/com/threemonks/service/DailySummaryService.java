@@ -211,10 +211,7 @@ public class DailySummaryService {
         if (s.notDelivered > 0) statRow(h, "Not delivered", String.valueOf(s.notDelivered));
         h.append("</table>");
 
-        h.append("<h3 style=\"margin:20px 0 8px\">Stock</h3>"
-                + "<div style=\"font-size:12px;color:#6b7280;margin-bottom:6px\">"
-                + "<span style=\"background:#fee2e2;padding:1px 6px\">Out of stock</span> "
-                + "<span style=\"background:#fef3c7;padding:1px 6px\">Low</span></div>")
+        h.append("<h3 style=\"margin:20px 0 8px\">Stock</h3>")
                 .append("<table style=\"border-collapse:collapse;width:100%;font-size:14px\"><tr style=\"background:#ede9fe\">");
         for (String col : new String[] {"Material", "Now", "Received yesterday", "Used yesterday", "Status"}) {
             h.append("<th style=\"text-align:left;padding:6px 8px\">").append(col).append("</th>");
