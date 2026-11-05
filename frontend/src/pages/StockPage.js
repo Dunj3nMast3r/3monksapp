@@ -58,7 +58,6 @@ const StockPage = () => {
     const [materials, setMaterials] = useState([]);
     const [stock, setStock] = useState([]);
     const [report, setReport] = useState([]);
-    const [reportAll, setReportAll] = useState(false);
     const [range, setRange] = useState('today');
     const [dayEntries, setDayEntries] = useState([]);
     const [removing, setRemoving] = useState(null);
@@ -478,8 +477,8 @@ const StockPage = () => {
             </Modal>
 
             {tab === 'report' && (() => {
-                const moved = (r) => [r.opening, r.received, r.used, r.corrected, r.closing].some(v => Number(v) !== 0);
-                const rows = report.filter(r => (reportAll || moved(r)) && matchesSearch(r.rawMaterialName));
+                // Every material is listed; search narrows it down
+                const rows = report.filter(r => matchesSearch(r.rawMaterialName));
                 return (
                     <>
                         <div className="card" style={{ marginBottom: '16px' }}>
@@ -506,13 +505,10 @@ const StockPage = () => {
                         <div className="card">
                             <div className="stock-overview-head">
                                 <span>{from === to ? from : `${from} → ${to}`}</span>
-                                <label className="stock-report-all">
-                                    <input type="checkbox" checked={reportAll} onChange={e => setReportAll(e.target.checked)} /> Show all materials
-                                </label>
                             </div>
                             {searchBox}
                             {rows.length === 0 ? (
-                                <div className="empty-state"><div className="icon">📅</div><p>No stock or movements in this period</p></div>
+                                <div className="empty-state"><div className="icon">📅</div><p>{search.trim() ? 'No material matches your search' : 'No raw materials set up yet'}</p></div>
                             ) : (
                                 <div className="table-wrapper">
                                     <table className="stock-report">
