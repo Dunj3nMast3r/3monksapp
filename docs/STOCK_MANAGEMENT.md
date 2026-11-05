@@ -136,9 +136,9 @@ previous day, one email per branch:
 
 - Sales (₹, delivered orders only), order count, drinks sold, Cash / UPI split,
   cancelled and not-delivered orders.
-- Items out of stock or low (Low = below the reorder level, or the shop's own
-  minimum if one is set).
 - Current stock of every material with yesterday's received and used.
+  Out-of-stock rows are highlighted red and low rows amber, and listed first
+  (Low = below the reorder level, or the shop's own minimum if one is set).
 
 Sender: **3Monks Daily Summary** `<3monks.official@gmail.com>` over Gmail SMTP
 (smtp.gmail.com:587, STARTTLS). Admins can send it straight away from

@@ -169,7 +169,6 @@ public class DailySummaryService {
             row.name = r.getRawMaterialName();
             row.unit = UNIT_LABELS.getOrDefault(r.getUnitType(), r.getUnitType().toLowerCase(Locale.ROOT));
             row.quantity = now != null ? now.getQuantity() : BigDecimal.ZERO;
-            row.minimum = now != null ? now.getMinimumThreshold() : null;
             row.out = row.quantity.signum() <= 0;
             row.low = !row.out && now != null && Boolean.TRUE.equals(now.getLowStock());
             row.received = r.getReceived();
@@ -212,32 +211,21 @@ public class DailySummaryService {
         if (s.notDelivered > 0) statRow(h, "Not delivered", String.valueOf(s.notDelivered));
         h.append("</table>");
 
-        List<Row> alerts = s.stock.stream().filter(r -> r.out || r.low).collect(Collectors.toList());
-        h.append("<h3 style=\"margin:20px 0 8px\">Needs attention</h3>");
-        if (alerts.isEmpty()) {
-            h.append("<div style=\"color:#065f46\">✅ Nothing is out of stock or low.</div>");
-        } else {
-            h.append("<ul style=\"margin:0;padding-left:20px\">");
-            for (Row r : alerts) {
-                h.append("<li style=\"margin:2px 0\"><b>").append(htmlEscape(r.name)).append("</b>: ")
-                        .append(r.out ? "<span style=\"color:#991b1b\">out of stock</span>"
-                                : "<span style=\"color:#92400e\">low, " + qty(r.quantity, r.unit) + " left"
-                                + (r.minimum != null ? " (reorder at " + qty(r.minimum, r.unit) + ")" : "") + "</span>")
-                        .append("</li>");
-            }
-            h.append("</ul>");
-        }
-
-        h.append("<h3 style=\"margin:20px 0 8px\">Stock</h3>")
+        h.append("<h3 style=\"margin:20px 0 8px\">Stock</h3>"
+                + "<div style=\"font-size:12px;color:#6b7280;margin-bottom:6px\">"
+                + "<span style=\"background:#fee2e2;padding:1px 6px\">Out of stock</span> "
+                + "<span style=\"background:#fef3c7;padding:1px 6px\">Low</span></div>")
                 .append("<table style=\"border-collapse:collapse;width:100%;font-size:14px\"><tr style=\"background:#ede9fe\">");
         for (String col : new String[] {"Material", "Now", "Received yesterday", "Used yesterday", "Status"}) {
             h.append("<th style=\"text-align:left;padding:6px 8px\">").append(col).append("</th>");
         }
         h.append("</tr>");
         for (Row r : s.stock) {
-            String status = r.out ? "<span style=\"color:#991b1b\">Out of stock</span>"
-                    : r.low ? "<span style=\"color:#92400e\">Low</span>" : "<span style=\"color:#065f46\">OK</span>";
-            h.append("<tr style=\"border-top:1px solid #e5e7eb\">")
+            // Out of stock and low rows are highlighted (and listed first)
+            String status = r.out ? "<b style=\"color:#991b1b\">Out of stock</b>"
+                    : r.low ? "<b style=\"color:#92400e\">Low</b>" : "<span style=\"color:#065f46\">OK</span>";
+            String background = r.out ? "background:#fee2e2;" : r.low ? "background:#fef3c7;" : "";
+            h.append("<tr style=\"").append(background).append("border-top:1px solid #e5e7eb\">")
                     .append(cell(htmlEscape(r.name))).append(cell("<b>" + qty(r.quantity, r.unit) + "</b>"))
                     .append(cell(r.received.signum() != 0 ? "+" + qty(r.received, r.unit) : "-"))
                     .append(cell(r.used.signum() != 0 ? "−" + qty(r.used, r.unit) : "-"))
@@ -287,7 +275,6 @@ public class DailySummaryService {
         String name;
         String unit;
         BigDecimal quantity;
-        BigDecimal minimum;
         boolean out;
         boolean low;
         BigDecimal received;
