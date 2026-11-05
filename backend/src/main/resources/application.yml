@@ -45,6 +45,10 @@ spring:
           starttls:
             enable: true
             required: true
+          # Never let a slow mail server hang a request or the scheduler
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
 
 app:
   jwt:
@@ -59,6 +63,14 @@ app:
     subject: ${PUSH_SUBJECT:mailto:3monks.official@gmail.com}
     # Only for local testing with a mock push service; real push endpoints are https
     allow-insecure-endpoints: ${PUSH_ALLOW_INSECURE_ENDPOINTS:false}
+
+  daily-summary:
+    # 8 AM email with yesterday's sales and the stock position of each branch.
+    # Comma-separated; add more emails or branches without a code change.
+    to: ${DAILY_SUMMARY_TO:3monks.official@gmail.com}
+    # Branch names (a branch matches when its name contains one of these); ALL = every active branch
+    shops: ${DAILY_SUMMARY_SHOPS:Kharadi}
+    sender-name: 3Monks Daily Summary
 
   default-admin:
     username: admin

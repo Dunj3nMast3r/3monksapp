@@ -34,6 +34,7 @@ public class AdminController {
     private final FeedbackRepository feedbackRepository;
     private final FranchiseEnquiryRepository franchiseEnquiryRepository;
     private final DataResetService dataResetService;
+    private final DailySummaryService dailySummaryService;
 
     // Shop management
     @GetMapping("/shops")
@@ -280,5 +281,11 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> resetAllData() {
         dataResetService.resetAllData();
         return ResponseEntity.ok(ApiResponse.success("All data has been reset", null));
+    }
+
+    // Sends yesterday's daily summary email right away (normally sent at 8 AM)
+    @PostMapping("/daily-summary/send")
+    public ResponseEntity<ApiResponse<Void>> sendDailySummary() {
+        return ResponseEntity.ok(ApiResponse.success(dailySummaryService.sendNow(), null));
     }
 }
