@@ -6,6 +6,7 @@ import com.threemonks.entity.Order;
 import com.threemonks.entity.Shop;
 import com.threemonks.enums.OrderStatus;
 import com.threemonks.enums.PaymentMode;
+import com.threemonks.enums.ProductCategory;
 import com.threemonks.exception.BadRequestException;
 import com.threemonks.repository.OrderRepository;
 import com.threemonks.repository.ShopRepository;
@@ -43,8 +44,6 @@ public class DailySummaryService {
     private static final Logger logger = LoggerFactory.getLogger(DailySummaryService.class);
     private static final ZoneId SHOP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH);
-    private static final Map<String, String> UNIT_LABELS = Map.of(
-            "KG", "kg", "GRAM", "g", "LITRE", "L", "ML", "ml", "PIECE", "pcs", "DOZEN", "dozen");
 
     private final ShopRepository shopRepository;
     private final OrderRepository orderRepository;
@@ -157,7 +156,13 @@ public class DailySummaryService {
         s.sales = sum(delivered, null);
         s.cash = sum(delivered, PaymentMode.CASH);
         s.upi = sum(delivered, PaymentMode.UPI);
-        s.drinks = delivered.stream().flatMap(o -> o.getItems().stream()).mapToInt(i -> i.getQuantity()).sum();
+        // Units sold, like the day-end collection: SHOT products vs every blend
+        for (Order o : delivered) {
+            for (var item : o.getItems()) {
+                if (item.getProduct().getCategory() == ProductCategory.SHOT) s.shots += item.getQuantity();
+                else s.blends += item.getQuantity();
+            }
+        }
         s.cancelled = orders.stream().filter(o -> o.getStatus() == OrderStatus.CANCELLED).count();
         s.notDelivered = orders.stream().filter(o -> o.getStatus() == OrderStatus.PENDING).count();
 
@@ -167,7 +172,6 @@ public class DailySummaryService {
             StockResponse now = current.get(r.getRawMaterialId());
             Row row = new Row();
             row.name = r.getRawMaterialName();
-            row.unit = UNIT_LABELS.getOrDefault(r.getUnitType(), r.getUnitType().toLowerCase(Locale.ROOT));
             row.quantity = now != null ? now.getQuantity() : BigDecimal.ZERO;
             row.out = row.quantity.signum() <= 0;
             row.low = !row.out && now != null && Boolean.TRUE.equals(now.getLowStock());
@@ -205,7 +209,8 @@ public class DailySummaryService {
         h.append("<h3 style=\"margin:16px 0 8px\">Sales</h3><table style=\"border-collapse:collapse\">");
         statRow(h, "Sales", "₹" + money(s.sales));
         statRow(h, "Orders", String.valueOf(s.orders));
-        statRow(h, "Drinks sold", String.valueOf(s.drinks));
+        statRow(h, "Shots sold", String.valueOf(s.shots));
+        statRow(h, "Blends sold", String.valueOf(s.blends));
         statRow(h, "Cash / UPI", "₹" + money(s.cash) + " / ₹" + money(s.upi));
         if (s.cancelled > 0) statRow(h, "Cancelled orders", String.valueOf(s.cancelled));
         if (s.notDelivered > 0) statRow(h, "Not delivered", String.valueOf(s.notDelivered));
@@ -223,9 +228,10 @@ public class DailySummaryService {
                     : r.low ? "<b style=\"color:#92400e\">Low</b>" : "<span style=\"color:#065f46\">OK</span>";
             String background = r.out ? "background:#fee2e2;" : r.low ? "background:#fef3c7;" : "";
             h.append("<tr style=\"").append(background).append("border-top:1px solid #e5e7eb\">")
-                    .append(cell(htmlEscape(r.name))).append(cell("<b>" + qty(r.quantity, r.unit) + "</b>"))
-                    .append(cell(r.received.signum() != 0 ? "+" + qty(r.received, r.unit) : "-"))
-                    .append(cell(r.used.signum() != 0 ? "−" + qty(r.used, r.unit) : "-"))
+                    .append(cell(htmlEscape(r.name)))
+                    .append(cell("<b>" + number(r.quantity) + "</b>"))
+                    .append(cell(r.received.signum() != 0 ? "+" + number(r.received) : "-"))
+                    .append(cell(r.used.signum() != 0 ? "−" + number(r.used) : "-"))
                     .append(cell(status)).append("</tr>");
         }
         h.append("</table><p style=\"color:#9ca3af;font-size:12px;margin-top:20px\">Sent automatically by 3Monks every day at 8 AM. ")
@@ -242,8 +248,8 @@ public class DailySummaryService {
         return "<td style=\"padding:6px 8px\">" + content + "</td>";
     }
 
-    private static String qty(BigDecimal q, String unit) {
-        return q.setScale(3, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + " " + unit;
+    private static String number(BigDecimal q) {
+        return q.setScale(3, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
     }
 
     private static String money(BigDecimal amount) {
@@ -262,7 +268,8 @@ public class DailySummaryService {
         BigDecimal sales;
         BigDecimal cash;
         BigDecimal upi;
-        int drinks;
+        int shots;
+        int blends;
         long cancelled;
         long notDelivered;
         List<Row> stock = new ArrayList<>();
@@ -270,7 +277,6 @@ public class DailySummaryService {
 
     private static class Row {
         String name;
-        String unit;
         BigDecimal quantity;
         boolean out;
         boolean low;

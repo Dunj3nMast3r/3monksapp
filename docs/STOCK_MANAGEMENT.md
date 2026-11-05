@@ -134,7 +134,7 @@ to their own shop.
 `DailySummaryService` emails a summary every day at **8 AM IST** covering the
 previous day, one email per branch:
 
-- Sales (₹, delivered orders only), order count, drinks sold, Cash / UPI split,
+- Sales (₹, delivered orders only), order count, shots and blends sold, Cash / UPI split,
   cancelled and not-delivered orders.
 - Current stock of every material with yesterday's received and used.
   Out-of-stock rows are highlighted red and low rows amber, and listed first
