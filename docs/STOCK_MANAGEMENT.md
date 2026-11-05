@@ -134,11 +134,10 @@ to their own shop.
 `DailySummaryService` emails a summary every day at **8 AM IST** covering the
 previous day, one email per branch:
 
-- Sales, order count, shots and blends sold and Cash / UPI split, counted like the
-  Daily Collection page (every order that was not cancelled); cancelled orders and
-  orders not marked delivered.
-- The amount actually received and the difference (cash and UPI), when an admin
-  has entered it on Daily Collection; otherwise "Not entered yet".
+- Sales (₹, delivered orders only), order count, shots and blends sold, Cash / UPI split,
+  cancelled and not-delivered orders.
+- The amount actually received (when an admin has entered it on Daily Collection)
+  and its difference from that page's expected total; otherwise "Not entered yet".
 - Current stock of every material with yesterday's received and used.
   Out-of-stock rows are highlighted red and low rows amber, and listed first
   (Low = below the reorder level, or the shop's own minimum if one is set).
