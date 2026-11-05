@@ -234,8 +234,8 @@ public class DailySummaryService {
                     // Unit sits beside the name (as in the app's stock report), so "Now" is just the number
                     .append(cell(htmlEscape(r.name) + " <span style=\"color:#9ca3af;font-size:12px\">" + r.unit + "</span>"))
                     .append(cell("<b>" + number(r.quantity) + "</b>"))
-                    .append(cell(r.received.signum() != 0 ? "+" + qty(r.received, r.unit) : "-"))
-                    .append(cell(r.used.signum() != 0 ? "−" + qty(r.used, r.unit) : "-"))
+                    .append(cell(r.received.signum() != 0 ? "+" + number(r.received) : "-"))
+                    .append(cell(r.used.signum() != 0 ? "−" + number(r.used) : "-"))
                     .append(cell(status)).append("</tr>");
         }
         h.append("</table><p style=\"color:#9ca3af;font-size:12px;margin-top:20px\">Sent automatically by 3Monks every day at 8 AM. ")
@@ -250,10 +250,6 @@ public class DailySummaryService {
 
     private static String cell(String content) {
         return "<td style=\"padding:6px 8px\">" + content + "</td>";
-    }
-
-    private static String qty(BigDecimal q, String unit) {
-        return number(q) + " " + unit;
     }
 
     private static String number(BigDecimal q) {
