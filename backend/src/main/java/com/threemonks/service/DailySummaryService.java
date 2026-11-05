@@ -6,6 +6,7 @@ import com.threemonks.entity.Order;
 import com.threemonks.entity.Shop;
 import com.threemonks.enums.OrderStatus;
 import com.threemonks.enums.PaymentMode;
+import com.threemonks.enums.ProductCategory;
 import com.threemonks.exception.BadRequestException;
 import com.threemonks.repository.OrderRepository;
 import com.threemonks.repository.ShopRepository;
@@ -157,7 +158,13 @@ public class DailySummaryService {
         s.sales = sum(delivered, null);
         s.cash = sum(delivered, PaymentMode.CASH);
         s.upi = sum(delivered, PaymentMode.UPI);
-        s.drinks = delivered.stream().flatMap(o -> o.getItems().stream()).mapToInt(i -> i.getQuantity()).sum();
+        // Units sold, like the day-end collection: SHOT products vs every blend
+        for (Order o : delivered) {
+            for (var item : o.getItems()) {
+                if (item.getProduct().getCategory() == ProductCategory.SHOT) s.shots += item.getQuantity();
+                else s.blends += item.getQuantity();
+            }
+        }
         s.cancelled = orders.stream().filter(o -> o.getStatus() == OrderStatus.CANCELLED).count();
         s.notDelivered = orders.stream().filter(o -> o.getStatus() == OrderStatus.PENDING).count();
 
@@ -205,7 +212,8 @@ public class DailySummaryService {
         h.append("<h3 style=\"margin:16px 0 8px\">Sales</h3><table style=\"border-collapse:collapse\">");
         statRow(h, "Sales", "₹" + money(s.sales));
         statRow(h, "Orders", String.valueOf(s.orders));
-        statRow(h, "Drinks sold", String.valueOf(s.drinks));
+        statRow(h, "Shots sold", String.valueOf(s.shots));
+        statRow(h, "Blends sold", String.valueOf(s.blends));
         statRow(h, "Cash / UPI", "₹" + money(s.cash) + " / ₹" + money(s.upi));
         if (s.cancelled > 0) statRow(h, "Cancelled orders", String.valueOf(s.cancelled));
         if (s.notDelivered > 0) statRow(h, "Not delivered", String.valueOf(s.notDelivered));
@@ -262,7 +270,8 @@ public class DailySummaryService {
         BigDecimal sales;
         BigDecimal cash;
         BigDecimal upi;
-        int drinks;
+        int shots;
+        int blends;
         long cancelled;
         long notDelivered;
         List<Row> stock = new ArrayList<>();
