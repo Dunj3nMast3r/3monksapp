@@ -44,6 +44,11 @@ public interface StockTransactionRepository extends JpaRepository<StockTransacti
 
     List<StockTransaction> findByShopIdAndTxnDateOrderByCreatedAtDesc(Long shopId, LocalDate txnDate);
 
+    /** Net change per material dated after a day: today's balance minus this is the balance at that day's close. */
+    @Query("SELECT t.rawMaterial.id, SUM(t.quantityChange) FROM StockTransaction t " +
+           "WHERE t.shop.id = :shopId AND t.txnDate > :after GROUP BY t.rawMaterial.id")
+    List<Object[]> sumChangesAfter(@Param("shopId") Long shopId, @Param("after") LocalDate after);
+
     /** The single row holding this day's figure, if one has been entered already. */
     Optional<StockTransaction> findByShopIdAndRawMaterialIdAndTxnDateAndTxnType(
             Long shopId, Long rawMaterialId, LocalDate txnDate, StockTransactionType txnType);
