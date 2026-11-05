@@ -231,7 +231,9 @@ public class DailySummaryService {
                     : r.low ? "<b style=\"color:#92400e\">Low</b>" : "<span style=\"color:#065f46\">OK</span>";
             String background = r.out ? "background:#fee2e2;" : r.low ? "background:#fef3c7;" : "";
             h.append("<tr style=\"").append(background).append("border-top:1px solid #e5e7eb\">")
-                    .append(cell(htmlEscape(r.name))).append(cell("<b>" + qty(r.quantity, r.unit) + "</b>"))
+                    // Unit sits beside the name (as in the app's stock report), so "Now" is just the number
+                    .append(cell(htmlEscape(r.name) + " <span style=\"color:#9ca3af;font-size:12px\">" + r.unit + "</span>"))
+                    .append(cell("<b>" + number(r.quantity) + "</b>"))
                     .append(cell(r.received.signum() != 0 ? "+" + qty(r.received, r.unit) : "-"))
                     .append(cell(r.used.signum() != 0 ? "−" + qty(r.used, r.unit) : "-"))
                     .append(cell(status)).append("</tr>");
@@ -251,7 +253,11 @@ public class DailySummaryService {
     }
 
     private static String qty(BigDecimal q, String unit) {
-        return q.setScale(3, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + " " + unit;
+        return number(q) + " " + unit;
+    }
+
+    private static String number(BigDecimal q) {
+        return q.setScale(3, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
     }
 
     private static String money(BigDecimal amount) {
