@@ -44,8 +44,6 @@ public class DailySummaryService {
     private static final Logger logger = LoggerFactory.getLogger(DailySummaryService.class);
     private static final ZoneId SHOP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH);
-    private static final Map<String, String> UNIT_LABELS = Map.of(
-            "KG", "kg", "GRAM", "g", "LITRE", "L", "ML", "ml", "PIECE", "pcs", "DOZEN", "dozen");
 
     private final ShopRepository shopRepository;
     private final OrderRepository orderRepository;
@@ -174,7 +172,6 @@ public class DailySummaryService {
             StockResponse now = current.get(r.getRawMaterialId());
             Row row = new Row();
             row.name = r.getRawMaterialName();
-            row.unit = UNIT_LABELS.getOrDefault(r.getUnitType(), r.getUnitType().toLowerCase(Locale.ROOT));
             row.quantity = now != null ? now.getQuantity() : BigDecimal.ZERO;
             row.out = row.quantity.signum() <= 0;
             row.low = !row.out && now != null && Boolean.TRUE.equals(now.getLowStock());
@@ -231,8 +228,7 @@ public class DailySummaryService {
                     : r.low ? "<b style=\"color:#92400e\">Low</b>" : "<span style=\"color:#065f46\">OK</span>";
             String background = r.out ? "background:#fee2e2;" : r.low ? "background:#fef3c7;" : "";
             h.append("<tr style=\"").append(background).append("border-top:1px solid #e5e7eb\">")
-                    // Unit sits beside the name (as in the app's stock report), so "Now" is just the number
-                    .append(cell(htmlEscape(r.name) + " <span style=\"color:#9ca3af;font-size:12px\">" + r.unit + "</span>"))
+                    .append(cell(htmlEscape(r.name)))
                     .append(cell("<b>" + number(r.quantity) + "</b>"))
                     .append(cell(r.received.signum() != 0 ? "+" + number(r.received) : "-"))
                     .append(cell(r.used.signum() != 0 ? "−" + number(r.used) : "-"))
@@ -281,7 +277,6 @@ public class DailySummaryService {
 
     private static class Row {
         String name;
-        String unit;
         BigDecimal quantity;
         boolean out;
         boolean low;
