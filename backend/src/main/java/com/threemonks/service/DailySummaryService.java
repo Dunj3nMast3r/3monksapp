@@ -1,12 +1,11 @@
 package com.threemonks.service;
 
+import com.threemonks.dto.DailyCollectionResponse.CollectionRow;
 import com.threemonks.dto.StockReportResponse;
 import com.threemonks.dto.StockResponse;
 import com.threemonks.entity.Order;
 import com.threemonks.entity.Shop;
 import com.threemonks.enums.OrderStatus;
-import com.threemonks.enums.PaymentMode;
-import com.threemonks.enums.ProductCategory;
 import com.threemonks.exception.BadRequestException;
 import com.threemonks.repository.OrderRepository;
 import com.threemonks.repository.ShopRepository;
@@ -48,6 +47,7 @@ public class DailySummaryService {
     private final ShopRepository shopRepository;
     private final OrderRepository orderRepository;
     private final StockService stockService;
+    private final CollectionService collectionService;
     private final JavaMailSender mailSender;
     private final TransactionTemplate readOnly;
     private final String mailUsername;
@@ -57,7 +57,8 @@ public class DailySummaryService {
     private final List<String> branchNames;
 
     public DailySummaryService(ShopRepository shopRepository, OrderRepository orderRepository,
-                               StockService stockService, JavaMailSender mailSender,
+                               StockService stockService, CollectionService collectionService,
+                               JavaMailSender mailSender,
                                PlatformTransactionManager transactionManager,
                                @Value("${spring.mail.username:}") String mailUsername,
                                @Value("${spring.mail.password:}") String mailPassword,
@@ -67,6 +68,7 @@ public class DailySummaryService {
         this.shopRepository = shopRepository;
         this.orderRepository = orderRepository;
         this.stockService = stockService;
+        this.collectionService = collectionService;
         this.mailSender = mailSender;
         this.readOnly = new TransactionTemplate(transactionManager);
         this.readOnly.setReadOnly(true);
@@ -147,23 +149,15 @@ public class DailySummaryService {
     private Summary buildSummary(Shop shop, LocalDate day) {
         List<Order> orders = orderRepository.findByShopIdAndOrderDateBetween(
                 shop.getId(), day.atStartOfDay(), day.atTime(LocalTime.MAX));
-        List<Order> delivered = orders.stream().filter(o -> o.getStatus() == OrderStatus.COMPLETED).collect(Collectors.toList());
 
         Summary s = new Summary();
         s.shopName = shop.getName();
         s.day = day;
-        s.orders = delivered.size();
-        s.sales = sum(delivered, null);
-        s.cash = sum(delivered, PaymentMode.CASH);
-        s.upi = sum(delivered, PaymentMode.UPI);
-        // Units sold, like the day-end collection: SHOT products vs every blend
-        for (Order o : delivered) {
-            for (var item : o.getItems()) {
-                if (item.getProduct().getCategory() == ProductCategory.SHOT) s.shots += item.getQuantity();
-                else s.blends += item.getQuantity();
-            }
-        }
-        s.cancelled = orders.stream().filter(o -> o.getStatus() == OrderStatus.CANCELLED).count();
+        // Same figures as the Daily Collection page: every order that was not cancelled
+        s.sales = collectionService.getDailyCollection(day, day, shop.getId()).getBranches().stream()
+                .filter(r -> shop.getId().equals(r.getShopId()))
+                .findFirst()
+                .orElseThrow();
         s.notDelivered = orders.stream().filter(o -> o.getStatus() == OrderStatus.PENDING).count();
 
         Map<Long, StockResponse> current = stockService.currentStock(shop.getId()).stream()
@@ -184,13 +178,6 @@ public class DailySummaryService {
         return s;
     }
 
-    private BigDecimal sum(List<Order> orders, PaymentMode mode) {
-        return orders.stream()
-                .filter(o -> mode == null || o.getPaymentMode() == mode)
-                .map(Order::getTotalAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
     private String subject(Summary s) {
         long out = s.stock.stream().filter(r -> r.out).count();
         long low = s.stock.stream().filter(r -> r.low).count();
@@ -207,13 +194,27 @@ public class DailySummaryService {
                 .append(htmlEscape(s.day.format(DAY))).append("</div>");
 
         h.append("<h3 style=\"margin:16px 0 8px\">Sales</h3><table style=\"border-collapse:collapse\">");
-        statRow(h, "Sales", "₹" + money(s.sales));
-        statRow(h, "Orders", String.valueOf(s.orders));
-        statRow(h, "Shots sold", String.valueOf(s.shots));
-        statRow(h, "Blends sold", String.valueOf(s.blends));
-        statRow(h, "Cash / UPI", "₹" + money(s.cash) + " / ₹" + money(s.upi));
-        if (s.cancelled > 0) statRow(h, "Cancelled orders", String.valueOf(s.cancelled));
-        if (s.notDelivered > 0) statRow(h, "Not delivered", String.valueOf(s.notDelivered));
+        CollectionRow c = s.sales;
+        statRow(h, "Sales", "₹" + money(c.getTotalAmount()));
+        statRow(h, "Orders", String.valueOf(c.getTotalOrders()));
+        statRow(h, "Shots sold", String.valueOf(c.getShots()));
+        statRow(h, "Blends sold", String.valueOf(c.getBlends()));
+        statRow(h, "Cash / UPI", "₹" + money(c.getCashAmount()) + " / ₹" + money(c.getUpiAmount()));
+        if (c.getActualEntries() > 0) {
+            statRow(h, "Received (actual)", "₹" + money(c.getActualTotal())
+                    + " <span style=\"font-weight:normal;color:#6b7280\">(Cash ₹" + money(c.getActualCash())
+                    + " / UPI ₹" + money(c.getActualUpi()) + ")</span>");
+            statRow(h, "Difference", difference(c.getDifference())
+                    + (c.getDifference().signum() != 0
+                        ? " <span style=\"font-weight:normal;color:#6b7280\">(Cash " + difference(c.getCashDifference())
+                            + " / UPI " + difference(c.getUpiDifference()) + ")</span>"
+                        : ""));
+            if (c.getActualNote() != null) statRow(h, "Note", htmlEscape(c.getActualNote()));
+        } else if (c.getTotalOrders() > 0) {
+            statRow(h, "Received (actual)", "<span style=\"color:#6b7280;font-weight:normal\">Not entered yet</span>");
+        }
+        if (c.getCancelledOrders() > 0) statRow(h, "Cancelled orders", String.valueOf(c.getCancelledOrders()));
+        if (s.notDelivered > 0) statRow(h, "Not marked delivered", String.valueOf(s.notDelivered));
         h.append("</table>");
 
         h.append("<h3 style=\"margin:20px 0 8px\">Stock</h3>")
@@ -235,7 +236,7 @@ public class DailySummaryService {
                     .append(cell(status)).append("</tr>");
         }
         h.append("</table><p style=\"color:#9ca3af;font-size:12px;margin-top:20px\">Sent automatically by 3Monks every day at 8 AM. ")
-                .append("Sales count delivered orders only.</p></div>");
+                .append("Sales count every order that was not cancelled, as on the Daily Collection page.</p></div>");
         return h.toString();
     }
 
@@ -253,7 +254,14 @@ public class DailySummaryService {
     }
 
     private static String money(BigDecimal amount) {
-        return String.format(Locale.ENGLISH, "%,.0f", amount);
+        return String.format(Locale.ENGLISH, amount.stripTrailingZeros().scale() > 0 ? "%,.2f" : "%,.0f", amount);
+    }
+
+    // Actual − expected: red when short, green when over, "✓" when it matches
+    private static String difference(BigDecimal diff) {
+        if (diff.signum() == 0) return "<span style=\"color:#065f46\">₹0 ✓</span>";
+        String text = (diff.signum() < 0 ? "−₹" : "+₹") + money(diff.abs());
+        return "<span style=\"color:" + (diff.signum() < 0 ? "#991b1b" : "#065f46") + "\">" + text + "</span>";
     }
 
     private static List<String> splitList(String value) {
@@ -264,13 +272,7 @@ public class DailySummaryService {
     private static class Summary {
         String shopName;
         LocalDate day;
-        long orders;
-        BigDecimal sales;
-        BigDecimal cash;
-        BigDecimal upi;
-        int shots;
-        int blends;
-        long cancelled;
+        CollectionRow sales;
         long notDelivered;
         List<Row> stock = new ArrayList<>();
     }

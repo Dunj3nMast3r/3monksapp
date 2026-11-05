@@ -9,12 +9,14 @@ import com.threemonks.service.*;
 import com.threemonks.security.UserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -35,6 +37,7 @@ public class AdminController {
     private final FranchiseEnquiryRepository franchiseEnquiryRepository;
     private final DataResetService dataResetService;
     private final DailySummaryService dailySummaryService;
+    private final CollectionService collectionService;
 
     // Shop management
     @GetMapping("/shops")
@@ -287,5 +290,20 @@ public class AdminController {
     @PostMapping("/daily-summary/send")
     public ResponseEntity<ApiResponse<Void>> sendDailySummary() {
         return ResponseEntity.ok(ApiResponse.success(dailySummaryService.sendNow(), null));
+    }
+
+    // What a branch actually received on a day (Daily Collection), to compare with the orders
+    @PutMapping("/collection/actual")
+    public ResponseEntity<ApiResponse<Void>> saveCollectionActual(@Valid @RequestBody CollectionActualRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        collectionService.saveActual(request, principal.getUsername());
+        return ResponseEntity.ok(ApiResponse.success("Amount received saved", null));
+    }
+
+    @DeleteMapping("/collection/actual")
+    public ResponseEntity<ApiResponse<Void>> deleteCollectionActual(@RequestParam Long shopId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        collectionService.deleteActual(shopId, date);
+        return ResponseEntity.ok(ApiResponse.success("Amount received removed", null));
     }
 }

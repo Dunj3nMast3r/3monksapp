@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -54,5 +55,27 @@ public class DailyCollectionResponse {
         /** Cancelled orders are excluded from every figure above and reported here. */
         private Long cancelledOrders;
         private BigDecimal cancelledAmount;
+
+        /**
+         * What was actually received, as entered by an admin. {@code actualSlots} is
+         * the number of branch-days in this row that took orders (or have an entry),
+         * {@code actualEntries} how many of them have an entry. Amounts and
+         * differences (actual − expected) cover only the entered branch-days and are
+         * null when none is entered.
+         */
+        private Long actualSlots;
+        private Long actualEntries;
+        private BigDecimal actualCash;
+        private BigDecimal actualUpi;
+        private BigDecimal actualTotal;
+        private BigDecimal cashDifference;
+        private BigDecimal upiDifference;
+        private BigDecimal difference;
+
+        /** Set on rows that are exactly one branch on one day, which is where an entry is made. */
+        private boolean editable;
+        private String actualNote;
+        private String actualUpdatedBy;
+        private LocalDateTime actualUpdatedAt;
     }
 }
