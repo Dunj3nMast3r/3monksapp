@@ -64,6 +64,11 @@ app:
     # Only for local testing with a mock push service; real push endpoints are https
     allow-insecure-endpoints: ${PUSH_ALLOW_INSECURE_ENDPOINTS:false}
 
+  business-day:
+    # Hour (India time, 0-12) when a new business day starts. Orders before it count
+    # towards the previous day in every screen, report, export, token number and email.
+    start-hour: ${BUSINESS_DAY_START_HOUR:3}
+
   daily-summary:
     # 8 AM email with yesterday's sales and the stock position of each branch.
     # Comma-separated; add more emails or branches without a code change.

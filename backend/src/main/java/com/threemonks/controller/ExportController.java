@@ -1,5 +1,6 @@
 package com.threemonks.controller;
 
+import com.threemonks.util.BusinessDay;
 import com.threemonks.entity.*;
 import com.threemonks.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -35,8 +36,11 @@ public class ExportController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
 
-        LocalDateTime start = (from != null ? from : LocalDate.now().withDayOfMonth(1)).atStartOfDay();
-        LocalDateTime end = (to != null ? to : LocalDate.now()).atTime(LocalTime.MAX);
+        // Business days (start at app.business-day.start-hour), like every other report
+        LocalDate fromDate = from != null ? from : BusinessDay.today().withDayOfMonth(1);
+        LocalDate toDate = to != null ? to : BusinessDay.today();
+        LocalDateTime start = BusinessDay.start(fromDate);
+        LocalDateTime end = BusinessDay.end(toDate);
 
         List<Order> orders = orderRepository.findByOrderDateBetween(start, end);
 
@@ -50,7 +54,7 @@ public class ExportController {
 
             Row header = sheet.createRow(0);
             String[] columns = { "Order #", "Shop", "Created By", "Products", "Qty", "Total Amount (₹)", "Payment Mode",
-                    "Status", "Customer", "Phone", "Date", "Parcel Charge (₹)" };
+                    "Status", "Customer", "Phone", "Date", "Parcel Charge (₹)", "Business Day" };
             for (int i = 0; i < columns.length; i++) {
                 Cell cell = header.createCell(i);
                 cell.setCellValue(columns[i]);
@@ -92,6 +96,10 @@ public class ExportController {
                 Cell parcelCell = row.createCell(11);
                 parcelCell.setCellValue(order.getParcelCharge() != null ? order.getParcelCharge().doubleValue() : 0);
                 parcelCell.setCellStyle(amountStyle);
+
+                // The day this order counts towards in every report (late-night orders belong to the evening before)
+                row.createCell(12).setCellValue(
+                        order.getOrderDate() != null ? BusinessDay.dateOf(order.getOrderDate()).toString() : "");
             }
 
             for (int i = 0; i < columns.length; i++) {
@@ -104,7 +112,7 @@ public class ExportController {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
             headers.setContentDisposition(ContentDisposition.builder("attachment")
-                    .filename("orders_" + start.toLocalDate() + "_to_" + end.toLocalDate() + ".xlsx").build());
+                    .filename("orders_" + fromDate + "_to_" + toDate + ".xlsx").build());
 
             return new ResponseEntity<>(out.toByteArray(), headers, HttpStatus.OK);
         } catch (Exception e) {
@@ -117,8 +125,8 @@ public class ExportController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
 
-        LocalDate start = from != null ? from : LocalDate.now().withDayOfMonth(1);
-        LocalDate end = to != null ? to : LocalDate.now();
+        LocalDate start = from != null ? from : BusinessDay.today().withDayOfMonth(1);
+        LocalDate end = to != null ? to : BusinessDay.today();
 
         List<Purchase> purchases = purchaseRepository.findByPurchaseDateBetween(start, end);
 

@@ -1,5 +1,6 @@
 package com.threemonks.controller;
 
+import com.threemonks.util.BusinessDay;
 import com.threemonks.dto.*;
 import com.threemonks.service.CollectionService;
 import com.threemonks.service.DashboardOverviewService;
@@ -30,8 +31,8 @@ public class DashboardController {
     public ResponseEntity<ApiResponse<DashboardResponse>> getAdminDashboard(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        if (from == null) from = LocalDate.now().withDayOfMonth(1);
-        if (to == null) to = LocalDate.now();
+        if (from == null) from = BusinessDay.today().withDayOfMonth(1);
+        if (to == null) to = BusinessDay.today();
         return ResponseEntity.ok(ApiResponse.success(dashboardService.getSuperAdminDashboard(from, to)));
     }
 
@@ -42,8 +43,8 @@ public class DashboardController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        if (from == null) from = LocalDate.now().withDayOfMonth(1);
-        if (to == null) to = LocalDate.now();
+        if (from == null) from = BusinessDay.today().withDayOfMonth(1);
+        if (to == null) to = BusinessDay.today();
         return ResponseEntity.ok(ApiResponse.success(dashboardService.getShopDashboard(shopId, from, to, currentUser)));
     }
 
@@ -68,7 +69,7 @@ public class DashboardController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) Long shopId) {
-        if (from == null) from = LocalDate.now();
+        if (from == null) from = BusinessDay.today();
         if (to == null) to = from;
         return ResponseEntity.ok(ApiResponse.success(collectionService.getDailyCollection(from, to, shopId)));
     }
@@ -90,8 +91,8 @@ public class DashboardController {
     public ResponseEntity<ApiResponse<AnalyticsResponse>> getAnalytics(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        if (from == null) from = LocalDate.now().withDayOfMonth(1);
-        if (to == null) to = LocalDate.now();
+        if (from == null) from = BusinessDay.today().withDayOfMonth(1);
+        if (to == null) to = BusinessDay.today();
         return ResponseEntity.ok(ApiResponse.success(analyticsService.getAnalytics(from, to)));
     }
 }

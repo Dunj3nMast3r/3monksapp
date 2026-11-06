@@ -28,12 +28,23 @@ export const formatDateTime = (date) => {
     });
 };
 
-// Get current date string in IST (YYYY-MM-DD)
-export const getISTDateString = () => {
-    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+// The business day starts at this hour (India time), not at midnight: late-night
+// orders count towards the evening before. Loaded from the server at start-up
+// (setBusinessDayStartHour); 3 matches the server default until then.
+let businessDayStartHour = 3;
+
+export const setBusinessDayStartHour = (hour) => {
+    if (Number.isInteger(hour) && hour >= 0 && hour <= 12) businessDayStartHour = hour;
 };
 
-// Get current month string in IST (YYYY-MM)
+// Today's business date (YYYY-MM-DD), or the one `daysAgo` business days back.
+// Before the start hour it is still the previous date, exactly as on the server.
+export const getISTDateString = (daysAgo = 0) => {
+    const at = Date.now() - businessDayStartHour * 3600000 - daysAgo * 86400000;
+    return new Date(at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+};
+
+// Current business month (YYYY-MM)
 export const getISTMonthString = () => {
     return getISTDateString().slice(0, 7);
 };

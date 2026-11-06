@@ -1,5 +1,6 @@
 package com.threemonks.service;
 
+import com.threemonks.util.BusinessDay;
 import com.threemonks.dto.DashboardResponse;
 import com.threemonks.dto.ProfitLossResponse;
 import com.threemonks.entity.Shop;
@@ -30,8 +31,8 @@ public class DashboardService {
     private final ShopRepository shopRepository;
 
     public DashboardResponse getSuperAdminDashboard(LocalDate fromDate, LocalDate toDate) {
-        LocalDateTime start = fromDate.atStartOfDay();
-        LocalDateTime end = toDate.atTime(LocalTime.MAX);
+        LocalDateTime start = BusinessDay.start(fromDate);
+        LocalDateTime end = BusinessDay.end(toDate);
 
         BigDecimal totalSales = Optional.ofNullable(orderRepository.getTotalSalesByDateRange(start, end))
                 .orElse(BigDecimal.ZERO);
@@ -100,8 +101,8 @@ public class DashboardService {
             throw new UnauthorizedException("Access denied to this shop's dashboard");
         }
 
-        LocalDateTime start = fromDate.atStartOfDay();
-        LocalDateTime end = toDate.atTime(LocalTime.MAX);
+        LocalDateTime start = BusinessDay.start(fromDate);
+        LocalDateTime end = BusinessDay.end(toDate);
         Shop shop = shopRepository.findById(shopId).orElseThrow();
 
         BigDecimal totalSales = Optional.ofNullable(orderRepository.getTotalSalesByShopAndDateRange(shopId, start, end))
@@ -149,8 +150,8 @@ public class DashboardService {
             throw new UnauthorizedException("Access denied");
         }
 
-        LocalDateTime start = fromDate.atStartOfDay();
-        LocalDateTime end = toDate.atTime(LocalTime.MAX);
+        LocalDateTime start = BusinessDay.start(fromDate);
+        LocalDateTime end = BusinessDay.end(toDate);
 
         BigDecimal revenue;
         BigDecimal cost;
@@ -193,8 +194,8 @@ public class DashboardService {
 
         YearMonth current = startMonth;
         while (!current.isAfter(endMonth)) {
-            LocalDateTime monthStart = current.atDay(1).atStartOfDay();
-            LocalDateTime monthEnd = current.atEndOfMonth().atTime(LocalTime.MAX);
+            LocalDateTime monthStart = BusinessDay.start(current.atDay(1));
+            LocalDateTime monthEnd = BusinessDay.end(current.atEndOfMonth());
 
             BigDecimal sales;
             if (shopId != null) {
