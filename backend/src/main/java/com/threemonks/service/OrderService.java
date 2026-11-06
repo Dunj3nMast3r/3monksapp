@@ -1,5 +1,6 @@
 package com.threemonks.service;
 
+import com.threemonks.util.BusinessDay;
 import com.threemonks.dto.*;
 import com.threemonks.entity.*;
 import com.threemonks.enums.OrderStatus;
@@ -57,12 +58,12 @@ public class OrderService {
         }
 
         // Generate order number
-        String orderNumber = "3M-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+        String orderNumber = "3M-" + BusinessDay.today().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
                 + "-" + orderCounter.incrementAndGet() % 100000;
 
-        // Generate daily token number (per shop, resets each day)
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+        // Generate daily token number (per shop, resets each business day)
+        LocalDateTime startOfDay = BusinessDay.start(BusinessDay.today());
+        LocalDateTime endOfDay = BusinessDay.end(BusinessDay.today());
         Integer maxToken = orderRepository.findMaxTokenNumberByShopAndDate(shopId, startOfDay, endOfDay);
         int tokenNumber = (maxToken != null ? maxToken : 0) + 1;
 
@@ -165,8 +166,8 @@ public class OrderService {
     public List<OrderResponse> getTodayOrders(Long shopId, UserPrincipal currentUser) {
         Long resolvedShopId = resolveShopId(shopId, currentUser);
         validateShopAccess(resolvedShopId, currentUser);
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+        LocalDateTime startOfDay = BusinessDay.start(BusinessDay.today());
+        LocalDateTime endOfDay = BusinessDay.end(BusinessDay.today());
         return orderRepository.findTodayOrdersByShopId(resolvedShopId, startOfDay, endOfDay).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -175,8 +176,8 @@ public class OrderService {
     public List<OrderResponse> getPendingOrders(Long shopId, UserPrincipal currentUser) {
         Long resolvedShopId = resolveShopId(shopId, currentUser);
         validateShopAccess(resolvedShopId, currentUser);
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+        LocalDateTime startOfDay = BusinessDay.start(BusinessDay.today());
+        LocalDateTime endOfDay = BusinessDay.end(BusinessDay.today());
         return orderRepository.findTodayPendingOrdersByShopId(resolvedShopId, startOfDay, endOfDay).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());

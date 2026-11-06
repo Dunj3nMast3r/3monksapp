@@ -1,5 +1,6 @@
 package com.threemonks.service;
 
+import com.threemonks.util.BusinessDay;
 import com.threemonks.dto.DailyCollectionResponse;
 import com.threemonks.dto.DashboardOverviewResponse;
 import com.threemonks.dto.DashboardOverviewResponse.*;
@@ -46,7 +47,7 @@ public class DashboardOverviewService {
 
     public DashboardOverviewResponse getOverview(LocalDate today) {
         if (today == null)
-            today = LocalDate.now();
+            today = BusinessDay.today();
 
         // One pass over the longest window any panel needs, then slice it up in
         // memory rather than asking the database the same question twelve times.
@@ -84,16 +85,16 @@ public class DashboardOverviewService {
 
     /** Orders, amount and units for every day in the window that saw any. */
     private Map<LocalDate, DayTotals> loadDailyTotals(LocalDate from, LocalDate to) {
-        LocalDateTime start = from.atStartOfDay();
-        LocalDateTime end = to.atTime(LocalTime.MAX);
+        LocalDateTime start = BusinessDay.start(from);
+        LocalDateTime end = BusinessDay.end(to);
 
         Map<LocalDate, DayTotals> byDate = new HashMap<>();
-        for (Object[] row : orderRepository.getDailyTotals(start, end)) {
+        for (Object[] row : orderRepository.getDailyTotals(start, end, BusinessDay.startHour())) {
             DayTotals totals = byDate.computeIfAbsent(Convert.toLocalDate(row[0]), k -> new DayTotals());
             totals.orders += Convert.toLong(row[1]);
             totals.sales = totals.sales.add(Convert.toBigDecimal(row[2]));
         }
-        for (Object[] row : orderRepository.getDailyUnits(start, end)) {
+        for (Object[] row : orderRepository.getDailyUnits(start, end, BusinessDay.startHour())) {
             byDate.computeIfAbsent(Convert.toLocalDate(row[0]), k -> new DayTotals()).units += Convert.toLong(row[1]);
         }
         return byDate;
@@ -118,8 +119,8 @@ public class DashboardOverviewService {
     }
 
     private List<HourStats> getPeakHours(LocalDate today) {
-        LocalDateTime start = today.minusDays(PEAK_HOUR_DAYS - 1L).atStartOfDay();
-        LocalDateTime end = today.atTime(LocalTime.MAX);
+        LocalDateTime start = BusinessDay.start(today.minusDays(PEAK_HOUR_DAYS - 1L));
+        LocalDateTime end = BusinessDay.end(today);
 
         Map<Integer, HourTotals> byHour = new HashMap<>();
         for (Object[] row : orderRepository.getHourlyTotals(start, end)) {
@@ -181,7 +182,7 @@ public class DashboardOverviewService {
 
     private List<ProductStats> getTopSellersToday(LocalDate today) {
         return orderItemRepository
-                .getTopProductsExcludingCancelled(today.atStartOfDay(), today.atTime(LocalTime.MAX)).stream()
+                .getTopProductsExcludingCancelled(BusinessDay.start(today), BusinessDay.end(today)).stream()
                 .limit(8)
                 .map(row -> ProductStats.builder()
                         .productName((String) row[0])

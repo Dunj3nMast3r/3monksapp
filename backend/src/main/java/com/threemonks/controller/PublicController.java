@@ -11,6 +11,7 @@ import com.threemonks.service.FruitService;
 import com.threemonks.service.ProductService;
 import com.threemonks.service.ShopService;
 import com.threemonks.enums.ProductCategory;
+import com.threemonks.util.BusinessDay;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @RestController
@@ -32,6 +34,14 @@ public class PublicController {
     private final FeedbackRepository feedbackRepository;
     private final FranchiseEnquiryRepository franchiseEnquiryRepository;
     private final EmailService emailService;
+
+    // When the business day starts, so the app's "today" and date pickers match the server's reports
+    @GetMapping("/business-day")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getBusinessDay() {
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "startHour", BusinessDay.startHour(),
+                "today", BusinessDay.today().toString())));
+    }
 
     @GetMapping("/menu")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getMenu() {

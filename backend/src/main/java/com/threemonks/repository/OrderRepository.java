@@ -76,12 +76,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         @Param("end") LocalDateTime end);
 
         /**
-         * Day-end collection, grouped by day, branch, payment mode and status.
+         * Day-end collection, grouped by business day, branch, payment mode and status.
+         * "day" is the business date: pass {@code BusinessDay.startHour()} as startHour.
          * Columns: the order date, shop_id, shop_name, payment_mode, status,
          * order count, amount (parcel charge included).
          */
         @Query(value = """
-                        SELECT CAST(o.order_date AS date) AS day,
+                        SELECT CAST(o.order_date - (:startHour * INTERVAL '1 hour') AS date) AS day,
                                s.id             AS shop_id,
                                s.name           AS shop_name,
                                o.payment_mode   AS payment_mode,
@@ -93,14 +94,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         WHERE o.order_date >= :start AND o.order_date <= :end
                         GROUP BY 1, 2, 3, 4, 5
                         """, nativeQuery = true)
-        List<Object[]> getCollectionBreakdown(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+        List<Object[]> getCollectionBreakdown(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end,
+                        @Param("startHour") int startHour);
 
         /**
          * Units sold per day, branch and product category, cancelled orders left out.
          * Columns: the order date, shop_id, category, quantity.
          */
         @Query(value = """
-                        SELECT CAST(o.order_date AS date) AS day,
+                        SELECT CAST(o.order_date - (:startHour * INTERVAL '1 hour') AS date) AS day,
                                o.shop_id          AS shop_id,
                                p.category         AS category,
                                COALESCE(SUM(oi.quantity), 0) AS quantity
@@ -111,14 +113,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                           AND o.status <> 'CANCELLED'
                         GROUP BY 1, 2, 3
                         """, nativeQuery = true)
-        List<Object[]> getUnitsSoldBreakdown(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+        List<Object[]> getUnitsSoldBreakdown(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end,
+                        @Param("startHour") int startHour);
 
         /**
          * Sales per day, cancelled orders left out, for the dashboard trends.
          * Columns: the order date, order count, amount.
          */
         @Query(value = """
-                        SELECT CAST(o.order_date AS date) AS day,
+                        SELECT CAST(o.order_date - (:startHour * INTERVAL '1 hour') AS date) AS day,
                                COUNT(*)                   AS order_count,
                                COALESCE(SUM(o.total_amount), 0) AS amount
                         FROM orders o
@@ -126,14 +129,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                           AND o.status <> 'CANCELLED'
                         GROUP BY 1
                         """, nativeQuery = true)
-        List<Object[]> getDailyTotals(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+        List<Object[]> getDailyTotals(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end,
+                        @Param("startHour") int startHour);
 
         /**
          * Units sold per day, cancelled orders left out.
          * Columns: the order date, quantity.
          */
         @Query(value = """
-                        SELECT CAST(o.order_date AS date) AS day,
+                        SELECT CAST(o.order_date - (:startHour * INTERVAL '1 hour') AS date) AS day,
                                COALESCE(SUM(oi.quantity), 0) AS quantity
                         FROM order_items oi
                         JOIN orders o ON o.id = oi.order_id
@@ -141,7 +145,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                           AND o.status <> 'CANCELLED'
                         GROUP BY 1
                         """, nativeQuery = true)
-        List<Object[]> getDailyUnits(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+        List<Object[]> getDailyUnits(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end,
+                        @Param("startHour") int startHour);
 
         /**
          * Sales by hour of day across the window, cancelled orders left out, so the

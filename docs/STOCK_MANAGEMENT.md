@@ -173,3 +173,30 @@ missing entry is never counted as a shortfall.
 
 `PUT /api/admin/collection/actual` `{shopId, date, actualCash, actualUpi, note}`
 and `DELETE /api/admin/collection/actual?shopId=&date=` — admin only.
+
+## Business day (3 AM cut-off)
+
+The whole app uses a **business day that starts at 3 AM India time**, not midnight:
+an order at 6 Nov 02:30 counts towards **5 Nov**. "5 Nov" means 5 Nov 03:00 up to
+6 Nov 02:59:59.
+
+It applies everywhere a day matters, from one place (`util/BusinessDay.java`):
+
+- Order Queue "today" and pending orders, token numbers (restart at 3 AM) and the
+  date in order numbers.
+- Daily Collection, the admin and shop dashboards (today / yesterday / trends /
+  top sellers), Analytics, Reports (profit & loss), the salary sheet month, and
+  month ranges (1 Nov 00:00–02:59 belongs to October).
+- The Excel orders export (date filter, plus a "Business Day" column next to the
+  real order time).
+- The 8 AM daily summary email (covers the previous business day).
+- Stock: the default entry date, report "Today", and the 7-day removal window.
+  Stock and amount received are stored by date, so they follow the date chosen.
+- The frontend's "today" and date presets, which load the hour from
+  `GET /api/public/business-day` before the first screen.
+
+Unchanged: the peak-hours chart shows clock hours, order times are stored and
+shown as they happened, and website franchise enquiries keep calendar dates.
+
+The hour is a setting: `BUSINESS_DAY_START_HOUR` (0–12, default 3), GitHub
+variable of the same name.

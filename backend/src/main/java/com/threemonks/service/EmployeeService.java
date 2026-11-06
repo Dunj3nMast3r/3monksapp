@@ -1,5 +1,6 @@
 package com.threemonks.service;
 
+import com.threemonks.util.BusinessDay;
 import com.threemonks.dto.EmployeeRequest;
 import com.threemonks.dto.EmployeeResponse;
 import com.threemonks.dto.SalarySheetResponse;
@@ -148,8 +149,8 @@ public class EmployeeService {
 
     public SalarySheetResponse.MonthlySummary getMonthlySalarySheet(Long shopId, String monthStr) {
         YearMonth month = YearMonth.parse(monthStr, DateTimeFormatter.ofPattern("yyyy-MM"));
-        LocalDateTime monthStart = month.atDay(1).atStartOfDay();
-        LocalDateTime monthEnd = month.atEndOfMonth().atTime(LocalTime.MAX);
+        LocalDateTime monthStart = BusinessDay.start(month.atDay(1));
+        LocalDateTime monthEnd = BusinessDay.end(month.atEndOfMonth());
 
         List<Employee> employees;
         if (shopId != null) {

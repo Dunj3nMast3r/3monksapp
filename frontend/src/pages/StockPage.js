@@ -2,18 +2,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { managerService, adminService } from '../services/dataService';
 import Modal from '../components/Modal';
+import { getISTDateString } from '../utils/helpers';
 import toast from 'react-hot-toast';
 
-// Local calendar date, not UTC — toISOString() would roll back a day for IST
-// in the early hours and file the entry against yesterday.
-const localDate = (d = new Date()) =>
-    new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+// Business dates (India time, day starts at the business-day hour), so an entry
+// made after midnight still files against the evening it belongs to.
+const localDate = () => getISTDateString();
 
-const daysAgo = (n) => {
-    const d = new Date();
-    d.setDate(d.getDate() - n);
-    return localDate(d);
-};
+const daysAgo = (n) => getISTDateString(n);
 
 const monthStart = () => `${localDate().slice(0, 8)}01`;
 

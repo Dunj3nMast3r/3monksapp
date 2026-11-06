@@ -1,5 +1,6 @@
 package com.threemonks.service;
 
+import com.threemonks.util.BusinessDay;
 import com.threemonks.dto.AnalyticsResponse;
 import com.threemonks.entity.Order;
 import com.threemonks.entity.Stock;
@@ -30,8 +31,8 @@ public class AnalyticsService {
     private final EmployeeRepository employeeRepository;
 
     public AnalyticsResponse getAnalytics(LocalDate from, LocalDate to) {
-        LocalDateTime start = from.atStartOfDay();
-        LocalDateTime end = to.atTime(LocalTime.MAX);
+        LocalDateTime start = BusinessDay.start(from);
+        LocalDateTime end = BusinessDay.end(to);
 
         return AnalyticsResponse.builder()
                 .dailySales(getDailySales(from, to, start, end))
@@ -50,7 +51,7 @@ public class AnalyticsService {
         // Group by date
         Map<LocalDate, BigDecimal> grouped = orders.stream()
                 .collect(Collectors.groupingBy(
-                        o -> o.getOrderDate().toLocalDate(),
+                        o -> BusinessDay.dateOf(o.getOrderDate()),
                         Collectors.reducing(BigDecimal.ZERO, Order::getTotalAmount, BigDecimal::add)
                 ));
 
@@ -75,7 +76,7 @@ public class AnalyticsService {
 
     private List<AnalyticsResponse.MaterialUsageDTO> getRawMaterialUsage(LocalDateTime start, LocalDateTime end) {
         List<Object[]> consumed = stockTransactionRepository.getMaterialUsageByType(
-                StockTransactionType.CONSUMPTION, start.toLocalDate(), end.toLocalDate());
+                StockTransactionType.CONSUMPTION, BusinessDay.dateOf(start), BusinessDay.dateOf(end));
 
         // Get all stock for current levels
         List<Stock> allStock = stockRepository.findAll();
@@ -125,8 +126,8 @@ public class AnalyticsService {
 
         YearMonth current = startMonth;
         while (!current.isAfter(endMonth)) {
-            LocalDateTime monthStart = current.atDay(1).atStartOfDay();
-            LocalDateTime monthEnd = current.atEndOfMonth().atTime(LocalTime.MAX);
+            LocalDateTime monthStart = BusinessDay.start(current.atDay(1));
+            LocalDateTime monthEnd = BusinessDay.end(current.atEndOfMonth());
             LocalDate monthStartDate = current.atDay(1);
             LocalDate monthEndDate = current.atEndOfMonth();
 

@@ -6,6 +6,7 @@ export const authService = {
 
 export const publicService = {
     getMenu: () => api.get('/api/public/menu'),
+    getBusinessDay: () => api.get('/api/public/business-day'),
     getShots: () => api.get('/api/public/menu/shots'),
     getCreamyBlends: () => api.get('/api/public/menu/creamy-blends'),
     getCuratedBlends: () => api.get('/api/public/menu/curated-blends'),

@@ -8,9 +8,9 @@ const AnalyticsPage = () => {
     const [analytics, setAnalytics] = useState(null);
     const [loading, setLoading] = useState(true);
     const [from, setFrom] = useState(() => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - 1);
-        return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        const d = new Date(`${getISTDateString()}T00:00:00Z`);
+        d.setUTCMonth(d.getUTCMonth() - 1);
+        return d.toISOString().slice(0, 10);
     });
     const [to, setTo] = useState(() => getISTDateString());
 

@@ -1,5 +1,6 @@
 package com.threemonks.service;
 
+import com.threemonks.util.BusinessDay;
 import com.threemonks.dto.DailyCollectionResponse.CollectionRow;
 import com.threemonks.dto.StockReportResponse;
 import com.threemonks.dto.StockResponse;
@@ -43,7 +44,6 @@ import static org.springframework.web.util.HtmlUtils.htmlEscape;
 public class DailySummaryService {
 
     private static final Logger logger = LoggerFactory.getLogger(DailySummaryService.class);
-    private static final ZoneId SHOP_ZONE = ZoneId.of("Asia/Kolkata");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH);
 
     private final ShopRepository shopRepository;
@@ -89,7 +89,7 @@ public class DailySummaryService {
             return;
         }
         try {
-            List<String> sent = send(LocalDate.now(SHOP_ZONE).minusDays(1));
+            List<String> sent = send(BusinessDay.today().minusDays(1));
             logger.info("Daily summary sent for {} to {}", sent, recipients);
         } catch (Exception e) {
             logger.error("Daily summary failed: {}", e.getMessage(), e);
@@ -101,7 +101,7 @@ public class DailySummaryService {
         if (!isConfigured()) {
             throw new BadRequestException("Email is not set up on the server yet (MAIL_PASSWORD missing).");
         }
-        LocalDate day = LocalDate.now(SHOP_ZONE).minusDays(1);
+        LocalDate day = BusinessDay.today().minusDays(1);
         try {
             List<String> sent = send(day);
             return "Daily summary for " + day.format(DAY) + " (" + String.join(", ", sent) + ") sent to "
@@ -150,7 +150,7 @@ public class DailySummaryService {
 
     private Summary buildSummary(Shop shop, LocalDate day) {
         List<Order> orders = orderRepository.findByShopIdAndOrderDateBetween(
-                shop.getId(), day.atStartOfDay(), day.atTime(LocalTime.MAX));
+                shop.getId(), BusinessDay.start(day), BusinessDay.end(day));
         List<Order> delivered = orders.stream().filter(o -> o.getStatus() == OrderStatus.COMPLETED).collect(Collectors.toList());
 
         Summary s = new Summary();

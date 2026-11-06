@@ -1,5 +1,6 @@
 package com.threemonks.service;
 
+import com.threemonks.util.BusinessDay;
 import com.threemonks.dto.DailyCollectionResponse;
 import com.threemonks.dto.DailyCollectionResponse.CollectionRow;
 import com.threemonks.dto.CollectionActualRequest;
@@ -58,7 +59,7 @@ public class CollectionService {
     /** Records (or replaces) what a branch actually received on a day. */
     @Transactional
     public void saveActual(CollectionActualRequest request, String username) {
-        if (request.getDate().isAfter(LocalDate.now(SHOP_ZONE)))
+        if (request.getDate().isAfter(BusinessDay.today()))
             throw new BadRequestException("Cannot enter the amount received for a future date");
         Shop shop = shopRepository.findById(request.getShopId())
                 .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", request.getShopId()));
@@ -84,7 +85,7 @@ public class CollectionService {
 
     public DailyCollectionResponse getDailyCollection(LocalDate fromDate, LocalDate toDate, Long shopId) {
         if (fromDate == null)
-            fromDate = LocalDate.now();
+            fromDate = BusinessDay.today();
         if (toDate == null)
             toDate = fromDate;
         if (toDate.isBefore(fromDate))
@@ -94,8 +95,8 @@ public class CollectionService {
         if (days > MAX_DAYS)
             throw new BadRequestException("Date range cannot exceed " + MAX_DAYS + " days");
 
-        LocalDateTime start = fromDate.atStartOfDay();
-        LocalDateTime end = toDate.atTime(LocalTime.MAX);
+        LocalDateTime start = BusinessDay.start(fromDate);
+        LocalDateTime end = BusinessDay.end(toDate);
 
         // Branch names for every branch we may report, active ones included even
         // when they sold nothing, so a missing branch reads as zero and not as absent.
@@ -115,7 +116,7 @@ public class CollectionService {
             perDay.put(d, new Bucket());
 
         // Cash / UPI / cancelled, grouped by day, branch, payment mode and status
-        for (Object[] row : orderRepository.getCollectionBreakdown(start, end)) {
+        for (Object[] row : orderRepository.getCollectionBreakdown(start, end, BusinessDay.startHour())) {
             LocalDate date = toLocalDate(row[0]);
             Long rowShopId = toLong(row[1]);
             String shopName = (String) row[2];
@@ -147,7 +148,7 @@ public class CollectionService {
         }
 
         // Shots and blends sold, grouped by day, branch and product category
-        for (Object[] row : orderRepository.getUnitsSoldBreakdown(start, end)) {
+        for (Object[] row : orderRepository.getUnitsSoldBreakdown(start, end, BusinessDay.startHour())) {
             LocalDate date = toLocalDate(row[0]);
             Long rowShopId = toLong(row[1]);
             String category = String.valueOf(row[2]);

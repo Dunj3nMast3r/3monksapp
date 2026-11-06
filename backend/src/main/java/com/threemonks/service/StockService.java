@@ -1,5 +1,6 @@
 package com.threemonks.service;
 
+import com.threemonks.util.BusinessDay;
 import com.threemonks.dto.BulkStockEntryRequest;
 import com.threemonks.dto.DailyStockSummaryResponse;
 import com.threemonks.dto.PurchaseRequest;
@@ -149,7 +150,7 @@ public class StockService {
                         UserPrincipal currentUser) {
                 validateShopAccess(shopId, currentUser);
 
-                LocalDate end = to != null ? to : LocalDate.now();
+                LocalDate end = to != null ? to : BusinessDay.today();
                 LocalDate start = from != null ? from : end.minusDays(30);
                 if (start.isAfter(end)) {
                         throw new BadRequestException("Start date cannot be after end date");
@@ -212,7 +213,7 @@ public class StockService {
                 // One row per material per day per type. Entering the same material
                 // again for the same date folds into that row instead of adding
                 // another, so a day always reads as a single figure.
-                LocalDate date = txnDate != null ? txnDate : LocalDate.now();
+                LocalDate date = txnDate != null ? txnDate : BusinessDay.today();
                 StockTransaction txn = stockTransactionRepository
                                 .findByShopIdAndRawMaterialIdAndTxnDateAndTxnType(shopId, rawMaterialId, date, type)
                                 .orElse(null);
@@ -272,7 +273,7 @@ public class StockService {
                                 .vendorName(request.getVendorName())
                                 .invoiceNumber(request.getInvoiceNumber())
                                 .purchaseDate(request.getPurchaseDate() != null ? request.getPurchaseDate()
-                                                : LocalDate.now())
+                                                : BusinessDay.today())
                                 .purchasedBy(user)
                                 .gstPercentage(request.getGstPercentage())
                                 .gstAmount(request.getGstAmount())
@@ -322,7 +323,7 @@ public class StockService {
         public List<StockReportResponse> getStockReport(Long shopId, LocalDate from, LocalDate to,
                         UserPrincipal currentUser) {
                 validateShopAccess(shopId, currentUser);
-                LocalDate end = to != null ? to : LocalDate.now();
+                LocalDate end = to != null ? to : BusinessDay.today();
                 LocalDate start = from != null ? from : end;
                 if (start.isAfter(end)) {
                         throw new BadRequestException("Start date cannot be after end date");
@@ -388,7 +389,7 @@ public class StockService {
 
         public List<StockEntryResponse> getEntries(Long shopId, LocalDate date, UserPrincipal currentUser) {
                 validateShopAccess(shopId, currentUser);
-                LocalDate day = date != null ? date : LocalDate.now();
+                LocalDate day = date != null ? date : BusinessDay.today();
                 return stockTransactionRepository.findByShopIdAndTxnDateOrderByCreatedAtDesc(shopId, day).stream()
                                 .map(this::toEntryResponse)
                                 .collect(Collectors.toList());
@@ -425,7 +426,7 @@ public class StockService {
         }
 
         private boolean isRemovable(StockTransaction txn) {
-                return !txn.getTxnDate().isBefore(LocalDate.now().minusDays(REMOVABLE_DAYS - 1));
+                return !txn.getTxnDate().isBefore(BusinessDay.today().minusDays(REMOVABLE_DAYS - 1));
         }
 
         private StockEntryResponse toEntryResponse(StockTransaction t) {

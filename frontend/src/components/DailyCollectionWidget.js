@@ -66,9 +66,7 @@ const DailyCollectionWidget = ({ compact = false }) => {
     }, [compact, today, fetchCollection]);
 
     const setPreset = (preset) => {
-        const d = new Date();
-        if (preset === 'yesterday') d.setDate(d.getDate() - 1);
-        const day = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        const day = getISTDateString(preset === 'yesterday' ? 1 : 0);
         const nextFrom = preset === 'month' ? today.slice(0, 7) + '-01' : day;
         const nextTo = preset === 'month' ? today : day;
         setFrom(nextFrom);
