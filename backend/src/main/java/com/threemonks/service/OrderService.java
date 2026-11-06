@@ -173,12 +173,12 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
+    // All pending orders, including any left over from earlier days: they stay in the
+    // queue until completed or cancelled (and still count on the day they were placed)
     public List<OrderResponse> getPendingOrders(Long shopId, UserPrincipal currentUser) {
         Long resolvedShopId = resolveShopId(shopId, currentUser);
         validateShopAccess(resolvedShopId, currentUser);
-        LocalDateTime startOfDay = BusinessDay.start(BusinessDay.today());
-        LocalDateTime endOfDay = BusinessDay.end(BusinessDay.today());
-        return orderRepository.findTodayPendingOrdersByShopId(resolvedShopId, startOfDay, endOfDay).stream()
+        return orderRepository.findPendingOrdersByShopId(resolvedShopId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
