@@ -1,5 +1,6 @@
 package com.threemonks.service;
 
+import com.threemonks.dto.DailyCollectionResponse.CollectionRow;
 import com.threemonks.dto.StockReportResponse;
 import com.threemonks.dto.StockResponse;
 import com.threemonks.entity.Order;
@@ -48,6 +49,7 @@ public class DailySummaryService {
     private final ShopRepository shopRepository;
     private final OrderRepository orderRepository;
     private final StockService stockService;
+    private final CollectionService collectionService;
     private final JavaMailSender mailSender;
     private final TransactionTemplate readOnly;
     private final String mailUsername;
@@ -57,7 +59,8 @@ public class DailySummaryService {
     private final List<String> branchNames;
 
     public DailySummaryService(ShopRepository shopRepository, OrderRepository orderRepository,
-                               StockService stockService, JavaMailSender mailSender,
+                               StockService stockService, CollectionService collectionService,
+                               JavaMailSender mailSender,
                                PlatformTransactionManager transactionManager,
                                @Value("${spring.mail.username:}") String mailUsername,
                                @Value("${spring.mail.password:}") String mailPassword,
@@ -67,6 +70,7 @@ public class DailySummaryService {
         this.shopRepository = shopRepository;
         this.orderRepository = orderRepository;
         this.stockService = stockService;
+        this.collectionService = collectionService;
         this.mailSender = mailSender;
         this.readOnly = new TransactionTemplate(transactionManager);
         this.readOnly.setReadOnly(true);
@@ -165,6 +169,11 @@ public class DailySummaryService {
         }
         s.cancelled = orders.stream().filter(o -> o.getStatus() == OrderStatus.CANCELLED).count();
         s.notDelivered = orders.stream().filter(o -> o.getStatus() == OrderStatus.PENDING).count();
+        // Amount actually received, as entered on Daily Collection (and compared with that page's expected total)
+        s.collection = collectionService.getDailyCollection(day, day, shop.getId()).getBranches().stream()
+                .filter(r -> shop.getId().equals(r.getShopId()))
+                .findFirst()
+                .orElse(null);
 
         Map<Long, StockResponse> current = stockService.currentStock(shop.getId()).stream()
                 .collect(Collectors.toMap(StockResponse::getRawMaterialId, x -> x));
@@ -212,6 +221,18 @@ public class DailySummaryService {
         statRow(h, "Shots sold", String.valueOf(s.shots));
         statRow(h, "Blends sold", String.valueOf(s.blends));
         statRow(h, "Cash / UPI", "₹" + money(s.cash) + " / ₹" + money(s.upi));
+        CollectionRow c = s.collection;
+        if (c != null && c.getActualEntries() > 0) {
+            statRow(h, "Received (actual)", "₹" + money(c.getActualTotal())
+                    + " <span style=\"font-weight:normal;color:#6b7280\">(Cash ₹" + money(c.getActualCash())
+                    + " / UPI ₹" + money(c.getActualUpi()) + ")</span>");
+            statRow(h, "Difference", difference(c.getDifference())
+                    + " <span style=\"font-weight:normal;color:#6b7280\">vs ₹" + money(c.getTotalAmount())
+                    + " on Daily Collection</span>");
+            if (c.getActualNote() != null) statRow(h, "Note", htmlEscape(c.getActualNote()));
+        } else if (c != null && c.getActualSlots() > 0) {
+            statRow(h, "Received (actual)", "<span style=\"color:#6b7280;font-weight:normal\">Not entered yet</span>");
+        }
         if (s.cancelled > 0) statRow(h, "Cancelled orders", String.valueOf(s.cancelled));
         if (s.notDelivered > 0) statRow(h, "Not delivered", String.valueOf(s.notDelivered));
         h.append("</table>");
@@ -256,6 +277,13 @@ public class DailySummaryService {
         return String.format(Locale.ENGLISH, "%,.0f", amount);
     }
 
+    // Actual − expected: red when short, green when over, a tick when it matches
+    private static String difference(BigDecimal diff) {
+        if (diff.signum() == 0) return "<span style=\"color:#065f46\">₹0 ✓</span>";
+        String text = (diff.signum() < 0 ? "−₹" : "+₹") + money(diff.abs());
+        return "<span style=\"color:" + (diff.signum() < 0 ? "#991b1b" : "#065f46") + "\">" + text + "</span>";
+    }
+
     private static List<String> splitList(String value) {
         return Arrays.stream(value == null ? new String[0] : value.split(","))
                 .map(String::trim).filter(v -> !v.isEmpty()).collect(Collectors.toList());
@@ -272,6 +300,7 @@ public class DailySummaryService {
         int blends;
         long cancelled;
         long notDelivered;
+        CollectionRow collection;
         List<Row> stock = new ArrayList<>();
     }
 

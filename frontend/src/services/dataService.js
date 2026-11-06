@@ -18,6 +18,9 @@ export const publicService = {
 export const adminService = {
     // Sends yesterday's 8 AM daily summary email right away
     sendDailySummary: () => api.post('/api/admin/daily-summary/send'),
+    // What a branch actually received on a day (Daily Collection)
+    saveCollectionActual: (data) => api.put('/api/admin/collection/actual', data),
+    deleteCollectionActual: (shopId, date) => api.delete('/api/admin/collection/actual', { params: { shopId, date } }),
     // Shops
     getShops: () => api.get('/api/admin/shops'),
     createShop: (data) => api.post('/api/admin/shops', data),

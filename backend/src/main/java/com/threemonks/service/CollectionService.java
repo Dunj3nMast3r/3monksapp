@@ -2,23 +2,32 @@ package com.threemonks.service;
 
 import com.threemonks.dto.DailyCollectionResponse;
 import com.threemonks.dto.DailyCollectionResponse.CollectionRow;
+import com.threemonks.dto.CollectionActualRequest;
+import com.threemonks.entity.CollectionActual;
 import com.threemonks.entity.Shop;
 import com.threemonks.exception.BadRequestException;
+import com.threemonks.exception.ResourceNotFoundException;
+import com.threemonks.repository.CollectionActualRepository;
 import com.threemonks.repository.OrderRepository;
 import com.threemonks.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Day-end reconciliation: units sold and cash/UPI taken, per branch and per day.
@@ -28,6 +37,10 @@ import java.util.Map;
  * is placed rather than when the stations hand it over. Cancelled orders are
  * reported separately so the till can be explained, never mixed into the
  * collected totals.
+ *
+ * <p>Admins can record what a branch actually received on a day (cash and UPI
+ * separately). Rows then carry the actual amounts and the difference from what
+ * the orders say, counted only over the branch-days that have an entry.
  */
 @Service
 @RequiredArgsConstructor
@@ -36,8 +49,38 @@ public class CollectionService {
     /** Guard against someone asking for years of days in one response. */
     private static final int MAX_DAYS = 92;
 
+    private static final ZoneId SHOP_ZONE = ZoneId.of("Asia/Kolkata");
+
     private final OrderRepository orderRepository;
     private final ShopRepository shopRepository;
+    private final CollectionActualRepository actualRepository;
+
+    /** Records (or replaces) what a branch actually received on a day. */
+    @Transactional
+    public void saveActual(CollectionActualRequest request, String username) {
+        if (request.getDate().isAfter(LocalDate.now(SHOP_ZONE)))
+            throw new BadRequestException("Cannot enter the amount received for a future date");
+        Shop shop = shopRepository.findById(request.getShopId())
+                .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", request.getShopId()));
+        CollectionActual actual = actualRepository
+                .findByShopIdAndCollectionDate(shop.getId(), request.getDate())
+                .orElseGet(() -> CollectionActual.builder().shop(shop).collectionDate(request.getDate()).build());
+        actual.setActualCash(request.getActualCash());
+        actual.setActualUpi(request.getActualUpi());
+        String note = request.getNote() == null ? "" : request.getNote().trim();
+        actual.setNote(note.isEmpty() ? null : note);
+        actual.setUpdatedBy(username);
+        actual.setUpdatedAt(LocalDateTime.now(SHOP_ZONE));
+        actualRepository.save(actual);
+    }
+
+    /** Removes a branch's entry for a day, e.g. one entered against the wrong date. */
+    @Transactional
+    public void deleteActual(Long shopId, LocalDate date) {
+        CollectionActual actual = actualRepository.findByShopIdAndCollectionDate(shopId, date)
+                .orElseThrow(() -> new ResourceNotFoundException("No amount received was entered for that branch and date"));
+        actualRepository.delete(actual);
+    }
 
     public DailyCollectionResponse getDailyCollection(LocalDate fromDate, LocalDate toDate, Long shopId) {
         if (fromDate == null)
@@ -64,6 +107,8 @@ public class CollectionService {
 
         Map<Long, Bucket> perBranch = new LinkedHashMap<>();
         Map<LocalDate, Bucket> perDay = new LinkedHashMap<>();
+        // Expected cash/UPI for each branch on each day, to compare with what was actually received
+        Map<Slot, Bucket> perSlot = new HashMap<>();
         for (Long id : shopNames.keySet())
             perBranch.put(id, new Bucket());
         for (LocalDate d = fromDate; !d.isAfter(toDate); d = d.plusDays(1))
@@ -93,9 +138,11 @@ public class CollectionService {
             } else if ("CASH".equals(paymentMode)) {
                 branch.addCash(orders, amount);
                 day.addCash(orders, amount);
+                perSlot.computeIfAbsent(new Slot(rowShopId, date), k -> new Bucket()).addCash(orders, amount);
             } else {
                 branch.addUpi(orders, amount);
                 day.addUpi(orders, amount);
+                perSlot.computeIfAbsent(new Slot(rowShopId, date), k -> new Bucket()).addUpi(orders, amount);
             }
         }
 
@@ -116,11 +163,37 @@ public class CollectionService {
             perDay.computeIfAbsent(date, k -> new Bucket()).addUnits(shot, quantity);
         }
 
+        // What was actually received, against what the orders say, per branch-day
+        Map<Slot, CollectionActual> actuals = new HashMap<>();
+        for (CollectionActual actual : actualRepository.findByCollectionDateBetween(fromDate, toDate)) {
+            Long actualShopId = actual.getShop().getId();
+            if (shopNames.containsKey(actualShopId))
+                actuals.put(new Slot(actualShopId, actual.getCollectionDate()), actual);
+        }
+        // A branch-day "needs" an entry when it took orders or already has one
+        Set<Slot> slots = new HashSet<>(actuals.keySet());
+        perSlot.forEach((slot, bucket) -> {
+            if (bucket.cashOrders + bucket.upiOrders > 0)
+                slots.add(slot);
+        });
+        for (Slot slot : slots) {
+            Bucket expected = perSlot.getOrDefault(slot, new Bucket());
+            CollectionActual actual = actuals.get(slot);
+            Bucket branch = perBranch.computeIfAbsent(slot.shopId(), k -> new Bucket());
+            Bucket day = perDay.computeIfAbsent(slot.date(), k -> new Bucket());
+            branch.addSlot(expected, actual);
+            day.addSlot(expected, actual);
+        }
+
         List<CollectionRow> branches = new ArrayList<>();
         Bucket grand = new Bucket();
         for (Map.Entry<Long, Bucket> entry : perBranch.entrySet()) {
             Bucket bucket = entry.getValue();
-            branches.add(bucket.toRow(entry.getKey(), shopNames.get(entry.getKey()), null));
+            CollectionRow row = bucket.toRow(entry.getKey(), shopNames.get(entry.getKey()), null);
+            // A branch row is one branch-day when the period is a single day
+            if (fromDate.equals(toDate))
+                attachEntry(row, actuals.get(new Slot(entry.getKey(), fromDate)));
+            branches.add(row);
             grand.add(bucket);
         }
         branches.sort(Comparator.comparing(r -> r.getShopName() == null ? "" : r.getShopName(),
@@ -129,7 +202,13 @@ public class CollectionService {
         List<CollectionRow> dayRows = new ArrayList<>();
         perDay.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
-                .forEach(entry -> dayRows.add(entry.getValue().toRow(null, null, entry.getKey())));
+                .forEach(entry -> {
+                    CollectionRow row = entry.getValue().toRow(null, null, entry.getKey());
+                    // A day row is one branch-day when a single branch is selected
+                    if (shopId != null)
+                        attachEntry(row, actuals.get(new Slot(shopId, entry.getKey())));
+                    dayRows.add(row);
+                });
 
         return DailyCollectionResponse.builder()
                 .fromDate(fromDate)
@@ -138,6 +217,18 @@ public class CollectionService {
                 .days(dayRows)
                 .totals(grand.toRow(null, null, null))
                 .build();
+    }
+
+    private static void attachEntry(CollectionRow row, CollectionActual actual) {
+        row.setEditable(true);
+        if (actual != null) {
+            row.setActualNote(actual.getNote());
+            row.setActualUpdatedBy(actual.getUpdatedBy());
+            row.setActualUpdatedAt(actual.getUpdatedAt());
+        }
+    }
+
+    private record Slot(Long shopId, LocalDate date) {
     }
 
     /** Running totals for one branch, one day, or the whole period. */
@@ -150,6 +241,25 @@ public class CollectionService {
         private BigDecimal cashAmount = BigDecimal.ZERO;
         private BigDecimal upiAmount = BigDecimal.ZERO;
         private BigDecimal cancelledAmount = BigDecimal.ZERO;
+        // Branch-days that took orders (or have an entry), and how many of them have an entry
+        private long actualSlots;
+        private long actualEntries;
+        private BigDecimal actualCash = BigDecimal.ZERO;
+        private BigDecimal actualUpi = BigDecimal.ZERO;
+        private BigDecimal cashDifference = BigDecimal.ZERO;
+        private BigDecimal upiDifference = BigDecimal.ZERO;
+
+        // Differences only count branch-days with an entry, so a missing entry never reads as a shortfall
+        void addSlot(Bucket expected, CollectionActual actual) {
+            actualSlots++;
+            if (actual == null)
+                return;
+            actualEntries++;
+            actualCash = actualCash.add(actual.getActualCash());
+            actualUpi = actualUpi.add(actual.getActualUpi());
+            cashDifference = cashDifference.add(actual.getActualCash().subtract(expected.cashAmount));
+            upiDifference = upiDifference.add(actual.getActualUpi().subtract(expected.upiAmount));
+        }
 
         void addCash(long orders, BigDecimal amount) {
             cashOrders += orders;
@@ -182,6 +292,12 @@ public class CollectionService {
             cashAmount = cashAmount.add(other.cashAmount);
             upiAmount = upiAmount.add(other.upiAmount);
             cancelledAmount = cancelledAmount.add(other.cancelledAmount);
+            actualSlots += other.actualSlots;
+            actualEntries += other.actualEntries;
+            actualCash = actualCash.add(other.actualCash);
+            actualUpi = actualUpi.add(other.actualUpi);
+            cashDifference = cashDifference.add(other.cashDifference);
+            upiDifference = upiDifference.add(other.upiDifference);
         }
 
         CollectionRow toRow(Long shopId, String shopName, LocalDate date) {
@@ -199,6 +315,14 @@ public class CollectionService {
                     .totalAmount(cashAmount.add(upiAmount))
                     .cancelledOrders(cancelledOrders)
                     .cancelledAmount(cancelledAmount)
+                    .actualSlots(actualSlots)
+                    .actualEntries(actualEntries)
+                    .actualCash(actualEntries > 0 ? actualCash : null)
+                    .actualUpi(actualEntries > 0 ? actualUpi : null)
+                    .actualTotal(actualEntries > 0 ? actualCash.add(actualUpi) : null)
+                    .cashDifference(actualEntries > 0 ? cashDifference : null)
+                    .upiDifference(actualEntries > 0 ? upiDifference : null)
+                    .difference(actualEntries > 0 ? cashDifference.add(upiDifference) : null)
                     .build();
         }
     }

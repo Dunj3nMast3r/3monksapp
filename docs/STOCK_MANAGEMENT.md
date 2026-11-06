@@ -136,6 +136,8 @@ previous day, one email per branch:
 
 - Sales (₹, delivered orders only), order count, shots and blends sold, Cash / UPI split,
   cancelled and not-delivered orders.
+- The amount actually received (when an admin has entered it on Daily Collection)
+  and its difference from that page's expected total; otherwise "Not entered yet".
 - Current stock of every material with yesterday's received and used.
   Out-of-stock rows are highlighted red and low rows amber, and listed first
   (Low = below the reorder level, or the shop's own minimum if one is set).
@@ -155,3 +157,19 @@ Settings (environment variables, comma-separated):
 Without `MAIL_PASSWORD` the 8 AM run is skipped with a log line, and the
 "Send now" button says email is not set up.
 
+## Amount actually received (Daily Collection)
+
+Admins record what each branch actually received on a day — cash and UPI
+separately, with an optional note — on **Daily Collection**, via the **Enter /
+Edit** button in the Received column. The button shows on rows that are one
+branch on one day: branch rows when a single day is selected, or day rows when a
+single branch is selected. One entry per branch per day (`collection_actuals`);
+saving again replaces it.
+
+Difference = received − expected, where expected is the same Cash / UPI the page
+already shows. Over a period, differences add up only over the branch-days that
+have an entry, and the page shows how many were entered ("1 of 7 entered"), so a
+missing entry is never counted as a shortfall.
+
+`PUT /api/admin/collection/actual` `{shopId, date, actualCash, actualUpi, note}`
+and `DELETE /api/admin/collection/actual?shopId=&date=` — admin only.
