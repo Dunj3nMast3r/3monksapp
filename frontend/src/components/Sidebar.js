@@ -1,11 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { managerService } from '../services/dataService';
 import { getInitials, roleLabels } from '../utils/helpers';
-import { FiHome, FiShoppingCart, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiBox, FiLayers, FiMapPin, FiUserCheck, FiList, FiTrendingUp, FiX, FiMessageSquare, FiBriefcase, FiZap, FiClock, FiRefreshCw, FiDollarSign } from 'react-icons/fi';
+import { FiHome, FiShoppingCart, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiBox, FiLayers, FiMapPin, FiUserCheck, FiList, FiTrendingUp, FiX, FiMessageSquare, FiBriefcase, FiZap, FiClock, FiRefreshCw, FiDollarSign, FiEdit3 } from 'react-icons/fi';
 
 const Sidebar = ({ isOpen, onClose, collapsed }) => {
     const { user, logout, isAdmin, isManager, hasRole } = useAuth();
+    // Managers see Daily Sales only when their branch takes orders by hand
+    const [hasManualBranch, setHasManualBranch] = useState(false);
+    useEffect(() => {
+        if (user?.role !== 'SHOP_MANAGER') return;
+        managerService.getManualSalesShops()
+            .then(res => setHasManualBranch((res.data.data || []).length > 0))
+            .catch(() => setHasManualBranch(false));
+    }, [user?.role]);
     const navigate = useNavigate();
 
     const handleLogout = async () => {
@@ -54,6 +63,9 @@ const Sidebar = ({ isOpen, onClose, collapsed }) => {
                         <>
                             <div className="sidebar-section">Reports</div>
                             <NavLink to="/dashboard/reports" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiBarChart2 /> Reports</NavLink>
+                            {(isAdmin() || hasManualBranch) && (
+                                <NavLink to="/dashboard/daily-sales" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiEdit3 /> Daily Sales</NavLink>
+                            )}
                             {isAdmin() && (
                                 <>
                                     <NavLink to="/dashboard/collections" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiDollarSign /> Daily Collection</NavLink>

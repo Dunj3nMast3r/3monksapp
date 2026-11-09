@@ -3,6 +3,7 @@ package com.threemonks.service;
 import com.threemonks.dto.ShopRequest;
 import com.threemonks.dto.ShopResponse;
 import com.threemonks.entity.Shop;
+import com.threemonks.exception.BadRequestException;
 import com.threemonks.exception.ResourceNotFoundException;
 import com.threemonks.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class ShopService {
                 .gstNumber(request.getGstNumber())
                 .active(true)
                 .build();
+        applyManualSales(shop, request);
         return toResponse(shopRepository.save(shop));
     }
 
@@ -61,6 +63,7 @@ public class ShopService {
         shop.setPhone(request.getPhone());
         shop.setEmail(request.getEmail());
         shop.setGstNumber(request.getGstNumber());
+        applyManualSales(shop, request);
         return toResponse(shopRepository.save(shop));
     }
 
@@ -69,6 +72,17 @@ public class ShopService {
         Shop shop = findShopById(id);
         shop.setActive(!shop.getActive());
         shopRepository.save(shop);
+    }
+
+    // Manual-sales branches need both prices: the day's amount is worked out from them
+    private void applyManualSales(Shop shop, ShopRequest request) {
+        boolean manual = Boolean.TRUE.equals(request.getManualSales());
+        if (manual && (request.getShotPrice() == null || request.getBlendPrice() == null)) {
+            throw new BadRequestException("Enter the shot price and blend price for a branch with manual sales");
+        }
+        shop.setManualSales(manual);
+        if (request.getShotPrice() != null) shop.setShotPrice(request.getShotPrice());
+        if (request.getBlendPrice() != null) shop.setBlendPrice(request.getBlendPrice());
     }
 
     public Shop findShopById(Long id) {
@@ -88,6 +102,9 @@ public class ShopService {
                 .email(shop.getEmail())
                 .gstNumber(shop.getGstNumber())
                 .active(shop.getActive())
+                .manualSales(shop.isManualSales())
+                .shotPrice(shop.getShotPrice())
+                .blendPrice(shop.getBlendPrice())
                 .build();
     }
 }

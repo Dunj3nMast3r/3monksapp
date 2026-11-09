@@ -44,6 +44,8 @@ public class DashboardOverviewService {
     private final OrderItemRepository orderItemRepository;
     private final StockRepository stockRepository;
     private final CollectionService collectionService;
+    // Hand-entered daily sales of manual branches are added to the day totals
+    private final ManualSalesService manualSalesService;
 
     public DashboardOverviewResponse getOverview(LocalDate today) {
         if (today == null)
@@ -97,6 +99,13 @@ public class DashboardOverviewService {
         for (Object[] row : orderRepository.getDailyUnits(start, end, BusinessDay.startHour())) {
             byDate.computeIfAbsent(Convert.toLocalDate(row[0]), k -> new DayTotals()).units += Convert.toLong(row[1]);
         }
+        // Order sales so far are what the average order value is based on; manual days have no orders
+        byDate.values().forEach(t -> t.orderSales = t.sales);
+        manualSalesService.byDate(null, from, to).forEach((date, m) -> {
+            DayTotals totals = byDate.computeIfAbsent(date, k -> new DayTotals());
+            totals.sales = totals.sales.add(m.amount);
+            totals.units += m.shots + m.blends;
+        });
         return byDate;
     }
 
@@ -109,12 +118,13 @@ public class DashboardOverviewService {
             total.orders += day.orders;
             total.units += day.units;
             total.sales = total.sales.add(day.sales);
+            total.orderSales = total.orderSales.add(day.orderSales);
         }
         return PeriodStats.builder()
                 .sales(total.sales)
                 .orders(total.orders)
                 .units(total.units)
-                .averageOrderValue(average(total.sales, total.orders))
+                .averageOrderValue(average(total.orderSales, total.orders))
                 .build();
     }
 
@@ -203,7 +213,9 @@ public class DashboardOverviewService {
                         .orders(branch.getTotalOrders())
                         .shots(branch.getShots())
                         .blends(branch.getBlends())
-                        .averageOrderValue(average(branch.getTotalAmount(), branch.getTotalOrders()))
+                        .averageOrderValue(average(branch.getTotalAmount()
+                                .subtract(branch.getManualAmount() == null ? BigDecimal.ZERO : branch.getManualAmount()),
+                                branch.getTotalOrders()))
                         .build())
                 .sorted((a, b) -> b.getSales().compareTo(a.getSales()))
                 .toList();
@@ -231,6 +243,8 @@ public class DashboardOverviewService {
         private long orders;
         private long units;
         private BigDecimal sales = BigDecimal.ZERO;
+        /** Sales from app orders only (no manual days), for the average order value. */
+        private BigDecimal orderSales = BigDecimal.ZERO;
     }
 
     private static class HourTotals {

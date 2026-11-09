@@ -136,11 +136,18 @@ const DailyCollectionWidget = ({ compact = false }) => {
     const branches = data?.branches || [];
     const days = data?.days || [];
     const showCancelled = num(totals?.cancelledOrders) > 0;
-    const hasBranchData = branches.some(b => num(b.totalOrders) > 0 || num(b.cancelledOrders) > 0);
+    const hasBranchData = branches.some(b => num(b.totalOrders) > 0 || num(b.cancelledOrders) > 0 || num(b.manualAmount) > 0);
 
     const metricCells = (row) => (
         <>
-            <td style={{ fontWeight: 700 }}>{formatCurrency(row.totalAmount)}</td>
+            <td style={{ fontWeight: 700 }}>
+                {formatCurrency(row.totalAmount)}
+                {row.manual && (
+                    <div style={{ color: 'var(--text-light)', fontSize: '12px', fontWeight: 400 }}>
+                        {num(row.totalOrders) > 0 ? `incl. ✍️ ${formatCurrency(row.manualAmount)} entered` : '✍️ entered by hand'}
+                    </div>
+                )}
+            </td>
             <td>
                 {num(row.actualEntries) > 0 ? (
                     <>
@@ -160,7 +167,13 @@ const DailyCollectionWidget = ({ compact = false }) => {
                 ) : num(row.actualSlots) > 0 ? (
                     <span style={{ color: 'var(--text-light)' }}>Not entered</span>
                 ) : '-'}
-                {!compact && row.editable && (num(row.totalOrders) > 0 || num(row.actualEntries) > 0) && (
+                {/* Hand-entered branches: sales and received are entered together on Daily Sales */}
+                {!compact && row.editable && row.manual && (
+                    <div>
+                        <Link className="btn btn-outline btn-sm" style={{ marginTop: '4px' }} to="/dashboard/daily-sales">Daily Sales</Link>
+                    </div>
+                )}
+                {!compact && row.editable && !row.manual && (num(row.totalOrders) > 0 || num(row.actualEntries) > 0) && (
                     <div>
                         <button className="btn btn-outline btn-sm" style={{ marginTop: '4px' }} onClick={() => openEntry(row)}>
                             {num(row.actualEntries) > 0 ? 'Edit' : 'Enter'}
@@ -172,7 +185,7 @@ const DailyCollectionWidget = ({ compact = false }) => {
                 {num(row.actualEntries) > 0 ? (
                     <>
                         <Difference value={row.difference} />
-                        {num(row.difference) !== 0 && (
+                        {num(row.difference) !== 0 && !row.manual && (
                             <div style={{ color: 'var(--text-light)', fontSize: '12px' }}>
                                 💵 {num(row.cashDifference) < 0 ? '−' : '+'}{formatCurrency(Math.abs(num(row.cashDifference)))}
                                 {' · '}📱 {num(row.upiDifference) < 0 ? '−' : '+'}{formatCurrency(Math.abs(num(row.upiDifference)))}

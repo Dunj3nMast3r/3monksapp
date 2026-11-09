@@ -16,4 +16,7 @@ public class ShopResponse {
     private String email;
     private String gstNumber;
     private Boolean active;
+    private Boolean manualSales;
+    private java.math.BigDecimal shotPrice;
+    private java.math.BigDecimal blendPrice;
 }

@@ -15,7 +15,8 @@ const ShopsPage = () => {
     const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', address: '', phone: '', email: '', gstNumber: '' });
+    const emptyForm = { name: '', address: '', phone: '', email: '', gstNumber: '', manualSales: false, shotPrice: '', blendPrice: '' };
+    const [form, setForm] = useState(emptyForm);
     const [errors, setErrors] = useState({});
 
     useEffect(() => { fetchShops(); }, []);
@@ -34,8 +35,15 @@ const ShopsPage = () => {
         .filter(u => u.shopId === shopId && u.role !== 'SUPER_ADMIN')
         .sort((a, b) => a.role.localeCompare(b.role) || a.fullName.localeCompare(b.fullName));
 
-    const openAdd = () => { setEditing(null); setForm({ name: '', address: '', phone: '', email: '', gstNumber: '' }); setErrors({}); setShowModal(true); };
-    const openEdit = (shop) => { setEditing(shop); setForm({ name: shop.name, address: shop.address || '', phone: shop.phone || '', email: shop.email || '', gstNumber: shop.gstNumber || '' }); setErrors({}); setShowModal(true); };
+    const openAdd = () => { setEditing(null); setForm(emptyForm); setErrors({}); setShowModal(true); };
+    const openEdit = (shop) => {
+        setEditing(shop);
+        setForm({
+            name: shop.name, address: shop.address || '', phone: shop.phone || '', email: shop.email || '', gstNumber: shop.gstNumber || '',
+            manualSales: !!shop.manualSales, shotPrice: shop.shotPrice ?? '', blendPrice: shop.blendPrice ?? '',
+        });
+        setErrors({}); setShowModal(true);
+    };
 
     const validateForm = () => {
         const errs = {};
@@ -46,6 +54,10 @@ const ShopsPage = () => {
         if (form.phone && !/^[0-9]{10}$/.test(form.phone)) errs.phone = 'Phone number must be exactly 10 digits';
         if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Please enter a valid email address';
         if (form.gstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(form.gstNumber)) errs.gstNumber = 'Please enter a valid 15-character GST number';
+        if (form.manualSales) {
+            if (!(Number(form.shotPrice) > 0)) errs.shotPrice = 'Enter the shot price';
+            if (!(Number(form.blendPrice) > 0)) errs.blendPrice = 'Enter the blend price';
+        }
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -55,8 +67,13 @@ const ShopsPage = () => {
         if (!validateForm()) return;
         setSubmitting(true);
         try {
-            if (editing) { await adminService.updateShop(editing.id, form); toast.success('Shop updated'); }
-            else { await adminService.createShop(form); toast.success('Shop created'); }
+            const payload = {
+                ...form,
+                shotPrice: form.shotPrice === '' ? null : Number(form.shotPrice),
+                blendPrice: form.blendPrice === '' ? null : Number(form.blendPrice),
+            };
+            if (editing) { await adminService.updateShop(editing.id, payload); toast.success('Shop updated'); }
+            else { await adminService.createShop(payload); toast.success('Shop created'); }
             setShowModal(false); fetchShops();
         } catch (err) {
             const resp = err.response?.data;
@@ -83,7 +100,10 @@ const ShopsPage = () => {
                         <thead><tr><th>Name</th><th>Address</th><th>Phone</th><th>GST</th><th>Staff</th><th>Status</th><th>Actions</th></tr></thead>
                         <tbody>{shops.map(s => (
                             <tr key={s.id}>
-                                <td style={{ fontWeight: 500 }}>{s.name}</td>
+                                <td style={{ fontWeight: 500 }}>
+                                    {s.name}
+                                    {s.manualSales && <span className="badge badge-warning" style={{ marginLeft: '6px' }}>✍️ Manual sales</span>}
+                                </td>
                                 <td>{s.address || '-'}</td>
                                 <td>{s.phone || '-'}</td>
                                 <td>{s.gstNumber || '-'}</td>
@@ -126,6 +146,31 @@ const ShopsPage = () => {
                         <input className={`form-control${errors.gstNumber ? ' input-error' : ''}`} value={form.gstNumber} onChange={e => { setForm({ ...form, gstNumber: e.target.value.toUpperCase() }); setErrors(prev => ({ ...prev, gstNumber: '' })); }} placeholder="e.g. 22AAAAA0000A1Z5" />
                         {errors.gstNumber && <span className="field-error">{errors.gstNumber}</span>}
                     </div>
+                    <div className="form-group">
+                        <label style={{ display: 'flex', gap: '8px', alignItems: 'center', textTransform: 'none', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={form.manualSales}
+                                onChange={e => setForm({ ...form, manualSales: e.target.checked })} />
+                            Sales entered manually (orders not taken in the app)
+                        </label>
+                        <small className="form-hint">Each day's shots, blends and amount received are entered on the Daily Sales page. The sales amount is worked out from these prices.</small>
+                    </div>
+                    {form.manualSales && (
+                        <div className="grid-2">
+                            <div className="form-group"><label>Shot price (₹) *</label>
+                                <input type="number" min="0" step="0.01" inputMode="decimal" className={`form-control${errors.shotPrice ? ' input-error' : ''}`}
+                                    value={form.shotPrice} onChange={e => { setForm({ ...form, shotPrice: e.target.value }); setErrors(prev => ({ ...prev, shotPrice: '' })); }} />
+                                {errors.shotPrice && <span className="field-error">{errors.shotPrice}</span>}
+                            </div>
+                            <div className="form-group"><label>Blend price (₹) *</label>
+                                <input type="number" min="0" step="0.01" inputMode="decimal" className={`form-control${errors.blendPrice ? ' input-error' : ''}`}
+                                    value={form.blendPrice} onChange={e => { setForm({ ...form, blendPrice: e.target.value }); setErrors(prev => ({ ...prev, blendPrice: '' })); }} />
+                                {errors.blendPrice && <span className="field-error">{errors.blendPrice}</span>}
+                            </div>
+                        </div>
+                    )}
+                    {editing && editing.manualSales && form.manualSales && (Number(form.shotPrice) !== Number(editing.shotPrice) || Number(form.blendPrice) !== Number(editing.blendPrice)) && (
+                        <p className="form-hint">New prices apply to days entered from now on; days already entered keep their prices.</p>
+                    )}
                     <div className="modal-actions">
                         <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>
                         <button type="submit" className="btn btn-primary" disabled={submitting}>

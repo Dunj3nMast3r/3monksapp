@@ -10,9 +10,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/manager")
@@ -23,6 +26,7 @@ public class ManagerController {
     private final UserService userService;
     private final StockService stockService;
     private final AuthService authService;
+    private final ManualSalesService manualSalesService;
 
     // Users in shop
     @GetMapping("/shop/{shopId}/users")
@@ -135,5 +139,58 @@ public class ManagerController {
             @PathVariable Long shopId,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         return ResponseEntity.ok(ApiResponse.success(stockService.getPurchasesByShop(shopId, currentUser)));
+    }
+
+    // ---- Daily Sales: hand-entered days for branches that take orders by hand ----
+
+    @GetMapping("/manual-sales/shops")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getManualSalesShops(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success(manualSalesService.shopsFor(principal).stream()
+                .map(s -> {
+                    Map<String, Object> shop = new java.util.LinkedHashMap<>();
+                    shop.put("id", s.getId());
+                    shop.put("name", s.getName());
+                    shop.put("shotPrice", s.getShotPrice());
+                    shop.put("blendPrice", s.getBlendPrice());
+                    return shop;
+                })
+                .toList()));
+    }
+
+    @GetMapping("/manual-sales")
+    public ResponseEntity<ApiResponse<ManualSalesResponse>> getManualSales(
+            @RequestParam Long shopId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success(manualSalesService.list(shopId, from, to, principal)));
+    }
+
+    @PutMapping("/manual-sales")
+    public ResponseEntity<ApiResponse<Void>> saveManualSales(@Valid @RequestBody ManualSalesRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        manualSalesService.save(request, principal);
+        return ResponseEntity.ok(ApiResponse.success("Day saved", null));
+    }
+
+    @DeleteMapping("/manual-sales")
+    public ResponseEntity<ApiResponse<Void>> deleteManualSales(@RequestParam Long shopId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        manualSalesService.delete(shopId, date, principal);
+        return ResponseEntity.ok(ApiResponse.success("Day removed", null));
+    }
+
+    // Google Sheet downloaded as CSV; nothing is saved if any row is wrong
+    @PostMapping("/manual-sales/import")
+    public ResponseEntity<ApiResponse<ManualSalesImportResponse>> importManualSales(@RequestParam Long shopId,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal UserPrincipal principal) throws IOException {
+        ManualSalesImportResponse result = manualSalesService.importCsv(shopId, file.getInputStream(), principal);
+        String message = result.getErrors().isEmpty()
+                ? "Imported: " + result.getCreated() + " new day(s), " + result.getUpdated() + " updated"
+                : "Nothing imported: fix the rows listed and upload again";
+        return ResponseEntity.ok(ApiResponse.success(message, result));
     }
 }

@@ -47,6 +47,14 @@ public class DailyCollectionResponse {
         private Long upiOrders;
         private Long totalOrders;
 
+        /**
+         * Sales entered by hand for manual-sales branches (shots × price + blends × price),
+         * already included in totalAmount, shots and blends. Null when there are none.
+         */
+        private BigDecimal manualAmount;
+        /** True when the row includes hand-entered days (cash/UPI split is then not known for them). */
+        private boolean manual;
+
         /** Amounts include the parcel charge, i.e. what the customer actually paid. */
         private BigDecimal cashAmount;
         private BigDecimal upiAmount;

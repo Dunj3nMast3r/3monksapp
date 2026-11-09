@@ -16,6 +16,7 @@ import OrderHistoryPage from './pages/OrderHistoryPage';
 import StockPage from './pages/StockPage';
 import ReportsPage from './pages/ReportsPage';
 import CollectionsPage from './pages/CollectionsPage';
+import DailySalesPage from './pages/DailySalesPage';
 import ShopsPage from './pages/ShopsPage';
 import ProductsPage from './pages/ProductsPage';
 import FruitsPage from './pages/FruitsPage';
@@ -60,6 +61,9 @@ function App() {
                         } />
 
                         {/* Day-end collection / reconciliation - Admin only */}
+                        <Route path="daily-sales" element={
+                            <ProtectedRoute roles={['SUPER_ADMIN', 'SHOP_MANAGER']}><DailySalesPage /></ProtectedRoute>
+                        } />
                         <Route path="collections" element={
                             <ProtectedRoute roles={['SUPER_ADMIN']}><CollectionsPage /></ProtectedRoute>
                         } />

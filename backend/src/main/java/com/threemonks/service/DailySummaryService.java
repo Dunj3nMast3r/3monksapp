@@ -170,6 +170,7 @@ public class DailySummaryService {
         s.cancelled = orders.stream().filter(o -> o.getStatus() == OrderStatus.CANCELLED).count();
         s.notDelivered = orders.stream().filter(o -> o.getStatus() == OrderStatus.PENDING).count();
         // Amount actually received, as entered on Daily Collection (and compared with that page's expected total)
+        s.manualBranch = shop.isManualSales();
         s.collection = collectionService.getDailyCollection(day, day, shop.getId()).getBranches().stream()
                 .filter(r -> shop.getId().equals(r.getShopId()))
                 .findFirst()
@@ -216,11 +217,23 @@ public class DailySummaryService {
                 .append(htmlEscape(s.day.format(DAY))).append("</div>");
 
         h.append("<h3 style=\"margin:16px 0 8px\">Sales</h3><table style=\"border-collapse:collapse\">");
-        statRow(h, "Sales", "₹" + money(s.sales));
-        statRow(h, "Orders", String.valueOf(s.orders));
-        statRow(h, "Shots sold", String.valueOf(s.shots));
-        statRow(h, "Blends sold", String.valueOf(s.blends));
-        statRow(h, "Cash / UPI", "₹" + money(s.cash) + " / ₹" + money(s.upi));
+        if (s.manualBranch) {
+            // Orders are taken by hand here: the day's entered shots, blends and amount
+            CollectionRow m = s.collection;
+            if (m == null || m.getManualAmount() == null) {
+                statRow(h, "Sales", "<span style=\"color:#6b7280;font-weight:normal\">Not entered yet</span>");
+            } else {
+                statRow(h, "Sales", "₹" + money(m.getTotalAmount()));
+                statRow(h, "Shots sold", String.valueOf(m.getShots()));
+                statRow(h, "Blends sold", String.valueOf(m.getBlends()));
+            }
+        } else {
+            statRow(h, "Sales", "₹" + money(s.sales));
+            statRow(h, "Orders", String.valueOf(s.orders));
+            statRow(h, "Shots sold", String.valueOf(s.shots));
+            statRow(h, "Blends sold", String.valueOf(s.blends));
+            statRow(h, "Cash / UPI", "₹" + money(s.cash) + " / ₹" + money(s.upi));
+        }
         CollectionRow c = s.collection;
         if (c != null && c.getActualEntries() > 0) {
             statRow(h, "Received (actual)", "₹" + money(c.getActualTotal())
@@ -290,6 +303,7 @@ public class DailySummaryService {
     }
 
     private static class Summary {
+        boolean manualBranch;
         String shopName;
         LocalDate day;
         long orders;
