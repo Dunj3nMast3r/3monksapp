@@ -22,25 +22,17 @@ Admins (any manual branch) and the branch's manager (own branch only) see
 | Date | Any past date |
 | Shots sold, Blends sold | Entered |
 | Sales | Worked out: shots × shot price + blends × blend price |
-| Cash received, UPI received | Entered |
+| Cash received, UPI received | Optional. Both empty = not known yet (no difference is worked out, and the day never shows as a shortfall); one empty with the other filled = ₹0 |
 | Difference | Worked out: received − sales |
 | Note | Optional |
 
 One entry per branch per day; saving the same date again updates it. Tap a day
 in the list to edit or remove it.
 
-## Importing past days from Google Sheets
+## Loading past days
 
-Sheet columns (header row first): **Date, Shots, Blends, Cash received, UPI
-received**, optional **Note**. Dates like `08-02-2026` or `08/02/2026` (day
-first); empty cash / UPI means 0; `₹` and commas in amounts are fine.
-
-Google Sheets → **File → Download → Comma-separated values (.csv)** → Daily
-Sales → **Import sheet** → choose the file → **Import**.
-
-Every row is checked first. If any row is wrong (impossible or future date,
-date twice, text in a number column…) **nothing is saved** and the rows to fix
-are listed. Dates already entered are updated, not duplicated.
+There is no upload in the app. Past days (Hinjewadi from 8 Feb 2026) are loaded
+once by a script from the sheet you provide, using the same rules as the form.
 
 ## Where the days show up
 

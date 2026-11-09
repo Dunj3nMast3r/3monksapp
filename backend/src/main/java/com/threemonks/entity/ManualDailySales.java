@@ -46,6 +46,9 @@ public class ManualDailySales {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
+    @Column(length = 500)
+    private String note;
+
     @Column(name = "updated_by")
     private String updatedBy;
 

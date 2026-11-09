@@ -25,12 +25,11 @@ public class ManualSalesRequest {
     @Max(value = 100000, message = "Blends looks too high")
     private Integer blends;
 
-    @NotNull(message = "Cash received is required (0 if none)")
+    /** Optional: leave both cash and UPI empty when the amount received isn't known (yet). */
     @DecimalMin(value = "0", message = "Cash received cannot be negative")
     @Digits(integer = 10, fraction = 2, message = "Cash received can have at most 2 decimals")
     private BigDecimal receivedCash;
 
-    @NotNull(message = "UPI received is required (0 if none)")
     @DecimalMin(value = "0", message = "UPI received cannot be negative")
     @Digits(integer = 10, fraction = 2, message = "UPI received can have at most 2 decimals")
     private BigDecimal receivedUpi;

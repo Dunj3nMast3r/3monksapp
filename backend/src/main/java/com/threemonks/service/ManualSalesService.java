@@ -1,7 +1,6 @@
 package com.threemonks.service;
 
 import com.threemonks.dto.CollectionActualRequest;
-import com.threemonks.dto.ManualSalesImportResponse;
 import com.threemonks.dto.ManualSalesRequest;
 import com.threemonks.dto.ManualSalesResponse;
 import com.threemonks.entity.CollectionActual;
@@ -20,16 +19,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.ResolverStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -42,8 +34,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ManualSalesService {
-
-    private static final int MAX_IMPORT_ROWS = 2000;
 
     private final ManualDailySalesRepository manualRepository;
     private final CollectionActualRepository actualRepository;
@@ -85,7 +75,7 @@ public class ManualSalesService {
                     .receivedUpi(a == null ? null : a.getActualUpi())
                     .receivedTotal(rTotal)
                     .difference(rTotal == null ? null : rTotal.subtract(m.getAmount()))
-                    .note(a == null ? null : a.getNote())
+                    .note(m.getNote() != null ? m.getNote() : a == null ? null : a.getNote())
                     .updatedBy(m.getUpdatedBy()).updatedAt(m.getUpdatedAt())
                     .build());
             shots += m.getShots();
@@ -117,6 +107,7 @@ public class ManualSalesService {
         Shop shop = manualShop(request.getShopId(), user);
         if (request.getDate().isAfter(BusinessDay.today()))
             throw new BadRequestException("Cannot enter sales for a future date");
+        // Received is optional: both empty = not known (yet); one empty with the other filled = ₹0
         upsert(shop, request.getDate(), request.getShots(), request.getBlends(),
                 request.getReceivedCash(), request.getReceivedUpi(), request.getNote(), user.getUsername());
     }
@@ -132,79 +123,12 @@ public class ManualSalesService {
     }
 
     /**
-     * Imports a sheet saved as CSV (Google Sheets: File → Download → CSV) with the
-     * columns Date, Shots, Blends, Cash received, UPI received and an optional Note.
-     * Every row is checked first; if any is wrong nothing is saved and the errors
-     * are returned. Dates already entered are updated, not duplicated.
+     * Saves a day; returns true when it already existed. Past days keep the prices they
+     * were entered with. Received: both null = not entered (no difference is worked out,
+     * and an earlier amount is removed); one null with the other set = ₹0.
      */
-    @Transactional
-    public ManualSalesImportResponse importCsv(Long shopId, InputStream csv, UserPrincipal user) {
-        Shop shop = manualShop(shopId, user);
-        List<String[]> rows = readCsv(csv);
-        List<String> errors = new ArrayList<>();
-        if (rows.isEmpty()) {
-            return ManualSalesImportResponse.builder().errors(List.of("The file is empty")).build();
-        }
-
-        // Columns by header name when there is a header row, otherwise in the documented order
-        int[] col = {0, 1, 2, 3, 4, 5};
-        int first = 0;
-        String[] head = rows.get(0);
-        if (head.length > 0 && !head[0].trim().isEmpty() && !Character.isDigit(head[0].trim().charAt(0))) {
-            first = 1;
-            col = columnsFromHeader(head, errors);
-        }
-        if (rows.size() - first > MAX_IMPORT_ROWS) {
-            errors.add("Too many rows (" + (rows.size() - first) + "); import at most " + MAX_IMPORT_ROWS + " at a time");
-        }
-        if (!errors.isEmpty()) return ManualSalesImportResponse.builder().errors(errors).build();
-
-        // Dates like 2/8/2026: day first (India), unless the file only makes sense month first
-        boolean monthFirst = isMonthFirst(rows.subList(first, rows.size()), col[0]);
-        LocalDate today = BusinessDay.today();
-        Map<LocalDate, Object[]> parsed = new LinkedHashMap<>();
-        for (int i = first; i < rows.size(); i++) {
-            String[] r = rows.get(i);
-            int line = i + 1;
-            if (Arrays.stream(r).allMatch(c -> c == null || c.isBlank())) continue;
-            LocalDate date = parseDate(cell(r, col[0]), monthFirst);
-            Integer shots = parseCount(cell(r, col[1]));
-            Integer blends = parseCount(cell(r, col[2]));
-            BigDecimal cash = parseAmount(cell(r, col[3]));
-            BigDecimal upi = parseAmount(cell(r, col[4]));
-            String note = col[5] >= 0 ? cell(r, col[5]).trim() : "";
-            List<String> problems = new ArrayList<>();
-            if (date == null) problems.add("date \"" + cell(r, col[0]) + "\" not understood (use 08-02-2026)");
-            else if (date.isAfter(today)) problems.add("date " + date + " is in the future");
-            else if (date.getYear() < 2020) problems.add("date " + date + " looks wrong");
-            else if (parsed.containsKey(date)) problems.add("date " + date + " appears more than once");
-            if (shots == null) problems.add("shots \"" + cell(r, col[1]) + "\" must be a whole number");
-            if (blends == null) problems.add("blends \"" + cell(r, col[2]) + "\" must be a whole number");
-            if (cash == null) problems.add("cash \"" + cell(r, col[3]) + "\" must be an amount (0 if none)");
-            if (upi == null) problems.add("UPI \"" + cell(r, col[4]) + "\" must be an amount (0 if none)");
-            if (note.length() > 500) problems.add("note is longer than 500 characters");
-            if (!problems.isEmpty()) {
-                errors.add("Row " + line + ": " + String.join("; ", problems));
-            } else {
-                parsed.put(date, new Object[] {shots, blends, cash, upi, note});
-            }
-        }
-        if (parsed.isEmpty() && errors.isEmpty()) errors.add("No data rows found");
-        if (!errors.isEmpty()) return ManualSalesImportResponse.builder().errors(errors).build();
-
-        int created = 0, updated = 0;
-        for (Map.Entry<LocalDate, Object[]> e : parsed.entrySet()) {
-            Object[] v = e.getValue();
-            boolean existed = upsert(shop, e.getKey(), (Integer) v[0], (Integer) v[1], (BigDecimal) v[2], (BigDecimal) v[3],
-                    (String) v[4], user.getUsername());
-            if (existed) updated++; else created++;
-        }
-        return ManualSalesImportResponse.builder().created(created).updated(updated).errors(List.of()).build();
-    }
-
-    /** Saves a day; returns true when it already existed. Past days keep the prices they were entered with. */
-    private boolean upsert(Shop shop, LocalDate date, int shots, int blends, BigDecimal cash, BigDecimal upi,
-                           String note, String username) {
+    boolean upsert(Shop shop, LocalDate date, int shots, int blends, BigDecimal cash, BigDecimal upi,
+                   String note, String username) {
         Optional<ManualDailySales> existing = manualRepository.findByShopIdAndSalesDate(shop.getId(), date);
         ManualDailySales entry = existing.orElseGet(() -> ManualDailySales.builder()
                 .shop(shop).salesDate(date)
@@ -214,15 +138,21 @@ public class ManualSalesService {
         entry.setBlends(blends);
         entry.setAmount(entry.getShotPrice().multiply(BigDecimal.valueOf(shots))
                 .add(entry.getBlendPrice().multiply(BigDecimal.valueOf(blends))));
+        String trimmedNote = note == null ? "" : note.trim();
+        entry.setNote(trimmedNote.isEmpty() ? null : trimmedNote);
         entry.setUpdatedBy(username);
         entry.setUpdatedAt(LocalDateTime.now(BusinessDay.ZONE));
         manualRepository.save(entry);
 
+        if (cash == null && upi == null) {
+            actualRepository.findByShopIdAndCollectionDate(shop.getId(), date).ifPresent(actualRepository::delete);
+            return existing.isPresent();
+        }
         CollectionActualRequest received = new CollectionActualRequest();
         received.setShopId(shop.getId());
         received.setDate(date);
-        received.setActualCash(cash);
-        received.setActualUpi(upi);
+        received.setActualCash(cash != null ? cash : BigDecimal.ZERO);
+        received.setActualUpi(upi != null ? upi : BigDecimal.ZERO);
         received.setNote(note);
         collectionService.saveActual(received, username);
         return existing.isPresent();
@@ -292,112 +222,5 @@ public class ManualSalesService {
         return shopId == null
                 ? manualRepository.findBySalesDateBetween(from, to)
                 : manualRepository.findByShopIdAndSalesDateBetweenOrderBySalesDateDesc(shopId, from, to);
-    }
-
-    // ---------- CSV helpers ----------
-
-    static List<String[]> readCsv(InputStream in) {
-        List<String[]> rows = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-            String line;
-            boolean firstLine = true;
-            while ((line = reader.readLine()) != null) {
-                if (firstLine && line.startsWith("﻿")) line = line.substring(1);
-                firstLine = false;
-                rows.add(splitCsvLine(line));
-            }
-        } catch (IOException e) {
-            throw new BadRequestException("Could not read the file");
-        }
-        return rows;
-    }
-
-    // Handles quoted cells such as "2,000" from Google Sheets
-    static String[] splitCsvLine(String line) {
-        List<String> cells = new ArrayList<>();
-        StringBuilder cell = new StringBuilder();
-        boolean quoted = false;
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (quoted) {
-                if (c == '"' && i + 1 < line.length() && line.charAt(i + 1) == '"') { cell.append('"'); i++; }
-                else if (c == '"') quoted = false;
-                else cell.append(c);
-            } else if (c == '"') {
-                quoted = true;
-            } else if (c == ',') {
-                cells.add(cell.toString());
-                cell.setLength(0);
-            } else {
-                cell.append(c);
-            }
-        }
-        cells.add(cell.toString());
-        return cells.toArray(new String[0]);
-    }
-
-    private static int[] columnsFromHeader(String[] head, List<String> errors) {
-        int[] col = {-1, -1, -1, -1, -1, -1};
-        for (int i = 0; i < head.length; i++) {
-            String h = head[i].trim().toLowerCase(Locale.ROOT);
-            if (col[0] < 0 && h.contains("date")) col[0] = i;
-            else if (col[1] < 0 && h.contains("shot")) col[1] = i;
-            else if (col[2] < 0 && h.contains("blend")) col[2] = i;
-            else if (col[3] < 0 && h.contains("cash")) col[3] = i;
-            else if (col[4] < 0 && h.contains("upi")) col[4] = i;
-            else if (col[5] < 0 && (h.contains("note") || h.contains("remark"))) col[5] = i;
-        }
-        String[] names = {"Date", "Shots", "Blends", "Cash received", "UPI received"};
-        for (int i = 0; i < 5; i++) {
-            if (col[i] < 0) errors.add("Column \"" + names[i] + "\" not found in the header row");
-        }
-        return col;
-    }
-
-    private static String cell(String[] row, int index) {
-        return index >= 0 && index < row.length && row[index] != null ? row[index].trim() : "";
-    }
-
-    // Month first only when some date can't be day first (e.g. 2/13/2026) and none needs day first (13/2/2026)
-    private static boolean isMonthFirst(List<String[]> rows, int dateCol) {
-        boolean secondOver12 = false, firstOver12 = false;
-        for (String[] r : rows) {
-            String[] p = cell(r, dateCol).split("[/\\-.]");
-            if (p.length != 3 || !p[0].matches("\\d{1,2}") || !p[1].matches("\\d{1,2}")) continue;
-            if (Integer.parseInt(p[1]) > 12) secondOver12 = true;
-            if (Integer.parseInt(p[0]) > 12) firstOver12 = true;
-        }
-        return secondOver12 && !firstOver12;
-    }
-
-    static LocalDate parseDate(String s, boolean monthFirst) {
-        if (s == null || s.isBlank()) return null;
-        s = s.trim();
-        // Strict: an impossible date such as 31/02/2026 is an error, not quietly 28 Feb
-        String[] patterns = monthFirst
-                ? new String[] {"M/d/uuuu", "M-d-uuuu", "M.d.uuuu", "uuuu-M-d", "d-MMM-uuuu", "d MMM uuuu", "d-MMM-uu", "d MMMM uuuu"}
-                : new String[] {"d/M/uuuu", "d-M-uuuu", "d.M.uuuu", "uuuu-M-d", "d-MMM-uuuu", "d MMM uuuu", "d-MMM-uu", "d MMMM uuuu"};
-        for (String p : patterns) {
-            try {
-                return LocalDate.parse(s, DateTimeFormatter.ofPattern(p, Locale.ENGLISH).withResolverStyle(ResolverStyle.STRICT));
-            } catch (Exception ignored) {
-                // try the next format
-            }
-        }
-        return null;
-    }
-
-    static Integer parseCount(String s) {
-        String v = s.replace(",", "").trim();
-        if (v.isEmpty()) return 0;
-        if (!v.matches("\\d{1,6}")) return null;
-        return Integer.parseInt(v);
-    }
-
-    static BigDecimal parseAmount(String s) {
-        String v = s.replace("₹", "").replace("Rs.", "").replace("Rs", "").replace(",", "").trim();
-        if (v.isEmpty()) return BigDecimal.ZERO;
-        if (!v.matches("\\d{1,10}(\\.\\d{1,2})?")) return null;
-        return new BigDecimal(v);
     }
 }

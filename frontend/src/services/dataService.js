@@ -87,12 +87,6 @@ export const managerService = {
     getManualSales: (shopId, from, to) => api.get('/api/manager/manual-sales', { params: { shopId, from, to } }),
     saveManualSales: (data) => api.put('/api/manager/manual-sales', data),
     deleteManualSales: (shopId, date) => api.delete('/api/manager/manual-sales', { params: { shopId, date } }),
-    importManualSales: (shopId, file) => {
-        const form = new FormData();
-        form.append('file', file);
-        // Let the browser set multipart/form-data with its boundary (the default is JSON)
-        return api.post('/api/manager/manual-sales/import', form, { params: { shopId }, headers: { 'Content-Type': undefined } });
-    },
     getShopUsers: (shopId) => api.get(`/api/manager/shop/${shopId}/users`),
     createUser: (data) => api.post('/api/manager/users', data),
     getShopStock: (shopId) => api.get(`/api/manager/shop/${shopId}/stock`),

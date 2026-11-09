@@ -28,8 +28,6 @@ const prevMonth = (date) => {
     return [start, end];
 };
 
-const TEMPLATE = 'Date,Shots,Blends,Cash received,UPI received,Note\n08-02-2026,30,55,2000,4950,\n';
-
 /**
  * Daily Sales: for branches that take orders by hand (e.g. Hinjewadi). Each day's
  * shots, blends and the cash / UPI actually received; the sales amount is worked
@@ -46,10 +44,6 @@ const DailySalesPage = () => {
     const [loading, setLoading] = useState(false);
     const [entry, setEntry] = useState(null);
     const [saving, setSaving] = useState(false);
-    const [importing, setImporting] = useState(false);
-    const [importFile, setImportFile] = useState(null);
-    const [importResult, setImportResult] = useState(null);
-    const [showImport, setShowImport] = useState(false);
 
     useEffect(() => {
         managerService.getManualSalesShops()
@@ -104,17 +98,19 @@ const DailySalesPage = () => {
     };
 
     const saveEntry = async () => {
-        const missing = ['shots', 'blends', 'receivedCash', 'receivedUpi'].filter(k => entry[k] === '');
-        if (missing.length > 0) {
-            toast.error('Enter shots, blends, cash and UPI received (0 if none)');
+        if (entry.shots === '' || entry.blends === '') {
+            toast.error('Enter shots and blends sold (0 if none)');
             return;
         }
+        // Received is optional: both empty = not known yet; one empty = ₹0
+        const noReceived = entry.receivedCash === '' && entry.receivedUpi === '';
+        const amountOrNull = (v) => (noReceived ? null : v === '' ? 0 : Number(v));
         setSaving(true);
         try {
             await managerService.saveManualSales({
                 shopId: Number(shopId), date: entry.date,
                 shots: Number(entry.shots), blends: Number(entry.blends),
-                receivedCash: Number(entry.receivedCash), receivedUpi: Number(entry.receivedUpi),
+                receivedCash: amountOrNull(entry.receivedCash), receivedUpi: amountOrNull(entry.receivedUpi),
                 note: entry.note,
             });
             toast.success(`${entry.date} saved`);
@@ -143,36 +139,6 @@ const DailySalesPage = () => {
         }
     };
 
-    const downloadTemplate = () => {
-        const url = URL.createObjectURL(new Blob([TEMPLATE], { type: 'text/csv' }));
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'daily_sales_template.csv';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    };
-
-    const runImport = async () => {
-        if (!importFile) { toast.error('Choose the CSV file first'); return; }
-        setImporting(true);
-        setImportResult(null);
-        try {
-            const res = await managerService.importManualSales(shopId, importFile);
-            const result = res.data.data;
-            setImportResult({ ...result, message: res.data.message });
-            if (result.errors.length === 0) {
-                toast.success(res.data.message);
-                pickRange(from, to);
-            }
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Import failed');
-        } finally {
-            setImporting(false);
-        }
-    };
-
     if (shops === null) return <div className="loading"><div className="spinner"></div></div>;
 
     if (shops.length === 0) {
@@ -193,14 +159,13 @@ const DailySalesPage = () => {
     const days = data?.days || [];
     const amount = entry ? num(entry.shots) * entry.shotPrice + num(entry.blends) * entry.blendPrice : 0;
     const received = entry ? num(entry.receivedCash) + num(entry.receivedUpi) : 0;
-    const receivedEntered = entry && entry.receivedCash !== '' && entry.receivedUpi !== '';
+    const receivedEntered = entry && (entry.receivedCash !== '' || entry.receivedUpi !== '');
 
     return (
         <div>
             <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                 <h1>Daily Sales</h1>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <button className="btn btn-outline" onClick={() => { setImportResult(null); setImportFile(null); setShowImport(true); }}>📥 Import sheet</button>
                     <button className="btn btn-primary" onClick={() => openEntry(today)}>+ Enter a day</button>
                 </div>
             </div>
@@ -309,20 +274,22 @@ const DailySalesPage = () => {
                         </div>
                         <div className="grid-2">
                             <div className="form-group">
-                                <label>💵 Cash received</label>
+                                <label>💵 Cash received <span style={{ textTransform: 'none', fontWeight: 400 }}>(optional)</span></label>
                                 <input type="number" min="0" step="0.01" inputMode="decimal" className="form-control"
                                     value={entry.receivedCash} onChange={e => setEntry({ ...entry, receivedCash: e.target.value })} />
                             </div>
                             <div className="form-group">
-                                <label>📱 UPI received</label>
+                                <label>📱 UPI received <span style={{ textTransform: 'none', fontWeight: 400 }}>(optional)</span></label>
                                 <input type="number" min="0" step="0.01" inputMode="decimal" className="form-control"
                                     value={entry.receivedUpi} onChange={e => setEntry({ ...entry, receivedUpi: e.target.value })} />
                             </div>
                         </div>
-                        {receivedEntered && (
+                        {receivedEntered ? (
                             <div className="form-group">
                                 Received {formatCurrency(received)} · Difference <Diff value={received - amount} />
                             </div>
+                        ) : (
+                            <p className="form-hint" style={{ marginTop: '-8px' }}>Leave both empty if the amount received isn't known yet; you can add it later.</p>
                         )}
                         <div className="form-group">
                             <label>Note (optional)</label>
@@ -338,32 +305,6 @@ const DailySalesPage = () => {
                 )}
             </Modal>
 
-            <Modal isOpen={showImport} onClose={() => !importing && setShowImport(false)} title="Import from Google Sheet">
-                <ol style={{ paddingLeft: '18px', marginTop: 0, lineHeight: 1.6 }}>
-                    <li>Columns: <strong>Date, Shots, Blends, Cash received, UPI received</strong>, and optionally <strong>Note</strong> (header row first).
-                        {' '}<button className="btn btn-outline btn-sm" onClick={downloadTemplate}>Download template</button></li>
-                    <li>Dates like <strong>08-02-2026</strong> or 08/02/2026 (day first). Leave cash or UPI empty for 0.</li>
-                    <li>In Google Sheets: <strong>File → Download → Comma-separated values (.csv)</strong>.</li>
-                    <li>Choose the file below and import. Every row is checked first; if any row is wrong, nothing is saved and the rows to fix are listed. Days already entered are updated.</li>
-                </ol>
-                <div className="form-group">
-                    <input type="file" accept=".csv,text/csv" className="form-control" onChange={e => { setImportFile(e.target.files[0] || null); setImportResult(null); }} />
-                </div>
-                {importResult && (
-                    importResult.errors.length === 0 ? (
-                        <p style={{ color: 'var(--success, #065f46)', fontWeight: 600 }}>✅ {importResult.message}</p>
-                    ) : (
-                        <div style={{ color: 'var(--danger, #991b1b)', maxHeight: '200px', overflowY: 'auto', fontSize: '14px' }}>
-                            <strong>{importResult.message}</strong>
-                            <ul style={{ paddingLeft: '18px' }}>{importResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
-                        </div>
-                    )
-                )}
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                    <button className="btn btn-outline" disabled={importing} onClick={() => setShowImport(false)}>Close</button>
-                    <button className="btn btn-primary" disabled={importing || !importFile} onClick={runImport}>{importing ? 'Importing…' : 'Import'}</button>
-                </div>
-            </Modal>
         </div>
     );
 };
