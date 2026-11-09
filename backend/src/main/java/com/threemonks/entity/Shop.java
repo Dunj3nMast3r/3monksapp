@@ -2,6 +2,7 @@ package com.threemonks.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -28,6 +29,24 @@ public class Shop {
 
     @Column(nullable = false)
     private Boolean active = true;
+
+    /**
+     * Orders are not taken in the app here: each day's shots, blends and amount
+     * received are entered by hand (Daily Sales), and the sales amount is worked
+     * out from these prices. Null on branches created before this existed.
+     */
+    @Column(name = "manual_sales")
+    private Boolean manualSales;
+
+    @Column(name = "shot_price", precision = 10, scale = 2)
+    private BigDecimal shotPrice;
+
+    @Column(name = "blend_price", precision = 10, scale = 2)
+    private BigDecimal blendPrice;
+
+    public boolean isManualSales() {
+        return Boolean.TRUE.equals(manualSales);
+    }
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

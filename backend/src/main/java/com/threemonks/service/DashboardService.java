@@ -29,13 +29,16 @@ public class DashboardService {
     private final PurchaseRepository purchaseRepository;
     private final StockRepository stockRepository;
     private final ShopRepository shopRepository;
+    // Hand-entered daily sales of manual branches are added to every sales figure
+    private final ManualSalesService manualSalesService;
 
     public DashboardResponse getSuperAdminDashboard(LocalDate fromDate, LocalDate toDate) {
         LocalDateTime start = BusinessDay.start(fromDate);
         LocalDateTime end = BusinessDay.end(toDate);
 
         BigDecimal totalSales = Optional.ofNullable(orderRepository.getTotalSalesByDateRange(start, end))
-                .orElse(BigDecimal.ZERO);
+                .orElse(BigDecimal.ZERO)
+                .add(manualSalesService.total(null, fromDate, toDate).amount);
         Long totalOrders = Optional.ofNullable(orderRepository.getOrderCountByDateRange(start, end))
                 .orElse(0L);
         BigDecimal totalCost = Optional.ofNullable(purchaseRepository.getTotalCostByDateRange(fromDate, toDate))
@@ -52,11 +55,13 @@ public class DashboardService {
                 .collect(Collectors.toList());
 
         // Sales per shop
+        Map<Long, ManualSalesService.Totals> manualByShop = manualSalesService.byShop(fromDate, toDate);
         List<DashboardResponse.SalesPerShopDTO> salesPerShop = shopRepository.findByActiveTrue().stream()
                 .map(shop -> {
                     BigDecimal shopSales = Optional.ofNullable(
                             orderRepository.getTotalSalesByShopAndDateRange(shop.getId(), start, end))
-                            .orElse(BigDecimal.ZERO);
+                            .orElse(BigDecimal.ZERO)
+                            .add(manualByShop.getOrDefault(shop.getId(), new ManualSalesService.Totals()).amount);
                     Long shopOrders = Optional.ofNullable(
                             orderRepository.getOrderCountByShopAndDateRange(shop.getId(), start, end))
                             .orElse(0L);
@@ -106,7 +111,8 @@ public class DashboardService {
         Shop shop = shopRepository.findById(shopId).orElseThrow();
 
         BigDecimal totalSales = Optional.ofNullable(orderRepository.getTotalSalesByShopAndDateRange(shopId, start, end))
-                .orElse(BigDecimal.ZERO);
+                .orElse(BigDecimal.ZERO)
+                .add(manualSalesService.total(shopId, fromDate, toDate).amount);
         Long totalOrders = Optional.ofNullable(orderRepository.getOrderCountByShopAndDateRange(shopId, start, end))
                 .orElse(0L);
         BigDecimal totalCost = Optional.ofNullable(purchaseRepository.getTotalCostByShopAndDateRange(shopId, fromDate, toDate))
@@ -160,7 +166,8 @@ public class DashboardService {
 
         if (shopId != null) {
             revenue = Optional.ofNullable(orderRepository.getTotalSalesByShopAndDateRange(shopId, start, end))
-                    .orElse(BigDecimal.ZERO);
+                    .orElse(BigDecimal.ZERO)
+                    .add(manualSalesService.total(shopId, fromDate, toDate).amount);
             cost = Optional.ofNullable(purchaseRepository.getTotalCostByShopAndDateRange(shopId, fromDate, toDate))
                     .orElse(BigDecimal.ZERO);
             orderCount = Optional.ofNullable(orderRepository.getOrderCountByShopAndDateRange(shopId, start, end))
@@ -168,7 +175,8 @@ public class DashboardService {
             shopName = shopRepository.findById(shopId).map(Shop::getName).orElse("Unknown");
         } else {
             revenue = Optional.ofNullable(orderRepository.getTotalSalesByDateRange(start, end))
-                    .orElse(BigDecimal.ZERO);
+                    .orElse(BigDecimal.ZERO)
+                    .add(manualSalesService.total(null, fromDate, toDate).amount);
             cost = Optional.ofNullable(purchaseRepository.getTotalCostByDateRange(fromDate, toDate))
                     .orElse(BigDecimal.ZERO);
             orderCount = Optional.ofNullable(orderRepository.getOrderCountByDateRange(start, end))
@@ -205,6 +213,7 @@ public class DashboardService {
                 sales = Optional.ofNullable(orderRepository.getTotalSalesByDateRange(monthStart, monthEnd))
                         .orElse(BigDecimal.ZERO);
             }
+            sales = sales.add(manualSalesService.total(shopId, current.atDay(1), current.atEndOfMonth()).amount);
             monthlySales.put(current.toString(), sales);
             current = current.plusMonths(1);
         }

@@ -29,6 +29,8 @@ public class AnalyticsService {
     private final StockRepository stockRepository;
     private final StockTransactionRepository stockTransactionRepository;
     private final EmployeeRepository employeeRepository;
+    // Hand-entered daily sales of manual branches count as revenue too
+    private final ManualSalesService manualSalesService;
 
     public AnalyticsResponse getAnalytics(LocalDate from, LocalDate to) {
         LocalDateTime start = BusinessDay.start(from);
@@ -55,10 +57,13 @@ public class AnalyticsService {
                         Collectors.reducing(BigDecimal.ZERO, Order::getTotalAmount, BigDecimal::add)
                 ));
 
+        Map<LocalDate, ManualSalesService.Totals> manual = manualSalesService.byDate(null, from, to);
+
         // Fill all dates in range
         LocalDate current = from;
         while (!current.isAfter(to)) {
-            dailySales.put(current.toString(), grouped.getOrDefault(current, BigDecimal.ZERO));
+            dailySales.put(current.toString(), grouped.getOrDefault(current, BigDecimal.ZERO)
+                    .add(manual.getOrDefault(current, new ManualSalesService.Totals()).amount));
             current = current.plusDays(1);
         }
         return dailySales;
@@ -132,7 +137,8 @@ public class AnalyticsService {
             LocalDate monthEndDate = current.atEndOfMonth();
 
             BigDecimal revenue = Optional.ofNullable(orderRepository.getTotalSalesByDateRange(monthStart, monthEnd))
-                    .orElse(BigDecimal.ZERO);
+                    .orElse(BigDecimal.ZERO)
+                    .add(manualSalesService.total(null, monthStartDate, monthEndDate).amount);
             BigDecimal cost = Optional.ofNullable(purchaseRepository.getTotalCostByDateRange(monthStartDate, monthEndDate))
                     .orElse(BigDecimal.ZERO);
             Long orders = Optional.ofNullable(orderRepository.getOrderCountByDateRange(monthStart, monthEnd))
@@ -161,7 +167,8 @@ public class AnalyticsService {
                 .orElse(BigDecimal.ZERO);
 
         BigDecimal totalRevenue = Optional.ofNullable(orderRepository.getTotalSalesByDateRange(start, end))
-                .orElse(BigDecimal.ZERO);
+                .orElse(BigDecimal.ZERO)
+                .add(manualSalesService.total(null, from, to).amount);
 
         // Break-even = Fixed Costs / (1 - Variable Costs / Revenue)
         BigDecimal breakEvenRevenue = BigDecimal.ZERO;

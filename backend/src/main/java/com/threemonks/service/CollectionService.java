@@ -5,10 +5,12 @@ import com.threemonks.dto.DailyCollectionResponse;
 import com.threemonks.dto.DailyCollectionResponse.CollectionRow;
 import com.threemonks.dto.CollectionActualRequest;
 import com.threemonks.entity.CollectionActual;
+import com.threemonks.entity.ManualDailySales;
 import com.threemonks.entity.Shop;
 import com.threemonks.exception.BadRequestException;
 import com.threemonks.exception.ResourceNotFoundException;
 import com.threemonks.repository.CollectionActualRepository;
+import com.threemonks.repository.ManualDailySalesRepository;
 import com.threemonks.repository.OrderRepository;
 import com.threemonks.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +57,7 @@ public class CollectionService {
     private final OrderRepository orderRepository;
     private final ShopRepository shopRepository;
     private final CollectionActualRepository actualRepository;
+    private final ManualDailySalesRepository manualRepository;
 
     /** Records (or replaces) what a branch actually received on a day. */
     @Transactional
@@ -164,6 +167,18 @@ public class CollectionService {
             perDay.computeIfAbsent(date, k -> new Bucket()).addUnits(shot, quantity);
         }
 
+        // Branches that take orders by hand: the day's entered shots, blends and amount
+        Map<Slot, BigDecimal> manualBySlot = new HashMap<>();
+        for (ManualDailySales m : manualRepository.findBySalesDateBetween(fromDate, toDate)) {
+            Long manualShopId = m.getShop().getId();
+            if (shopId != null && !shopId.equals(manualShopId))
+                continue;
+            shopNames.putIfAbsent(manualShopId, m.getShop().getName());
+            perBranch.computeIfAbsent(manualShopId, k -> new Bucket()).addManual(m);
+            perDay.computeIfAbsent(m.getSalesDate(), k -> new Bucket()).addManual(m);
+            manualBySlot.put(new Slot(manualShopId, m.getSalesDate()), m.getAmount());
+        }
+
         // What was actually received, against what the orders say, per branch-day
         Map<Slot, CollectionActual> actuals = new HashMap<>();
         for (CollectionActual actual : actualRepository.findByCollectionDateBetween(fromDate, toDate)) {
@@ -173,6 +188,7 @@ public class CollectionService {
         }
         // A branch-day "needs" an entry when it took orders or already has one
         Set<Slot> slots = new HashSet<>(actuals.keySet());
+        slots.addAll(manualBySlot.keySet());
         perSlot.forEach((slot, bucket) -> {
             if (bucket.cashOrders + bucket.upiOrders > 0)
                 slots.add(slot);
@@ -182,8 +198,9 @@ public class CollectionService {
             CollectionActual actual = actuals.get(slot);
             Bucket branch = perBranch.computeIfAbsent(slot.shopId(), k -> new Bucket());
             Bucket day = perDay.computeIfAbsent(slot.date(), k -> new Bucket());
-            branch.addSlot(expected, actual);
-            day.addSlot(expected, actual);
+            BigDecimal manual = manualBySlot.get(slot);
+            branch.addSlot(expected, actual, manual);
+            day.addSlot(expected, actual, manual);
         }
 
         List<CollectionRow> branches = new ArrayList<>();
@@ -249,17 +266,34 @@ public class CollectionService {
         private BigDecimal actualUpi = BigDecimal.ZERO;
         private BigDecimal cashDifference = BigDecimal.ZERO;
         private BigDecimal upiDifference = BigDecimal.ZERO;
+        // Hand-entered days (manual-sales branches): their amount has no cash/UPI split,
+        // so their difference is kept as a whole
+        private long manualDays;
+        private BigDecimal manualAmount = BigDecimal.ZERO;
+        private BigDecimal manualDifference = BigDecimal.ZERO;
+
+        void addManual(ManualDailySales m) {
+            manualDays++;
+            shots += m.getShots();
+            blends += m.getBlends();
+            manualAmount = manualAmount.add(m.getAmount());
+        }
 
         // Differences only count branch-days with an entry, so a missing entry never reads as a shortfall
-        void addSlot(Bucket expected, CollectionActual actual) {
+        void addSlot(Bucket expected, CollectionActual actual, BigDecimal manual) {
             actualSlots++;
             if (actual == null)
                 return;
             actualEntries++;
             actualCash = actualCash.add(actual.getActualCash());
             actualUpi = actualUpi.add(actual.getActualUpi());
-            cashDifference = cashDifference.add(actual.getActualCash().subtract(expected.cashAmount));
-            upiDifference = upiDifference.add(actual.getActualUpi().subtract(expected.upiAmount));
+            if (manual == null) {
+                cashDifference = cashDifference.add(actual.getActualCash().subtract(expected.cashAmount));
+                upiDifference = upiDifference.add(actual.getActualUpi().subtract(expected.upiAmount));
+            } else {
+                manualDifference = manualDifference.add(actual.getActualCash().add(actual.getActualUpi())
+                        .subtract(expected.cashAmount).subtract(expected.upiAmount).subtract(manual));
+            }
         }
 
         void addCash(long orders, BigDecimal amount) {
@@ -299,6 +333,9 @@ public class CollectionService {
             actualUpi = actualUpi.add(other.actualUpi);
             cashDifference = cashDifference.add(other.cashDifference);
             upiDifference = upiDifference.add(other.upiDifference);
+            manualDays += other.manualDays;
+            manualAmount = manualAmount.add(other.manualAmount);
+            manualDifference = manualDifference.add(other.manualDifference);
         }
 
         CollectionRow toRow(Long shopId, String shopName, LocalDate date) {
@@ -313,7 +350,9 @@ public class CollectionService {
                     .totalOrders(cashOrders + upiOrders)
                     .cashAmount(cashAmount)
                     .upiAmount(upiAmount)
-                    .totalAmount(cashAmount.add(upiAmount))
+                    .manualAmount(manualDays > 0 ? manualAmount : null)
+                    .manual(manualDays > 0)
+                    .totalAmount(cashAmount.add(upiAmount).add(manualAmount))
                     .cancelledOrders(cancelledOrders)
                     .cancelledAmount(cancelledAmount)
                     .actualSlots(actualSlots)
@@ -323,7 +362,7 @@ public class CollectionService {
                     .actualTotal(actualEntries > 0 ? actualCash.add(actualUpi) : null)
                     .cashDifference(actualEntries > 0 ? cashDifference : null)
                     .upiDifference(actualEntries > 0 ? upiDifference : null)
-                    .difference(actualEntries > 0 ? cashDifference.add(upiDifference) : null)
+                    .difference(actualEntries > 0 ? cashDifference.add(upiDifference).add(manualDifference) : null)
                     .build();
         }
     }

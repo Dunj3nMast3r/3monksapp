@@ -5339,3 +5339,13 @@ tr:last-child td {
     font-weight: 500;
     color: var(--warning-text);
 }
+
+
+/* Daily Sales: compact rows so all columns fit on a phone */
+.daily-sales-table th,
+.daily-sales-table td {
+    padding: 8px 6px;
+}
+.daily-sales-table tbody tr:hover {
+    background: var(--bg-light, #f5f3ff);
+}
