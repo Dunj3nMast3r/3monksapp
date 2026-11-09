@@ -10,10 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -180,17 +178,5 @@ public class ManagerController {
             @AuthenticationPrincipal UserPrincipal principal) {
         manualSalesService.delete(shopId, date, principal);
         return ResponseEntity.ok(ApiResponse.success("Day removed", null));
-    }
-
-    // Google Sheet downloaded as CSV; nothing is saved if any row is wrong
-    @PostMapping("/manual-sales/import")
-    public ResponseEntity<ApiResponse<ManualSalesImportResponse>> importManualSales(@RequestParam Long shopId,
-            @RequestParam("file") MultipartFile file,
-            @AuthenticationPrincipal UserPrincipal principal) throws IOException {
-        ManualSalesImportResponse result = manualSalesService.importCsv(shopId, file.getInputStream(), principal);
-        String message = result.getErrors().isEmpty()
-                ? "Imported: " + result.getCreated() + " new day(s), " + result.getUpdated() + " updated"
-                : "Nothing imported: fix the rows listed and upload again";
-        return ResponseEntity.ok(ApiResponse.success(message, result));
     }
 }
