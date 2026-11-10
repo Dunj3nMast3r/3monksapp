@@ -7,7 +7,7 @@ import { FiHome, FiShoppingCart, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiBo
 
 const Sidebar = ({ isOpen, onClose, collapsed }) => {
     const { user, logout, isAdmin, isManager, hasRole } = useAuth();
-    // Managers see Daily Sales only when their branch takes orders by hand
+    // Managers see Manual Sales Entry only when their branch takes orders by hand
     const [hasManualBranch, setHasManualBranch] = useState(false);
     useEffect(() => {
         if (user?.role !== 'SHOP_MANAGER') return;
@@ -64,7 +64,7 @@ const Sidebar = ({ isOpen, onClose, collapsed }) => {
                             <div className="sidebar-section">Reports</div>
                             <NavLink to="/dashboard/reports" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiBarChart2 /> Reports</NavLink>
                             {(isAdmin() || hasManualBranch) && (
-                                <NavLink to="/dashboard/daily-sales" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiEdit3 /> Daily Sales</NavLink>
+                                <NavLink to="/dashboard/daily-sales" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiEdit3 /> Manual Sales Entry</NavLink>
                             )}
                             {isAdmin() && (
                                 <>

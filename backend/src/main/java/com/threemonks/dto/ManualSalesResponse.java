@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** Daily Sales page: a manual-sales branch's entries for a period. */
+/** Manual Sales Entry page: a manual-sales branch's entries for a period. */
 @Data
 @Builder
 public class ManualSalesResponse {

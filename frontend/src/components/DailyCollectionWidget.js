@@ -167,10 +167,10 @@ const DailyCollectionWidget = ({ compact = false }) => {
                 ) : num(row.actualSlots) > 0 ? (
                     <span style={{ color: 'var(--text-light)' }}>Not entered</span>
                 ) : '-'}
-                {/* Hand-entered branches: sales and received are entered together on Daily Sales */}
+                {/* Hand-entered branches: sales and received are entered together on Manual Sales Entry */}
                 {!compact && row.editable && row.manual && (
                     <div>
-                        <Link className="btn btn-outline btn-sm" style={{ marginTop: '4px' }} to="/dashboard/daily-sales">Daily Sales</Link>
+                        <Link className="btn btn-outline btn-sm" style={{ marginTop: '4px' }} to="/dashboard/daily-sales">Manual Sales Entry</Link>
                     </div>
                 )}
                 {!compact && row.editable && !row.manual && (num(row.totalOrders) > 0 || num(row.actualEntries) > 0) && (

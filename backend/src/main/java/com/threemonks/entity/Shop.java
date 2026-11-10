@@ -32,7 +32,7 @@ public class Shop {
 
     /**
      * Orders are not taken in the app here: each day's shots, blends and amount
-     * received are entered by hand (Daily Sales), and the sales amount is worked
+     * received are entered by hand (Manual Sales Entry), and the sales amount is worked
      * out from these prices. Null on branches created before this existed.
      */
     @Column(name = "manual_sales")

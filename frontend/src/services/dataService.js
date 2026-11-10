@@ -82,7 +82,7 @@ export const adminService = {
 };
 
 export const managerService = {
-    // Daily Sales: hand-entered days for branches that take orders by hand
+    // Manual Sales Entry: hand-entered days for branches that take orders by hand
     getManualSalesShops: () => api.get('/api/manager/manual-sales/shops'),
     getManualSales: (shopId, from, to) => api.get('/api/manager/manual-sales', { params: { shopId, from, to } }),
     saveManualSales: (data) => api.put('/api/manager/manual-sales', data),

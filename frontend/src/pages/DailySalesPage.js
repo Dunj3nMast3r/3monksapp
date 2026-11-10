@@ -29,7 +29,7 @@ const prevMonth = (date) => {
 };
 
 /**
- * Daily Sales: for branches that take orders by hand (e.g. Hinjewadi). Each day's
+ * Manual Sales Entry: for branches that take orders by hand (e.g. Hinjewadi). Each day's
  * shots, blends and the cash / UPI actually received; the sales amount is worked
  * out from the branch's prices. These days feed every sales report.
  */
@@ -64,7 +64,7 @@ const DailySalesPage = () => {
             const res = await managerService.getManualSales(shopId, f, t);
             setData(res.data.data);
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to load daily sales');
+            toast.error(err.response?.data?.message || 'Failed to load manual sales');
         } finally {
             setLoading(false);
         }
@@ -144,7 +144,7 @@ const DailySalesPage = () => {
     if (shops.length === 0) {
         return (
             <div>
-                <div className="page-header"><h1>Daily Sales</h1></div>
+                <div className="page-header"><h1>Manual Sales Entry</h1></div>
                 <div className="card empty-state">
                     <div className="icon">✍️</div>
                     <p>{user?.role === 'SUPER_ADMIN'
@@ -164,7 +164,7 @@ const DailySalesPage = () => {
     return (
         <div>
             <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                <h1>Daily Sales</h1>
+                <h1>Manual Sales Entry</h1>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <button className="btn btn-primary" onClick={() => openEntry(today)}>+ Enter a day</button>
                 </div>
