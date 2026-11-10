@@ -134,7 +134,8 @@ const DailyCollectionWidget = ({ compact = false }) => {
 
     const totals = data?.totals;
     const branches = data?.branches || [];
-    const days = data?.days || [];
+    // Day by Day: latest date first
+    const days = [...(data?.days || [])].sort((a, b) => b.date.localeCompare(a.date));
     const showCancelled = num(totals?.cancelledOrders) > 0;
     const hasBranchData = branches.some(b => num(b.totalOrders) > 0 || num(b.cancelledOrders) > 0 || num(b.manualAmount) > 0);
 
