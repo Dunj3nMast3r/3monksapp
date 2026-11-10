@@ -1,4 +1,4 @@
-# Daily Sales (branches that take orders by hand)
+# Manual Sales Entry (branches that take orders by hand)
 
 For a branch that does not take orders in the app (e.g. **Hinjewadi**), each
 day's sales are entered by hand and then appear in every sales report, branch
@@ -12,10 +12,10 @@ by branch, like the other branches.
 New prices apply to days entered from then on; days already entered keep the
 prices they were entered with.
 
-## Entering a day — Daily Sales page
+## Entering a day — Manual Sales Entry page
 
 Admins (any manual branch) and the branch's manager (own branch only) see
-**Daily Sales** in the menu.
+**Manual Sales Entry** in the menu.
 
 | Field | |
 |---|---|

@@ -5341,7 +5341,7 @@ tr:last-child td {
 }
 
 
-/* Daily Sales: compact rows so all columns fit on a phone */
+/* Manual Sales Entry: compact rows so all columns fit on a phone */
 .daily-sales-table th,
 .daily-sales-table td {
     padding: 8px 6px;

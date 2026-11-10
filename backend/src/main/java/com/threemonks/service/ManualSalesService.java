@@ -40,7 +40,7 @@ public class ManualSalesService {
     private final ShopRepository shopRepository;
     private final CollectionService collectionService;
 
-    // ---------- Daily Sales page ----------
+    // ---------- Manual Sales Entry page ----------
 
     /** Manual-sales branches this user may enter for: admins all, a manager their own. */
     public List<Shop> shopsFor(UserPrincipal user) {
@@ -165,7 +165,7 @@ public class ManualSalesService {
         }
         Shop shop = shopRepository.findById(shopId).orElseThrow(() -> new ResourceNotFoundException("Shop", "id", shopId));
         if (!shop.isManualSales()) {
-            throw new BadRequestException(shop.getName() + " takes orders in the app; daily sales are entered only for manual branches");
+            throw new BadRequestException(shop.getName() + " takes orders in the app; Manual Sales Entry is only for branches that take orders by hand");
         }
         if (shop.getShotPrice() == null || shop.getBlendPrice() == null) {
             throw new BadRequestException("Set the shot and blend prices for " + shop.getName() + " first (Shops → Edit)");

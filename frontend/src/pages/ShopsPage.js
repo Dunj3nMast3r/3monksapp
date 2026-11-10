@@ -152,7 +152,7 @@ const ShopsPage = () => {
                                 onChange={e => setForm({ ...form, manualSales: e.target.checked })} />
                             Sales entered manually (orders not taken in the app)
                         </label>
-                        <small className="form-hint">Each day's shots, blends and amount received are entered on the Daily Sales page. The sales amount is worked out from these prices.</small>
+                        <small className="form-hint">Each day's shots, blends and amount received are entered on the Manual Sales Entry page. The sales amount is worked out from these prices.</small>
                     </div>
                     {form.manualSales && (
                         <div className="grid-2">

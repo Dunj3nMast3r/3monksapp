@@ -139,7 +139,7 @@ public class ManagerController {
         return ResponseEntity.ok(ApiResponse.success(stockService.getPurchasesByShop(shopId, currentUser)));
     }
 
-    // ---- Daily Sales: hand-entered days for branches that take orders by hand ----
+    // ---- Manual Sales Entry: hand-entered days for branches that take orders by hand ----
 
     @GetMapping("/manual-sales/shops")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getManualSalesShops(
