@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { managerService } from '../services/dataService';
 import { getInitials, roleLabels } from '../utils/helpers';
-import { FiHome, FiShoppingCart, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiBox, FiLayers, FiMapPin, FiUserCheck, FiList, FiTrendingUp, FiX, FiMessageSquare, FiBriefcase, FiZap, FiClock, FiRefreshCw, FiDollarSign, FiEdit3 } from 'react-icons/fi';
+import { FiHome, FiShoppingCart, FiPackage, FiUsers, FiBarChart2, FiLogOut, FiBox, FiLayers, FiMapPin, FiUserCheck, FiList, FiTrendingUp, FiX, FiMessageSquare, FiBriefcase, FiZap, FiClock, FiRefreshCw, FiDollarSign, FiEdit3, FiCalendar } from 'react-icons/fi';
 
 const Sidebar = ({ isOpen, onClose, collapsed }) => {
     const { user, logout, isAdmin, isManager, hasRole } = useAuth();
@@ -56,6 +56,7 @@ const Sidebar = ({ isOpen, onClose, collapsed }) => {
                         <>
                             <div className="sidebar-section">Inventory</div>
                             <NavLink to="/dashboard/stock" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiPackage /> Stock</NavLink>
+                            <NavLink to="/dashboard/attendance" className={({ isActive }) => isActive ? 'active' : ''} onClick={handleNavClick}><FiCalendar /> Attendance</NavLink>
                         </>
                     )}
 

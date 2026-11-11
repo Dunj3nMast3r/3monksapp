@@ -25,6 +25,7 @@ public class ManagerController {
     private final StockService stockService;
     private final AuthService authService;
     private final ManualSalesService manualSalesService;
+    private final AttendanceService attendanceService;
 
     // Users in shop
     @GetMapping("/shop/{shopId}/users")
@@ -178,5 +179,38 @@ public class ManagerController {
             @AuthenticationPrincipal UserPrincipal principal) {
         manualSalesService.delete(shopId, date, principal);
         return ResponseEntity.ok(ApiResponse.success("Day removed", null));
+    }
+
+    // ---- Staff attendance: managers mark their own branch, admins any branch ----
+
+    @GetMapping("/attendance/shops")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAttendanceShops(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success(attendanceService.shopsFor(principal).stream()
+                .map(s -> Map.<String, Object>of("id", s.getId(), "name", s.getName()))
+                .toList()));
+    }
+
+    @GetMapping("/attendance")
+    public ResponseEntity<ApiResponse<AttendanceDayResponse>> getAttendanceDay(
+            @RequestParam Long shopId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success(attendanceService.getDay(shopId, date, principal)));
+    }
+
+    @PutMapping("/attendance")
+    public ResponseEntity<ApiResponse<Void>> saveAttendanceDay(@Valid @RequestBody AttendanceRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        attendanceService.saveDay(request, principal);
+        return ResponseEntity.ok(ApiResponse.success("Attendance saved", null));
+    }
+
+    @GetMapping("/attendance/month")
+    public ResponseEntity<ApiResponse<AttendanceMonthResponse>> getAttendanceMonth(
+            @RequestParam Long shopId,
+            @RequestParam(required = false) String month,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success(attendanceService.getMonth(shopId, month, principal)));
     }
 }

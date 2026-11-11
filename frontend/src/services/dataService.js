@@ -82,6 +82,11 @@ export const adminService = {
 };
 
 export const managerService = {
+    // Staff attendance (managers: own branch, admins: any branch)
+    getAttendanceShops: () => api.get('/api/manager/attendance/shops'),
+    getAttendance: (shopId, date) => api.get('/api/manager/attendance', { params: { shopId, date } }),
+    saveAttendance: (data) => api.put('/api/manager/attendance', data),
+    getAttendanceMonth: (shopId, month) => api.get('/api/manager/attendance/month', { params: { shopId, month } }),
     // Manual Sales Entry: hand-entered days for branches that take orders by hand
     getManualSalesShops: () => api.get('/api/manager/manual-sales/shops'),
     getManualSales: (shopId, from, to) => api.get('/api/manager/manual-sales', { params: { shopId, from, to } }),
