@@ -50,6 +50,7 @@ public class ShopService {
                 .build();
         applyManualSales(shop, request);
         shop.setMonthlyLeaves(request.getMonthlyLeaves());
+        shop.setLeaveStartMonth(request.getLeaveStartMonth() == null ? null : request.getLeaveStartMonth().withDayOfMonth(1));
         return toResponse(shopRepository.save(shop));
     }
 
@@ -66,6 +67,7 @@ public class ShopService {
         shop.setGstNumber(request.getGstNumber());
         applyManualSales(shop, request);
         shop.setMonthlyLeaves(request.getMonthlyLeaves());
+        shop.setLeaveStartMonth(request.getLeaveStartMonth() == null ? null : request.getLeaveStartMonth().withDayOfMonth(1));
         return toResponse(shopRepository.save(shop));
     }
 
@@ -108,6 +110,7 @@ public class ShopService {
                 .shotPrice(shop.getShotPrice())
                 .blendPrice(shop.getBlendPrice())
                 .monthlyLeaves(shop.getMonthlyLeaves())
+                .leaveStartMonth(shop.getLeaveStartMonth())
                 .build();
     }
 }

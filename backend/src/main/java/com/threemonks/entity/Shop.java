@@ -48,6 +48,13 @@ public class Shop {
     @Column(name = "monthly_leaves", precision = 4, scale = 1)
     private BigDecimal monthlyLeaves;
 
+    /**
+     * First month leave is given here (stored as its 1st day). Earlier months give
+     * nothing and count nothing; null = from each employee's joining month.
+     */
+    @Column(name = "leave_start_month")
+    private java.time.LocalDate leaveStartMonth;
+
     public boolean isManualSales() {
         return Boolean.TRUE.equals(manualSales);
     }

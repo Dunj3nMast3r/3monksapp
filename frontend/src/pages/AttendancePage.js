@@ -319,7 +319,7 @@ const AttendancePage = () => {
                                                         <td style={{ fontWeight: 700 }}>{fmt(r.leaveBalance.balance)}</td>
                                                         <td style={{ color: Number(r.leaveBalance.extra) ? 'var(--danger, #991b1b)' : undefined, fontWeight: Number(r.leaveBalance.extra) ? 700 : undefined }}>{fmt(r.leaveBalance.extra)}</td>
                                                     </>
-                                                ) : <td colSpan={5} style={{ color: 'var(--text-light)' }}>joined later</td>}
+                                                ) : <td colSpan={5} style={{ color: 'var(--text-light)' }}>not started</td>}
                                             </tr>
                                         ))}
                                     </tbody>

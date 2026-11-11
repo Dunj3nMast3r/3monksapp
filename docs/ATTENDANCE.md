@@ -35,6 +35,9 @@ keeps their past marks with the branch they were at.
 
 - **Shops → Edit → Paid leaves per month**: how many paid leaves each employee at
   that branch gets a month (e.g. 2; halves allowed). Empty = balance not tracked.
+- **Shops → Edit → Leave starts from (month)** (optional): no leave is given or
+  counted before this month at that branch (e.g. Kharadi: November 2026). Empty =
+  from each employee's joining month.
 - **Employees → Add / Edit → Joining date**: leave is given from this month.
   Employees added before this existed got the day they were added to the app;
   correct it if they joined earlier.

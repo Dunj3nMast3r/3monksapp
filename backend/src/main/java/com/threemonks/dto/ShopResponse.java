@@ -20,4 +20,5 @@ public class ShopResponse {
     private java.math.BigDecimal shotPrice;
     private java.math.BigDecimal blendPrice;
     private java.math.BigDecimal monthlyLeaves;
+    private java.time.LocalDate leaveStartMonth;
 }
