@@ -42,6 +42,7 @@ public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
     private final ShopRepository shopRepository;
+    private final LeaveBalanceService leaveBalanceService;
 
     @Transactional(readOnly = true)
     public AttendanceDayResponse getDay(Long shopId, LocalDate date, UserPrincipal user) {
@@ -67,12 +68,14 @@ public class AttendanceService {
                             .markedBy(a == null ? null : a.getMarkedBy())
                             .markedAt(a == null ? null : a.getMarkedAt())
                             .active(Boolean.TRUE.equals(e.getActive()) && e.getShop().getId().equals(shop.getId()))
+                            .leaveBalance(leaveBalanceService.forMonth(e, java.time.YearMonth.from(day)))
                             .build();
                 })
                 .sorted(Comparator.comparing(AttendanceDayResponse.Row::getName, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toList());
         return AttendanceDayResponse.builder()
                 .shopId(shop.getId()).shopName(shop.getName()).date(day).employees(rows)
+                .monthlyLeaves(shop.getMonthlyLeaves())
                 .build();
     }
 
@@ -147,7 +150,7 @@ public class AttendanceService {
             days.values().forEach(s -> counts.merge(s, 1, Integer::sum));
 
             // Days that should have a mark: from the later of the 1st and the day they joined, up to today
-            LocalDate joined = e.getCreatedAt() != null ? BusinessDay.dateOf(e.getCreatedAt()) : from;
+            LocalDate joined = e.effectiveJoinDate();
             LocalDate start = joined.isAfter(from) ? joined : from;
             int notMarked = 0;
             boolean stillHere = Boolean.TRUE.equals(e.getActive()) && e.getShop().getId().equals(shop.getId());
@@ -164,6 +167,7 @@ public class AttendanceService {
                     .absent(counts.getOrDefault(AttendanceStatus.ABSENT, 0))
                     .weekOff(counts.getOrDefault(AttendanceStatus.WEEK_OFF, 0))
                     .notMarked(notMarked)
+                    .leaveBalance(leaveBalanceService.forMonth(e, ym))
                     .markFrom(stillHere ? start : null)
                     .days(days)
                     .build());
@@ -172,6 +176,7 @@ public class AttendanceService {
         return AttendanceMonthResponse.builder()
                 .shopId(shop.getId()).shopName(shop.getName()).month(ym.toString())
                 .from(from).to(to)
+                .monthlyLeaves(shop.getMonthlyLeaves())
                 .daysSoFar(lastDue.isBefore(from) ? 0 : (int) (lastDue.toEpochDay() - from.toEpochDay() + 1))
                 .employees(rows)
                 .build();

@@ -44,6 +44,10 @@ public class Shop {
     @Column(name = "blend_price", precision = 10, scale = 2)
     private BigDecimal blendPrice;
 
+    /** Paid leaves each employee here gets per month; null or 0 = leave balance not tracked. */
+    @Column(name = "monthly_leaves", precision = 4, scale = 1)
+    private BigDecimal monthlyLeaves;
+
     public boolean isManualSales() {
         return Boolean.TRUE.equals(manualSales);
     }

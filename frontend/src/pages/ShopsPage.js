@@ -15,7 +15,7 @@ const ShopsPage = () => {
     const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const emptyForm = { name: '', address: '', phone: '', email: '', gstNumber: '', manualSales: false, shotPrice: '', blendPrice: '' };
+    const emptyForm = { name: '', address: '', phone: '', email: '', gstNumber: '', manualSales: false, shotPrice: '', blendPrice: '', monthlyLeaves: '' };
     const [form, setForm] = useState(emptyForm);
     const [errors, setErrors] = useState({});
 
@@ -41,6 +41,7 @@ const ShopsPage = () => {
         setForm({
             name: shop.name, address: shop.address || '', phone: shop.phone || '', email: shop.email || '', gstNumber: shop.gstNumber || '',
             manualSales: !!shop.manualSales, shotPrice: shop.shotPrice ?? '', blendPrice: shop.blendPrice ?? '',
+            monthlyLeaves: shop.monthlyLeaves ?? '',
         });
         setErrors({}); setShowModal(true);
     };
@@ -71,6 +72,7 @@ const ShopsPage = () => {
                 ...form,
                 shotPrice: form.shotPrice === '' ? null : Number(form.shotPrice),
                 blendPrice: form.blendPrice === '' ? null : Number(form.blendPrice),
+                monthlyLeaves: form.monthlyLeaves === '' ? null : Number(form.monthlyLeaves),
             };
             if (editing) { await adminService.updateShop(editing.id, payload); toast.success('Shop updated'); }
             else { await adminService.createShop(payload); toast.success('Shop created'); }
@@ -145,6 +147,14 @@ const ShopsPage = () => {
                     <div className="form-group"><label>GST Number</label>
                         <input className={`form-control${errors.gstNumber ? ' input-error' : ''}`} value={form.gstNumber} onChange={e => { setForm({ ...form, gstNumber: e.target.value.toUpperCase() }); setErrors(prev => ({ ...prev, gstNumber: '' })); }} placeholder="e.g. 22AAAAA0000A1Z5" />
                         {errors.gstNumber && <span className="field-error">{errors.gstNumber}</span>}
+                    </div>
+                    <div className="form-group">
+                        <label>Paid leaves per month (per employee)</label>
+                        <input type="number" min="0" max="31" step="0.5" inputMode="decimal" className={`form-control${errors.monthlyLeaves ? ' input-error' : ''}`}
+                            value={form.monthlyLeaves} placeholder="e.g. 2 (empty = leave balance not tracked)"
+                            onChange={e => { setForm({ ...form, monthlyLeaves: e.target.value }); setErrors(prev => ({ ...prev, monthlyLeaves: '' })); }} />
+                        {errors.monthlyLeaves && <span className="field-error">{errors.monthlyLeaves}</span>}
+                        <small className="form-hint">Added every month from each employee's joining date; unused leave carries over (at most 6).</small>
                     </div>
                     <div className="form-group">
                         <label style={{ display: 'flex', gap: '8px', alignItems: 'center', textTransform: 'none', cursor: 'pointer' }}>

@@ -49,6 +49,7 @@ public class ShopService {
                 .active(true)
                 .build();
         applyManualSales(shop, request);
+        shop.setMonthlyLeaves(request.getMonthlyLeaves());
         return toResponse(shopRepository.save(shop));
     }
 
@@ -64,6 +65,7 @@ public class ShopService {
         shop.setEmail(request.getEmail());
         shop.setGstNumber(request.getGstNumber());
         applyManualSales(shop, request);
+        shop.setMonthlyLeaves(request.getMonthlyLeaves());
         return toResponse(shopRepository.save(shop));
     }
 
@@ -105,6 +107,7 @@ public class ShopService {
                 .manualSales(shop.isManualSales())
                 .shotPrice(shop.getShotPrice())
                 .blendPrice(shop.getBlendPrice())
+                .monthlyLeaves(shop.getMonthlyLeaves())
                 .build();
     }
 }

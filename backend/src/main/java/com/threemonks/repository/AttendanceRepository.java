@@ -15,4 +15,6 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findByShopIdAndAttendanceDateBetween(Long shopId, LocalDate from, LocalDate to);
 
     Optional<Attendance> findByEmployeeIdAndAttendanceDate(Long employeeId, LocalDate date);
+
+    List<Attendance> findByEmployeeIdAndAttendanceDateBetween(Long employeeId, LocalDate from, LocalDate to);
 }

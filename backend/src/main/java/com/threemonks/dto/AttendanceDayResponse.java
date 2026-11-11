@@ -16,6 +16,8 @@ public class AttendanceDayResponse {
     private String shopName;
     private LocalDate date;
     private List<Row> employees;
+    /** The branch's paid leaves per month; null when not tracked. */
+    private java.math.BigDecimal monthlyLeaves;
 
     @Data
     @Builder
@@ -30,5 +32,7 @@ public class AttendanceDayResponse {
         private LocalDateTime markedAt;
         /** False for someone no longer working here who still has a mark that day. */
         private boolean active;
+        /** Leave for the month of this day (as saved); null when not tracked. */
+        private com.threemonks.service.LeaveBalanceService.MonthLeave leaveBalance;
     }
 }

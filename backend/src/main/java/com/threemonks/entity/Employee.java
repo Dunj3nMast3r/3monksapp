@@ -34,6 +34,10 @@ public class Employee {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    /** The day they started work; leave is allocated from this month. */
+    @Column(name = "join_date")
+    private java.time.LocalDate joinDate;
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
@@ -41,6 +45,13 @@ public class Employee {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (joinDate == null) joinDate = createdAt.toLocalDate();
+    }
+
+    /** Joining date, falling back to the day they were added to the app. */
+    public java.time.LocalDate effectiveJoinDate() {
+        if (joinDate != null) return joinDate;
+        return createdAt != null ? createdAt.toLocalDate() : java.time.LocalDate.now();
     }
 
     @PreUpdate
