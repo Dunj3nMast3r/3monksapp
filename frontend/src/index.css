@@ -5468,3 +5468,18 @@ tr:last-child td {
     color: #7f1d1d;
     background: #fee2e2;
 }
+
+/* Monthly summary: compact so every column fits on a phone */
+.attendance-summary th,
+.attendance-summary td {
+    padding: 8px 4px;
+    text-align: center;
+}
+.attendance-summary th {
+    white-space: normal;
+    line-height: 1.2;
+}
+.attendance-summary th:first-child,
+.attendance-summary td:first-child {
+    text-align: left;
+}

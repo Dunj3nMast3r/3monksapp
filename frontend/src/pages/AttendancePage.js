@@ -286,8 +286,8 @@ const AttendancePage = () => {
                             <div className="empty-state"><div className="icon">👥</div><p>No employees in this branch.</p></div>
                         ) : (
                             <div className="table-wrapper">
-                                <table>
-                                    <thead><tr><th>Employee</th><th title="Present">✅</th><th title="Half day">🌗</th><th title="Leave">🏖️</th><th title="Absent">❌</th><th title="Week off">💤</th><th title="Not marked">⬜</th>
+                                <table className="attendance-summary">
+                                    <thead><tr><th>Employee</th><th>Present</th><th>Half day</th><th>Leave</th><th>Absent</th><th>Week off</th><th>Not marked</th>
                                     </tr></thead>
                                     <tbody>
                                         {monthData.employees.map(r => (
