@@ -5456,3 +5456,15 @@ tr:last-child td {
     border-style: dashed;
     border-color: #f87171;
 }
+
+.attendance-leave-left {
+    font-size: 12px;
+    color: #1e3a8a;
+    background: #dbeafe;
+    border-radius: 999px;
+    padding: 1px 8px;
+}
+.attendance-leave-over {
+    color: #7f1d1d;
+    background: #fee2e2;
+}

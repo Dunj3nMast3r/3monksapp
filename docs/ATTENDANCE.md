@@ -31,3 +31,21 @@ it in the register.
 
 Records only: attendance does not change pay. Moving an employee to another branch
 keeps their past marks with the branch they were at.
+
+## Paid leave balance
+
+- **Shops → Edit → Paid leaves per month**: how many paid leaves each employee at
+  that branch gets a month (e.g. 2; halves allowed). Empty = balance not tracked.
+- **Employees → Add / Edit → Joining date**: leave is given from this month.
+  Employees added before this existed got the day they were added to the app;
+  correct it if they joined earlier.
+- Each month the branch's leaves are added; **Leave** uses 1, **Half day** 0.5,
+  **Week off** nothing. Unused leave carries into the next month, **at most 6**;
+  no yearly reset.
+- Leave beyond the balance is shown as **extra leave** for that month (allowed, not
+  blocked); it doesn't reduce later months.
+
+Where it shows: each person's "paid leave left" on the daily register (with a
+warning when marking leave they don't have), a **Paid leave** table in the monthly
+summary (carried, +month, used, left, extra), and **Leave left** on the Employees
+list.

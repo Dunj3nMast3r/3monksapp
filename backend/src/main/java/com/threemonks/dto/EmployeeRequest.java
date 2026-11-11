@@ -29,4 +29,7 @@ public class EmployeeRequest {
     @DecimalMin(value = "0.00", message = "Incentive percentage cannot be negative")
     @DecimalMax(value = "100.00", message = "Incentive percentage cannot exceed 100%")
     private BigDecimal incentivePercentage;
+
+    /** The day they started work (leave is allocated from this month). Today when left empty on a new employee. */
+    private java.time.LocalDate joinDate;
 }

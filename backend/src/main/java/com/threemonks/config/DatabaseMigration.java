@@ -27,6 +27,14 @@ public class DatabaseMigration implements CommandLineRunner {
         migrateProductImageColumn();
         widenStockQuantities();
         classifyRawMaterials();
+        backfillJoinDates();
+    }
+
+    // Employees from before the joining date existed: use the day they were added to the app
+    private void backfillJoinDates() {
+        int n = jdbcTemplate.update("UPDATE employees SET join_date = CAST(created_at AS date) "
+                + "WHERE join_date IS NULL AND created_at IS NOT NULL");
+        if (n > 0) logger.info("Set joining date for {} existing employees from the day they were added", n);
     }
 
     // Quantities to 3 decimals, so stock in KG keeps gram precision (0.250 kg)

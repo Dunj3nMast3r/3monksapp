@@ -41,6 +41,7 @@ public class EmployeeService {
     private final ShopRepository shopRepository;
     private final OrderRepository orderRepository;
     private final OrderEventService orderEventService;
+    private final LeaveBalanceService leaveBalanceService;
 
     public List<EmployeeResponse> getAllEmployees() {
         return employeeRepository.findAll().stream()
@@ -89,6 +90,7 @@ public class EmployeeService {
                 .incentivePercentage(
                         request.getIncentivePercentage() != null ? request.getIncentivePercentage() : BigDecimal.ZERO)
                 .active(true)
+                .joinDate(request.getJoinDate())
                 .build();
 
         return toResponse(employeeRepository.save(employee));
@@ -105,6 +107,9 @@ public class EmployeeService {
 
         employee.setShop(shop);
         employee.setSalary(request.getSalary());
+        if (request.getJoinDate() != null) {
+            employee.setJoinDate(request.getJoinDate());
+        }
         if (request.getIncentivePercentage() != null) {
             employee.setIncentivePercentage(request.getIncentivePercentage());
         }
@@ -226,6 +231,8 @@ public class EmployeeService {
                 .salary(emp.getSalary())
                 .incentivePercentage(emp.getIncentivePercentage())
                 .active(emp.getActive())
+                .joinDate(emp.effectiveJoinDate())
+                .leaveBalance(leaveBalanceService.balanceNow(emp))
                 .build();
     }
 }

@@ -22,4 +22,7 @@ public class EmployeeResponse {
     private BigDecimal salary;
     private BigDecimal incentivePercentage;
     private Boolean active;
+    private java.time.LocalDate joinDate;
+    /** Paid leave left as of this month; null when the branch doesn't track leave. */
+    private BigDecimal leaveBalance;
 }

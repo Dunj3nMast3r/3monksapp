@@ -43,4 +43,10 @@ public class ShopRequest {
     @DecimalMin(value = "0.01", message = "Blend price must be more than 0")
     @Digits(integer = 8, fraction = 2, message = "Blend price can have at most 2 decimals")
     private BigDecimal blendPrice;
+
+    /** Paid leaves per employee per month (empty = not tracked). */
+    @DecimalMin(value = "0", message = "Leaves per month cannot be negative")
+    @DecimalMax(value = "31", message = "Leaves per month cannot be more than 31")
+    @Digits(integer = 2, fraction = 1, message = "Leaves per month can be a whole or half number, e.g. 2 or 1.5")
+    private BigDecimal monthlyLeaves;
 }

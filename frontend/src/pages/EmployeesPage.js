@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../services/dataService';
-import { formatCurrency, getISTMonthString, roleLabels } from '../utils/helpers';
+import { formatCurrency, getISTMonthString, getISTDateString, roleLabels } from '../utils/helpers';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 
@@ -11,7 +11,7 @@ const STATION_OPTIONS = [
 ];
 const STATION_LABELS = { SHOT: '⚡ Shots', BLEND: '🥤 Blends' };
 
-const EMPTY_FORM = { userId: '', shopId: '', role: 'SHOP_OPERATOR', station: '', salary: '', incentivePercentage: '' };
+const EMPTY_FORM = { userId: '', shopId: '', role: 'SHOP_OPERATOR', station: '', salary: '', incentivePercentage: '', joinDate: '' };
 
 const EmployeesPage = () => {
     const [employees, setEmployees] = useState([]);
@@ -57,6 +57,7 @@ const EmployeesPage = () => {
         setForm({
             ...EMPTY_FORM, userId: e.userId, shopId: e.shopId, role: e.role, station: e.station || '',
             salary: e.salary || '', incentivePercentage: e.incentivePercentage || '',
+            joinDate: e.joinDate || '',
         });
         setErrors({});
         setShowModal(true);
@@ -87,6 +88,8 @@ const EmployeesPage = () => {
                 station: form.role === 'SHOP_OPERATOR' ? (form.station || null) : null,
                 salary: parseFloat(form.salary),
                 incentivePercentage: form.incentivePercentage ? parseFloat(form.incentivePercentage) : 0,
+                // Empty on a new employee = today
+                joinDate: form.joinDate || null,
             };
             if (!editing) data.userId = parseInt(form.userId);
             if (editing) { await adminService.updateEmployee(editing.id, data); toast.success('Employee updated'); }
@@ -155,7 +158,7 @@ const EmployeesPage = () => {
             ) : (
                 <div className="card"><div className="table-wrapper">
                     <table>
-                        <thead><tr><th>Name</th><th>Role</th><th>Shop</th><th>Station</th><th>Salary</th><th>Incentive %</th><th>Status</th><th>Actions</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Role</th><th>Shop</th><th>Station</th><th>Salary</th><th>Incentive %</th><th>Joined</th><th>Leave left</th><th>Status</th><th>Actions</th></tr></thead>
                         <tbody>{visibleEmployees.map(e => (
                             <tr key={e.id}>
                                 <td style={{ fontWeight: 500 }}>{e.fullName}</td>
@@ -164,6 +167,8 @@ const EmployeesPage = () => {
                                 <td>{e.role === 'SHOP_OPERATOR' ? (STATION_LABELS[e.station] || 'Both') : '-'}</td>
                                 <td>{formatCurrency(e.salary)}</td>
                                 <td>{e.incentivePercentage}%</td>
+                                <td style={{ whiteSpace: 'nowrap' }}>{e.joinDate || '-'}</td>
+                                <td title="Paid leave left this month">{e.leaveBalance != null ? Number(e.leaveBalance) : '-'}</td>
                                 <td><span className={`badge ${e.active ? 'badge-success' : 'badge-danger'}`}>{e.active ? 'Active' : 'Inactive'}</span></td>
                                 <td style={{ display: 'flex', gap: '6px' }}>
                                     <button className="btn btn-sm btn-outline" onClick={() => openEdit(e)}>Edit</button>
@@ -232,6 +237,12 @@ const EmployeesPage = () => {
                             <input className={`form-control${errors.incentivePercentage ? ' input-error' : ''}`} type="number" step="0.01" min="0" max="100" value={form.incentivePercentage} onChange={e => { setForm({ ...form, incentivePercentage: e.target.value }); setErrors(prev => ({ ...prev, incentivePercentage: '' })); }} placeholder="e.g. 2" />
                             {errors.incentivePercentage && <span className="field-error">{errors.incentivePercentage}</span>}
                         </div>
+                    </div>
+                    <div className="form-group">
+                        <label>Joining date</label>
+                        <input className="form-control" type="date" value={form.joinDate} max={getISTDateString()}
+                            onChange={e => setForm({ ...form, joinDate: e.target.value })} />
+                        <small className="form-hint">The day they started work. Paid leave is given from this month. Leave empty for today.</small>
                     </div>
                     <div className="modal-actions">
                         <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>

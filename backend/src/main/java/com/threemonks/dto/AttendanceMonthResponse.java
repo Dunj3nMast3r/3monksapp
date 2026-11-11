@@ -20,6 +20,8 @@ public class AttendanceMonthResponse {
     /** Days of the month up to today (business day), the ones that should be marked. */
     private int daysSoFar;
     private List<Row> employees;
+    /** The branch's paid leaves per month; null when not tracked. */
+    private java.math.BigDecimal monthlyLeaves;
 
     @Data
     @Builder
@@ -39,6 +41,8 @@ public class AttendanceMonthResponse {
         private LocalDate markFrom;
         /** Days up to today with no mark. */
         private int notMarked;
+        /** Carried in, allocated, used, balance left and extra for the month; null when not tracked. */
+        private com.threemonks.service.LeaveBalanceService.MonthLeave leaveBalance;
         /** Marked day → status ("2026-11-03" → PRESENT). */
         private Map<LocalDate, AttendanceStatus> days;
     }

@@ -13,6 +13,9 @@ const STATUSES = [
 const BY_KEY = Object.fromEntries(STATUSES.map(s => [s.key, s]));
 // Leave and week off can be planned ahead; the rest only for today or earlier
 const PLANNABLE = ['LEAVE', 'WEEK_OFF'];
+// Paid leave used by each status (week off uses none)
+const LEAVE_USE = { LEAVE: 1, HALF_DAY: 0.5 };
+const fmt = (n) => Number(n).toString();
 
 const shiftDay = (date, n) => {
     const d = new Date(`${date}T00:00:00Z`);
@@ -92,6 +95,14 @@ const AttendancePage = () => {
         return r && (e.status !== r.status || (e.note || '') !== (r.note || ''));
     });
 
+    // Leave left for the month of this day, counting the unsaved change (negative = extra leave)
+    const leaveLeft = (r, status) => {
+        const lb = r.leaveBalance;
+        if (!lb) return null;
+        const saved = Number(lb.balance) - Number(lb.extra);
+        return saved - ((LEAVE_USE[status] || 0) - (LEAVE_USE[r.status] || 0));
+    };
+
     const setStatus = (r, status) => {
         if (isFuture && status && !PLANNABLE.includes(status)) {
             toast.error('For a future date only Leave or Week off can be marked');
@@ -99,7 +110,12 @@ const AttendancePage = () => {
         }
         const c = current(r);
         // Tapping the selected status again clears it (back to "not marked")
-        setEdits({ ...edits, [r.employeeId]: { ...c, status: c.status === status ? null : status } });
+        const next = c.status === status ? null : status;
+        const left = leaveLeft(r, next);
+        if (left !== null && left < 0 && (LEAVE_USE[next] || 0) > (LEAVE_USE[c.status] || 0)) {
+            toast(`${r.name} has no paid leave left this month; this will count as extra leave`, { icon: '⚠️', duration: 5000 });
+        }
+        setEdits({ ...edits, [r.employeeId]: { ...c, status: next } });
     };
     const setNote = (r, note) => setEdits({ ...edits, [r.employeeId]: { ...current(r), note } });
 
@@ -206,6 +222,13 @@ const AttendancePage = () => {
                                                     <strong>{r.name}</strong>
                                                     <span className="attendance-role">{r.role}{!r.active && ' · no longer here'}</span>
                                                     {!c.status && <span className="badge" style={{ marginLeft: '6px' }}>Not marked</span>}
+                                                    {(() => {
+                                                        const left = leaveLeft(r, c.status);
+                                                        if (left === null) return null;
+                                                        return left < 0
+                                                            ? <span className="attendance-leave-left attendance-leave-over">⚠️ {fmt(-left)} extra leave</span>
+                                                            : <span className="attendance-leave-left">🏖️ {fmt(left)} paid leave left</span>;
+                                                    })()}
                                                 </div>
                                                 <div className="attendance-statuses">
                                                     {STATUSES.map(s => (
@@ -251,7 +274,12 @@ const AttendancePage = () => {
                                 <input type="month" className="form-control" value={month} max={today.slice(0, 7)} onChange={e => e.target.value && setMonth(e.target.value)} />
                             </div>
                         </div>
-                        <p className="form-hint" style={{ marginBottom: 0 }}>"Not marked" counts days up to today with no entry.</p>
+                        <p className="form-hint" style={{ marginBottom: 0 }}>
+                            "Not marked" counts days up to today with no entry.
+                            {monthData?.monthlyLeaves
+                                ? ` Paid leave: ${fmt(monthData.monthlyLeaves)} a month from the joining date; unused leave carries over (at most 6); a half day uses 0.5.`
+                                : ' Paid leave balance is off for this branch (set "Paid leaves per month" in Shops → Edit).'}
+                        </p>
                     </div>
                     <div className="card" style={{ marginBottom: '16px' }}>
                         {loadingMonth || !monthData ? <div className="loading"><div className="spinner"></div></div> : monthData.employees.length === 0 ? (
@@ -259,7 +287,8 @@ const AttendancePage = () => {
                         ) : (
                             <div className="table-wrapper">
                                 <table>
-                                    <thead><tr><th>Employee</th><th title="Present">✅</th><th title="Half day">🌗</th><th title="Leave">🏖️</th><th title="Absent">❌</th><th title="Week off">💤</th><th title="Not marked">⬜</th></tr></thead>
+                                    <thead><tr><th>Employee</th><th title="Present">✅</th><th title="Half day">🌗</th><th title="Leave">🏖️</th><th title="Absent">❌</th><th title="Week off">💤</th><th title="Not marked">⬜</th>
+                                    </tr></thead>
                                     <tbody>
                                         {monthData.employees.map(r => (
                                             <tr key={r.employeeId}>
@@ -273,6 +302,32 @@ const AttendancePage = () => {
                             </div>
                         )}
                     </div>
+                    {monthData && monthData.monthlyLeaves && monthData.employees.length > 0 && (
+                        <div className="card" style={{ marginBottom: '16px' }}>
+                            <h3 style={{ marginTop: 0 }}>Paid leave</h3>
+                            <div className="table-wrapper">
+                                <table>
+                                    <thead><tr><th>Employee</th><th title="Carried from last month (at most 6)">Carried</th><th title="Added this month">+Month</th><th title="Leave used (half day = 0.5)">Used</th><th title="Paid leave left">Left</th><th title="Leave taken beyond the balance">Extra</th></tr></thead>
+                                    <tbody>
+                                        {monthData.employees.map(r => (
+                                            <tr key={r.employeeId}>
+                                                <td style={{ fontWeight: 500 }}>{r.name}</td>
+                                                {r.leaveBalance ? (
+                                                    <>
+                                                        <td>{fmt(r.leaveBalance.opening)}</td>
+                                                        <td>{fmt(r.leaveBalance.allocated)}</td>
+                                                        <td>{fmt(r.leaveBalance.used)}</td>
+                                                        <td style={{ fontWeight: 700 }}>{fmt(r.leaveBalance.balance)}</td>
+                                                        <td style={{ color: Number(r.leaveBalance.extra) ? 'var(--danger, #991b1b)' : undefined, fontWeight: Number(r.leaveBalance.extra) ? 700 : undefined }}>{fmt(r.leaveBalance.extra)}</td>
+                                                    </>
+                                                ) : <td colSpan={5} style={{ color: 'var(--text-light)' }}>joined later</td>}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
                     {monthData && monthData.employees.length > 0 && (
                         <div className="card">
                             <h3 style={{ marginTop: 0 }}>Day by day</h3>
