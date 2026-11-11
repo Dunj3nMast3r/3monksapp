@@ -29,15 +29,15 @@ import java.util.stream.Collectors;
 
 /**
  * Staff attendance: a manager (own branch) or admin (any branch) marks each
- * employee Present / Half day / Leave / Absent / Week off per business day.
- * A day with no mark is "not marked". Leave and week off can be marked ahead
+ * employee Present / Half day / Leave / Absent per business day (every day off is Leave).
+ * A day with no mark is "not marked". Leave can be marked ahead
  * (planned); the other statuses only for today or earlier. Records only, no pay effect.
  */
 @Service
 @RequiredArgsConstructor
 public class AttendanceService {
 
-    private static final Set<AttendanceStatus> PLANNABLE = EnumSet.of(AttendanceStatus.LEAVE, AttendanceStatus.WEEK_OFF);
+    private static final Set<AttendanceStatus> PLANNABLE = EnumSet.of(AttendanceStatus.LEAVE);
 
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
@@ -106,7 +106,7 @@ public class AttendanceService {
                 continue;
             }
             if (future && !PLANNABLE.contains(entry.getStatus())) {
-                throw new BadRequestException("Only Leave or Week off can be marked for a future date (" + nameOf(employee) + ")");
+                throw new BadRequestException("Only Leave can be marked for a future date (" + nameOf(employee) + ")");
             }
             Attendance a = existing.orElseGet(() -> Attendance.builder()
                     .employee(employee).shop(shop).attendanceDate(day).build());
@@ -165,7 +165,6 @@ public class AttendanceService {
                     .halfDay(counts.getOrDefault(AttendanceStatus.HALF_DAY, 0))
                     .leave(counts.getOrDefault(AttendanceStatus.LEAVE, 0))
                     .absent(counts.getOrDefault(AttendanceStatus.ABSENT, 0))
-                    .weekOff(counts.getOrDefault(AttendanceStatus.WEEK_OFF, 0))
                     .notMarked(notMarked)
                     .leaveBalance(leaveBalanceService.forMonth(e, ym))
                     .markFrom(stillHere ? start : null)

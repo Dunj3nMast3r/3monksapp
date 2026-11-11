@@ -8,12 +8,11 @@ const STATUSES = [
     { key: 'HALF_DAY', label: 'Half day', short: '½', icon: '🌗' },
     { key: 'LEAVE', label: 'Leave', short: 'L', icon: '🏖️' },
     { key: 'ABSENT', label: 'Absent', short: 'A', icon: '❌' },
-    { key: 'WEEK_OFF', label: 'Week off', short: 'W', icon: '💤' },
 ];
 const BY_KEY = Object.fromEntries(STATUSES.map(s => [s.key, s]));
-// Leave and week off can be planned ahead; the rest only for today or earlier
-const PLANNABLE = ['LEAVE', 'WEEK_OFF'];
-// Paid leave used by each status (week off uses none)
+// Leave can be planned ahead; the rest only for today or earlier
+const PLANNABLE = ['LEAVE'];
+// Paid leave used by each status (every day off is Leave; no separate weekly off)
 const LEAVE_USE = { LEAVE: 1, HALF_DAY: 0.5 };
 const fmt = (n) => Number(n).toString();
 
@@ -26,7 +25,7 @@ const prettyDay = (date) => new Date(`${date}T00:00:00Z`)
     .toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 /**
- * Staff attendance: a daily register (Present / Half day / Leave / Absent / Week off,
+ * Staff attendance: a daily register (Present / Half day / Leave / Absent,
  * per employee) and a monthly summary. Managers see their own branch, admins any branch.
  */
 const AttendancePage = () => {
@@ -105,7 +104,7 @@ const AttendancePage = () => {
 
     const setStatus = (r, status) => {
         if (isFuture && status && !PLANNABLE.includes(status)) {
-            toast.error('For a future date only Leave or Week off can be marked');
+            toast.error('For a future date only Leave can be marked');
             return;
         }
         const c = current(r);
@@ -193,7 +192,7 @@ const AttendancePage = () => {
                             {date !== today && <button className="btn btn-outline btn-sm" onClick={() => goToDay(today)}>Today</button>}
                         </div>
                         <p className="form-hint" style={{ marginBottom: 0 }}>
-                            {prettyDay(date)}{isFuture && ' · future date: only Leave or Week off can be marked'}
+                            {prettyDay(date)}{isFuture && ' · future date: only Leave can be marked'}
                         </p>
                         <div className="attendance-counts">
                             {counts.map(c => <span key={c.key}>{c.icon} {c.label} <strong>{c.n}</strong></span>)}
@@ -287,13 +286,13 @@ const AttendancePage = () => {
                         ) : (
                             <div className="table-wrapper">
                                 <table className="attendance-summary">
-                                    <thead><tr><th>Employee</th><th>Present</th><th>Half day</th><th>Leave</th><th>Absent</th><th>Week off</th><th>Not marked</th>
+                                    <thead><tr><th>Employee</th><th>Present</th><th>Half day</th><th>Leave</th><th>Absent</th><th>Not marked</th>
                                     </tr></thead>
                                     <tbody>
                                         {monthData.employees.map(r => (
                                             <tr key={r.employeeId}>
                                                 <td style={{ fontWeight: 500 }}>{r.name}<div className="attendance-role">{r.role}</div></td>
-                                                <td>{r.present}</td><td>{r.halfDay}</td><td>{r.leave}</td><td>{r.absent}</td><td>{r.weekOff}</td>
+                                                <td>{r.present}</td><td>{r.halfDay}</td><td>{r.leave}</td><td>{r.absent}</td>
                                                 <td style={{ color: r.notMarked ? 'var(--danger, #991b1b)' : undefined, fontWeight: r.notMarked ? 600 : undefined }}>{r.notMarked}</td>
                                             </tr>
                                         ))}
@@ -333,7 +332,7 @@ const AttendancePage = () => {
                             <h3 style={{ marginTop: 0 }}>Day by day</h3>
                             <div className="attendance-legend">
                                 {STATUSES.map(s => <span key={s.key} className={`attendance-cell attendance-${s.key.toLowerCase()}`}>{s.short}</span>)}
-                                <span className="form-hint" style={{ margin: 0 }}>P present · ½ half day · L leave · A absent · W week off · tap a day to open it</span>
+                                <span className="form-hint" style={{ margin: 0 }}>P present · ½ half day · L leave (any day off) · A absent · tap a day to open it</span>
                             </div>
                             <div className="table-wrapper">
                                 <table className="attendance-grid">

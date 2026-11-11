@@ -33,7 +33,6 @@ public class AttendanceMonthResponse {
         private int halfDay;
         private int leave;
         private int absent;
-        private int weekOff;
         /**
          * First day a mark is expected (the later of the 1st and the day they joined);
          * null when they no longer work here, so no day counts as missing.

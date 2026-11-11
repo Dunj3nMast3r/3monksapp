@@ -11,20 +11,19 @@ a status for each employee:
 |---|---|
 | ✅ Present | Worked the full day |
 | 🌗 Half day | Worked half the day |
-| 🏖️ Leave | On leave |
+| 🏖️ Leave | Any day off (there is no separate weekly off) |
 | ❌ Absent | Didn't come, without leave |
-| 💤 Week off | Weekly off |
 
 - Tap the selected status again to clear it (back to **Not marked**).
 - **Mark all unmarked present** fills everyone not yet marked; change the
   exceptions, then **Save**. Changes are saved together; **Undo** discards them.
 - An optional note per person (e.g. "came at 6 PM").
-- Future dates: only **Leave** and **Week off** can be marked (planned leave).
+- Future dates: only **Leave** can be marked (planned days off).
 - Each mark records who marked it and when; one mark per employee per day.
 
 ## Monthly summary
 
-Per employee: Present, Half day, Leave, Absent, Week off and **Not marked** (days
+Per employee: Present, Half day, Leave, Absent and **Not marked** (days
 from the 1st, or the day they joined, up to today with no mark). The day-by-day
 grid shows each mark; dashed cells are days still to be marked. Tap a day to open
 it in the register.
@@ -39,8 +38,9 @@ keeps their past marks with the branch they were at.
 - **Employees → Add / Edit → Joining date**: leave is given from this month.
   Employees added before this existed got the day they were added to the app;
   correct it if they joined earlier.
-- Each month the branch's leaves are added; **Leave** uses 1, **Half day** 0.5,
-  **Week off** nothing. Unused leave carries into the next month, **at most 6**;
+- Each month the branch's leaves are added (each branch can have its own number);
+  **Leave** uses 1, **Half day** 0.5. Every day off is Leave: there is no separate
+  weekly off. Unused leave carries into the next month, **at most 6**;
   no yearly reset.
 - Leave beyond the balance is shown as **extra leave** for that month (allowed, not
   blocked); it doesn't reduce later months.
