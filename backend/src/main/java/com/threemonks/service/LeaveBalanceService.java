@@ -17,7 +17,8 @@ import java.util.List;
 /**
  * Paid leave balance, per employee, worked out from attendance:
  * <ul>
- *   <li>Each month from the joining month, the branch's "paid leaves per month" is added.</li>
+ *   <li>Each month from the joining month (or the branch's "leave starts from" month, if later),
+ *       the branch's "paid leaves per month" is added. Earlier months give and count nothing.</li>
  *   <li>Each day marked Leave uses 1 (every day off, there is no separate weekly off); each Half day uses 0.5.</li>
  *   <li>Unused leave carries into the next month, at most {@value #MAX_CARRY} days. No yearly reset.</li>
  *   <li>Leave taken beyond the balance is "extra" for that month; it does not reduce later months.</li>
@@ -46,6 +47,8 @@ public class LeaveBalanceService {
         if (perMonth == null || perMonth.signum() <= 0) return null;
         LocalDate joined = e.effectiveJoinDate();
         YearMonth first = YearMonth.from(joined);
+        LocalDate branchStart = e.getShop().getLeaveStartMonth();
+        if (branchStart != null && YearMonth.from(branchStart).isAfter(first)) first = YearMonth.from(branchStart);
         if (month.isBefore(first)) return null;
 
         List<Attendance> marks = attendanceRepository.findByEmployeeIdAndAttendanceDateBetween(

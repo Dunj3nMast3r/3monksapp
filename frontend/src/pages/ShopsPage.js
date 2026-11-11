@@ -15,7 +15,7 @@ const ShopsPage = () => {
     const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const emptyForm = { name: '', address: '', phone: '', email: '', gstNumber: '', manualSales: false, shotPrice: '', blendPrice: '', monthlyLeaves: '' };
+    const emptyForm = { name: '', address: '', phone: '', email: '', gstNumber: '', manualSales: false, shotPrice: '', blendPrice: '', monthlyLeaves: '', leaveStartMonth: '' };
     const [form, setForm] = useState(emptyForm);
     const [errors, setErrors] = useState({});
 
@@ -42,6 +42,7 @@ const ShopsPage = () => {
             name: shop.name, address: shop.address || '', phone: shop.phone || '', email: shop.email || '', gstNumber: shop.gstNumber || '',
             manualSales: !!shop.manualSales, shotPrice: shop.shotPrice ?? '', blendPrice: shop.blendPrice ?? '',
             monthlyLeaves: shop.monthlyLeaves ?? '',
+            leaveStartMonth: shop.leaveStartMonth ? shop.leaveStartMonth.slice(0, 7) : '',
         });
         setErrors({}); setShowModal(true);
     };
@@ -73,6 +74,7 @@ const ShopsPage = () => {
                 shotPrice: form.shotPrice === '' ? null : Number(form.shotPrice),
                 blendPrice: form.blendPrice === '' ? null : Number(form.blendPrice),
                 monthlyLeaves: form.monthlyLeaves === '' ? null : Number(form.monthlyLeaves),
+                leaveStartMonth: form.leaveStartMonth ? `${form.leaveStartMonth}-01` : null,
             };
             if (editing) { await adminService.updateShop(editing.id, payload); toast.success('Shop updated'); }
             else { await adminService.createShop(payload); toast.success('Shop created'); }
@@ -156,6 +158,14 @@ const ShopsPage = () => {
                         {errors.monthlyLeaves && <span className="field-error">{errors.monthlyLeaves}</span>}
                         <small className="form-hint">Added every month from each employee's joining date; unused leave carries over (at most 6).</small>
                     </div>
+                    {form.monthlyLeaves !== '' && Number(form.monthlyLeaves) > 0 && (
+                        <div className="form-group">
+                            <label>Leave starts from (month)</label>
+                            <input type="month" className="form-control" value={form.leaveStartMonth}
+                                onChange={e => setForm({ ...form, leaveStartMonth: e.target.value })} />
+                            <small className="form-hint">No leave is given or counted before this month. Empty = from each employee's joining month.</small>
+                        </div>
+                    )}
                     <div className="form-group">
                         <label style={{ display: 'flex', gap: '8px', alignItems: 'center', textTransform: 'none', cursor: 'pointer' }}>
                             <input type="checkbox" checked={form.manualSales}

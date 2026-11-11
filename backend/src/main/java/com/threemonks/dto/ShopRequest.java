@@ -49,4 +49,7 @@ public class ShopRequest {
     @DecimalMax(value = "31", message = "Leaves per month cannot be more than 31")
     @Digits(integer = 2, fraction = 1, message = "Leaves per month can be a whole or half number, e.g. 2 or 1.5")
     private BigDecimal monthlyLeaves;
+
+    /** First month leave is given (any day of it); empty = from each employee's joining month. */
+    private java.time.LocalDate leaveStartMonth;
 }
