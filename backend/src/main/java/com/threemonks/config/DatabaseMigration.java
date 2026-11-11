@@ -28,6 +28,16 @@ public class DatabaseMigration implements CommandLineRunner {
         widenStockQuantities();
         classifyRawMaterials();
         backfillJoinDates();
+        weekOffToLeave();
+    }
+
+    // No separate weekly off any more: days marked Week off become Leave (and use the monthly allowance)
+    private void weekOffToLeave() {
+        List<Integer> table = jdbcTemplate.queryForList(
+                "SELECT 1 FROM information_schema.tables WHERE table_name = 'attendance'", Integer.class);
+        if (table.isEmpty()) return;
+        int n = jdbcTemplate.update("UPDATE attendance SET status = 'LEAVE' WHERE status = 'WEEK_OFF'");
+        if (n > 0) logger.info("Changed {} Week off attendance marks to Leave", n);
     }
 
     // Employees from before the joining date existed: use the day they were added to the app

@@ -5413,7 +5413,6 @@ tr:last-child td {
 .attendance-half_day.selected, .attendance-cell.attendance-half_day { background: #fef9c3; border-color: #ca8a04; color: #713f12; }
 .attendance-leave.selected, .attendance-cell.attendance-leave { background: #dbeafe; border-color: #2563eb; color: #1e3a8a; }
 .attendance-absent.selected, .attendance-cell.attendance-absent { background: #fee2e2; border-color: #dc2626; color: #7f1d1d; }
-.attendance-week_off.selected, .attendance-cell.attendance-week_off { background: #f3f4f6; border-color: #6b7280; color: #374151; }
 .attendance-note {
     font-size: 13px;
     padding: 6px 10px;

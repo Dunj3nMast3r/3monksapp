@@ -5,6 +5,6 @@ public enum AttendanceStatus {
     PRESENT,
     HALF_DAY,
     LEAVE,
-    ABSENT,
-    WEEK_OFF
+    ABSENT
+    // No separate weekly off: every day off is Leave and uses the branch's monthly allowance
 }

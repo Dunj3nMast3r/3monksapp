@@ -18,7 +18,7 @@ import java.util.List;
  * Paid leave balance, per employee, worked out from attendance:
  * <ul>
  *   <li>Each month from the joining month, the branch's "paid leaves per month" is added.</li>
- *   <li>Each day marked Leave uses 1; each Half day uses 0.5. Week off uses nothing.</li>
+ *   <li>Each day marked Leave uses 1 (every day off, there is no separate weekly off); each Half day uses 0.5.</li>
  *   <li>Unused leave carries into the next month, at most {@value #MAX_CARRY} days. No yearly reset.</li>
  *   <li>Leave taken beyond the balance is "extra" for that month; it does not reduce later months.</li>
  * </ul>
