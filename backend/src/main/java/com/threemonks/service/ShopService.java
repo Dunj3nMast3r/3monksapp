@@ -51,6 +51,7 @@ public class ShopService {
         applyManualSales(shop, request);
         shop.setMonthlyLeaves(request.getMonthlyLeaves());
         shop.setLeaveStartMonth(request.getLeaveStartMonth() == null ? null : request.getLeaveStartMonth().withDayOfMonth(1));
+        applyIncentive(shop, request);
         return toResponse(shopRepository.save(shop));
     }
 
@@ -68,6 +69,7 @@ public class ShopService {
         applyManualSales(shop, request);
         shop.setMonthlyLeaves(request.getMonthlyLeaves());
         shop.setLeaveStartMonth(request.getLeaveStartMonth() == null ? null : request.getLeaveStartMonth().withDayOfMonth(1));
+        applyIncentive(shop, request);
         return toResponse(shopRepository.save(shop));
     }
 
@@ -87,6 +89,19 @@ public class ShopService {
         shop.setManualSales(manual);
         if (request.getShotPrice() != null) shop.setShotPrice(request.getShotPrice());
         if (request.getBlendPrice() != null) shop.setBlendPrice(request.getBlendPrice());
+    }
+
+    // The incentive needs its whole rule when switched on
+    private void applyIncentive(Shop shop, ShopRequest request) {
+        boolean on = Boolean.TRUE.equals(request.getIncentiveEnabled());
+        if (on && (request.getIncentiveFreeUnits() == null || request.getIncentivePerUnit() == null
+                || request.getIncentiveStartDate() == null)) {
+            throw new BadRequestException("Enter the free units, ₹ per unit and start date for the staff incentive");
+        }
+        shop.setIncentiveEnabled(on);
+        if (request.getIncentiveFreeUnits() != null) shop.setIncentiveFreeUnits(request.getIncentiveFreeUnits());
+        if (request.getIncentivePerUnit() != null) shop.setIncentivePerUnit(request.getIncentivePerUnit());
+        if (request.getIncentiveStartDate() != null) shop.setIncentiveStartDate(request.getIncentiveStartDate());
     }
 
     public Shop findShopById(Long id) {
@@ -111,6 +126,10 @@ public class ShopService {
                 .blendPrice(shop.getBlendPrice())
                 .monthlyLeaves(shop.getMonthlyLeaves())
                 .leaveStartMonth(shop.getLeaveStartMonth())
+                .incentiveEnabled(Boolean.TRUE.equals(shop.getIncentiveEnabled()))
+                .incentiveFreeUnits(shop.getIncentiveFreeUnits())
+                .incentivePerUnit(shop.getIncentivePerUnit())
+                .incentiveStartDate(shop.getIncentiveStartDate())
                 .build();
     }
 }

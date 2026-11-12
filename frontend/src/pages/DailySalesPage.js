@@ -35,6 +35,7 @@ const prevMonth = (date) => {
  */
 const DailySalesPage = () => {
     const { user } = useAuth();
+    const isAdmin = user?.role === 'SUPER_ADMIN';
     const today = getISTDateString();
     const [shops, setShops] = useState(null);
     const [shopId, setShopId] = useState('');
@@ -84,10 +85,11 @@ const DailySalesPage = () => {
             receivedCash: day.receivedCash != null ? String(num(day.receivedCash)) : '',
             receivedUpi: day.receivedUpi != null ? String(num(day.receivedUpi)) : '',
             note: day.note || '',
+            incentiveOverride: day.incentiveOverride != null ? String(num(day.incentiveOverride)) : '',
         } : {
             date, existing: false, shots: '', blends: '',
             shotPrice: num(shop?.shotPrice), blendPrice: num(shop?.blendPrice),
-            receivedCash: '', receivedUpi: '', note: '',
+            receivedCash: '', receivedUpi: '', note: '', incentiveOverride: '',
         });
     };
 
@@ -112,6 +114,7 @@ const DailySalesPage = () => {
                 shots: Number(entry.shots), blends: Number(entry.blends),
                 receivedCash: amountOrNull(entry.receivedCash), receivedUpi: amountOrNull(entry.receivedUpi),
                 note: entry.note,
+                incentiveOverride: entry.incentiveOverride === '' || entry.incentiveOverride == null ? null : Number(entry.incentiveOverride),
             });
             toast.success(`${entry.date} saved`);
             setEntry(null);
@@ -158,6 +161,9 @@ const DailySalesPage = () => {
     const totals = data?.totals;
     const days = data?.days || [];
     const amount = entry ? num(entry.shots) * entry.shotPrice + num(entry.blends) * entry.blendPrice : 0;
+    const incentiveRule = data?.incentiveStartDate != null;
+    const ruleIncentive = entry && incentiveRule
+        ? Math.max(0, num(entry.shots) + num(entry.blends) - num(data.incentiveFreeUnits)) * num(data.incentivePerUnit) : 0;
     const received = entry ? num(entry.receivedCash) + num(entry.receivedUpi) : 0;
     const receivedEntered = entry && (entry.receivedCash !== '' || entry.receivedUpi !== '');
 
@@ -229,7 +235,14 @@ const DailySalesPage = () => {
                                         </td>
                                         <td>{d.shots}</td>
                                         <td>{d.blends}</td>
-                                        <td style={{ fontWeight: 600 }}>{formatCurrency(d.amount)}</td>
+                                        <td style={{ fontWeight: 600 }}>
+                                            {formatCurrency(d.amount)}
+                                            {d.incentivePerPerson != null && (
+                                                <div className="incentive-line" title="Incentive per staff member present (half for a half day)">
+                                                    🎁 {formatCurrency(d.incentivePerPerson)}/person{d.incentiveOverride != null ? ' (set)' : ''}
+                                                </div>
+                                            )}
+                                        </td>
                                         <td>
                                             {d.receivedTotal != null ? (
                                                 <span style={{ fontWeight: 600 }} title={`Cash ${formatCurrency(d.receivedCash)} · UPI ${formatCurrency(d.receivedUpi)}`}>
@@ -290,6 +303,22 @@ const DailySalesPage = () => {
                             </div>
                         ) : (
                             <p className="form-hint" style={{ marginTop: '-8px' }}>Leave both empty if the amount received isn't known yet; you can add it later.</p>
+                        )}
+                        {incentiveRule && entry.date >= data.incentiveStartDate && (
+                            <div className="form-group">
+                                <label>🎁 Incentive per person</label>
+                                {isAdmin ? (
+                                    <input type="number" min="0" step="0.01" inputMode="decimal" className="form-control"
+                                        value={entry.incentiveOverride} placeholder={`${formatCurrency(ruleIncentive)} by the rule`}
+                                        onChange={e => setEntry({ ...entry, incentiveOverride: e.target.value })} />
+                                ) : (
+                                    <div><strong>{formatCurrency(entry.incentiveOverride !== '' ? num(entry.incentiveOverride) : ruleIncentive)}</strong></div>
+                                )}
+                                <small className="form-hint">
+                                    ({num(entry.shots) + num(entry.blends)} units − {data.incentiveFreeUnits}) × {formatCurrency(data.incentivePerUnit)} = {formatCurrency(ruleIncentive)} for each staff member present; half for a half day.
+                                    {isAdmin && ' Enter an amount only to change it for this day; leave empty to use the rule.'}
+                                </small>
+                            </div>
                         )}
                         <div className="form-group">
                             <label>Note (optional)</label>

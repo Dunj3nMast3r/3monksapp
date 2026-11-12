@@ -259,7 +259,7 @@ const EmployeesPage = () => {
                     <div>
                         <div className="table-wrapper">
                             <table>
-                                <thead><tr><th>Name</th><th>Shop</th><th>Base Salary</th><th>Sales</th><th>Orders</th><th>Incentive</th><th>Total Pay</th></tr></thead>
+                                <thead><tr><th>Name</th><th>Shop</th><th>Base Salary</th><th>Sales</th><th>Orders</th><th>Incentive</th><th title="Staff sales incentive from attendance (units sold above the daily free units)">Sales incentive</th><th>Total Pay</th></tr></thead>
                                 <tbody>
                                     {salarySheet.employees?.map((s, i) => (
                                         <tr key={i}>
@@ -269,6 +269,7 @@ const EmployeesPage = () => {
                                             <td>{formatCurrency(s.totalSalesHandled)}</td>
                                             <td>{s.totalOrders}</td>
                                             <td>{formatCurrency(s.incentiveAmount)}</td>
+                                            <td>{formatCurrency(s.salesIncentive)}</td>
                                             <td style={{ fontWeight: 600 }}>{formatCurrency(s.totalPay)}</td>
                                         </tr>
                                     ))}
@@ -278,6 +279,7 @@ const EmployeesPage = () => {
                                     <td>{formatCurrency(salarySheet.totalSalaries)}</td>
                                     <td colSpan={2}></td>
                                     <td>{formatCurrency(salarySheet.totalIncentives)}</td>
+                                    <td>{formatCurrency(salarySheet.totalSalesIncentives)}</td>
                                     <td>{formatCurrency(salarySheet.grandTotal)}</td>
                                 </tr></tfoot>
                             </table>

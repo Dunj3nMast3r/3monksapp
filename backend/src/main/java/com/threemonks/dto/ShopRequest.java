@@ -52,4 +52,17 @@ public class ShopRequest {
 
     /** First month leave is given (any day of it); empty = from each employee's joining month. */
     private java.time.LocalDate leaveStartMonth;
+
+    /** Staff incentive: on/off, units per day without incentive, ₹ per unit above, and the first day. */
+    private Boolean incentiveEnabled;
+
+    @Min(value = 0, message = "Free units cannot be negative")
+    @Max(value = 100000, message = "Free units looks too high")
+    private Integer incentiveFreeUnits;
+
+    @DecimalMin(value = "0", message = "Incentive per unit cannot be negative")
+    @Digits(integer = 6, fraction = 2, message = "Incentive per unit can have at most 2 decimals")
+    private BigDecimal incentivePerUnit;
+
+    private java.time.LocalDate incentiveStartDate;
 }

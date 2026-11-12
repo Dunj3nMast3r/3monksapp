@@ -36,4 +36,9 @@ public class ManualSalesRequest {
 
     @Size(max = 500, message = "Note can be at most 500 characters")
     private String note;
+
+    /** Admins only: the day's incentive per person instead of the rule (empty = use the rule). */
+    @DecimalMin(value = "0", message = "Incentive cannot be negative")
+    @Digits(integer = 8, fraction = 2, message = "Incentive can have at most 2 decimals")
+    private BigDecimal incentiveOverride;
 }

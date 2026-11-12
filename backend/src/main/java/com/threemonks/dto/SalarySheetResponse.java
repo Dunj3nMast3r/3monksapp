@@ -17,6 +17,8 @@ public class SalarySheetResponse {
     private BigDecimal totalSalesHandled;
     private Long totalOrders;
     private BigDecimal incentiveAmount;
+    /** Staff sales incentive (units sold above the branch's daily free units, by attendance). */
+    private BigDecimal salesIncentive;
     private BigDecimal totalPay;
     private String month;
 
@@ -27,6 +29,7 @@ public class SalarySheetResponse {
         private List<SalarySheetResponse> employees;
         private BigDecimal totalSalaries;
         private BigDecimal totalIncentives;
+        private BigDecimal totalSalesIncentives;
         private BigDecimal grandTotal;
     }
 }

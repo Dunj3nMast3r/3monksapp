@@ -55,6 +55,28 @@ public class Shop {
     @Column(name = "leave_start_month")
     private java.time.LocalDate leaveStartMonth;
 
+    /**
+     * Staff sales incentive: each operator present gets (shots + blends sold that day
+     * − free units) × per-unit amount; a half day gets half. Off when not enabled.
+     */
+    @Column(name = "incentive_enabled")
+    private Boolean incentiveEnabled;
+
+    @Column(name = "incentive_free_units")
+    private Integer incentiveFreeUnits;
+
+    @Column(name = "incentive_per_unit", precision = 8, scale = 2)
+    private BigDecimal incentivePerUnit;
+
+    /** First day the incentive counts. */
+    @Column(name = "incentive_start_date")
+    private java.time.LocalDate incentiveStartDate;
+
+    public boolean isIncentiveOn() {
+        return Boolean.TRUE.equals(incentiveEnabled) && incentiveFreeUnits != null && incentivePerUnit != null
+                && incentiveStartDate != null;
+    }
+
     public boolean isManualSales() {
         return Boolean.TRUE.equals(manualSales);
     }
