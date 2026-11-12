@@ -49,6 +49,10 @@ public class ManualDailySales {
     @Column(length = 500)
     private String note;
 
+    /** Admin override of the day's incentive per person (e.g. 0); null = use the branch rule. */
+    @Column(name = "incentive_override", precision = 10, scale = 2)
+    private BigDecimal incentiveOverride;
+
     @Column(name = "updated_by")
     private String updatedBy;
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { managerService } from '../services/dataService';
-import { getISTDateString } from '../utils/helpers';
+import { formatCurrency, getISTDateString } from '../utils/helpers';
 import toast from 'react-hot-toast';
 
 const STATUSES = [
@@ -325,6 +325,34 @@ const AttendancePage = () => {
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    )}
+                    {monthData?.incentive && (
+                        <div className="card" style={{ marginBottom: '16px' }}>
+                            <h3 style={{ marginTop: 0 }}>🎁 Sales incentive</h3>
+                            <p className="form-hint" style={{ marginTop: 0 }}>
+                                Each staff member Present gets (shots + blends sold − {monthData.incentive.freeUnits}) × {formatCurrency(monthData.incentive.perUnit)} for the day; half day gets half; leave or not marked gets nothing. From {monthData.incentive.startDate.split('-').reverse().join('/')}; managers not included.
+                            </p>
+                            {monthData.incentive.employees.length === 0 ? (
+                                <p style={{ color: 'var(--text-light)' }}>No staff at this branch.</p>
+                            ) : (
+                                <div className="table-wrapper">
+                                    <table className="incentive-table">
+                                        <thead><tr><th>Employee</th><th title="Days present with incentive">Present</th><th>Half day</th><th>Incentive</th></tr></thead>
+                                        <tbody>
+                                            {monthData.incentive.employees.map(r => (
+                                                <tr key={r.employeeId}>
+                                                    <td style={{ fontWeight: 500 }}>{r.name}</td>
+                                                    <td>{r.presentDays}</td>
+                                                    <td>{r.halfDays}</td>
+                                                    <td style={{ fontWeight: 700 }}>{formatCurrency(r.amount)}</td>
+                                                </tr>
+                                            ))}
+                                            <tr style={{ fontWeight: 700 }}><td>Total</td><td></td><td></td><td>{formatCurrency(monthData.incentive.total)}</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     )}
                     {monthData && monthData.employees.length > 0 && (

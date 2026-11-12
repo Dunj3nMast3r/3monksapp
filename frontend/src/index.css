@@ -5482,3 +5482,11 @@ tr:last-child td {
 .attendance-summary td:first-child {
     text-align: left;
 }
+
+/* Staff incentive per person under a day's sales */
+.incentive-line {
+    color: var(--text-light);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}

@@ -22,6 +22,8 @@ public class AttendanceMonthResponse {
     private List<Row> employees;
     /** The branch's paid leaves per month; null when not tracked. */
     private java.math.BigDecimal monthlyLeaves;
+    /** Staff sales incentive for the month (operators); null when the branch has none. */
+    private com.threemonks.service.IncentiveService.MonthIncentive incentive;
 
     @Data
     @Builder

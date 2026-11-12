@@ -43,6 +43,7 @@ public class AttendanceService {
     private final EmployeeRepository employeeRepository;
     private final ShopRepository shopRepository;
     private final LeaveBalanceService leaveBalanceService;
+    private final IncentiveService incentiveService;
 
     @Transactional(readOnly = true)
     public AttendanceDayResponse getDay(Long shopId, LocalDate date, UserPrincipal user) {
@@ -178,6 +179,7 @@ public class AttendanceService {
                 .monthlyLeaves(shop.getMonthlyLeaves())
                 .daysSoFar(lastDue.isBefore(from) ? 0 : (int) (lastDue.toEpochDay() - from.toEpochDay() + 1))
                 .employees(rows)
+                .incentive(shop.isIncentiveOn() ? incentiveService.month(shop, ym) : null)
                 .build();
     }
 

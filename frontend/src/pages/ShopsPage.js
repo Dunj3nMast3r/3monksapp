@@ -15,7 +15,7 @@ const ShopsPage = () => {
     const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const emptyForm = { name: '', address: '', phone: '', email: '', gstNumber: '', manualSales: false, shotPrice: '', blendPrice: '', monthlyLeaves: '', leaveStartMonth: '' };
+    const emptyForm = { name: '', address: '', phone: '', email: '', gstNumber: '', manualSales: false, shotPrice: '', blendPrice: '', monthlyLeaves: '', leaveStartMonth: '', incentiveEnabled: false, incentiveFreeUnits: '', incentivePerUnit: '', incentiveStartDate: '' };
     const [form, setForm] = useState(emptyForm);
     const [errors, setErrors] = useState({});
 
@@ -43,6 +43,8 @@ const ShopsPage = () => {
             manualSales: !!shop.manualSales, shotPrice: shop.shotPrice ?? '', blendPrice: shop.blendPrice ?? '',
             monthlyLeaves: shop.monthlyLeaves ?? '',
             leaveStartMonth: shop.leaveStartMonth ? shop.leaveStartMonth.slice(0, 7) : '',
+            incentiveEnabled: !!shop.incentiveEnabled, incentiveFreeUnits: shop.incentiveFreeUnits ?? '',
+            incentivePerUnit: shop.incentivePerUnit ?? '', incentiveStartDate: shop.incentiveStartDate || '',
         });
         setErrors({}); setShowModal(true);
     };
@@ -60,6 +62,11 @@ const ShopsPage = () => {
             if (!(Number(form.shotPrice) > 0)) errs.shotPrice = 'Enter the shot price';
             if (!(Number(form.blendPrice) > 0)) errs.blendPrice = 'Enter the blend price';
         }
+        if (form.incentiveEnabled) {
+            if (form.incentiveFreeUnits === '' || Number(form.incentiveFreeUnits) < 0) errs.incentiveFreeUnits = 'Enter the free units per day';
+            if (form.incentivePerUnit === '' || Number(form.incentivePerUnit) < 0) errs.incentivePerUnit = 'Enter ₹ per unit';
+            if (!form.incentiveStartDate) errs.incentiveStartDate = 'Enter the start date';
+        }
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -75,6 +82,9 @@ const ShopsPage = () => {
                 blendPrice: form.blendPrice === '' ? null : Number(form.blendPrice),
                 monthlyLeaves: form.monthlyLeaves === '' ? null : Number(form.monthlyLeaves),
                 leaveStartMonth: form.leaveStartMonth ? `${form.leaveStartMonth}-01` : null,
+                incentiveFreeUnits: form.incentiveFreeUnits === '' ? null : Number(form.incentiveFreeUnits),
+                incentivePerUnit: form.incentivePerUnit === '' ? null : Number(form.incentivePerUnit),
+                incentiveStartDate: form.incentiveStartDate || null,
             };
             if (editing) { await adminService.updateShop(editing.id, payload); toast.success('Shop updated'); }
             else { await adminService.createShop(payload); toast.success('Shop created'); }
@@ -190,6 +200,36 @@ const ShopsPage = () => {
                     )}
                     {editing && editing.manualSales && form.manualSales && (Number(form.shotPrice) !== Number(editing.shotPrice) || Number(form.blendPrice) !== Number(editing.blendPrice)) && (
                         <p className="form-hint">New prices apply to days entered from now on; days already entered keep their prices.</p>
+                    )}
+                    <div className="form-group">
+                        <label style={{ display: 'flex', gap: '8px', alignItems: 'center', textTransform: 'none', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={form.incentiveEnabled}
+                                onChange={e => setForm({ ...form, incentiveEnabled: e.target.checked })} />
+                            Staff sales incentive
+                        </label>
+                        <small className="form-hint">Each staff member Present that day gets (shots + blends sold − free units) × ₹ per unit; half day gets half. Managers are not included.</small>
+                    </div>
+                    {form.incentiveEnabled && (
+                        <div className="grid-2">
+                            <div className="form-group"><label>Free units per day *</label>
+                                <input type="number" min="0" step="1" inputMode="numeric" className={`form-control${errors.incentiveFreeUnits ? ' input-error' : ''}`}
+                                    value={form.incentiveFreeUnits} placeholder="e.g. 50"
+                                    onChange={e => { setForm({ ...form, incentiveFreeUnits: e.target.value }); setErrors(prev => ({ ...prev, incentiveFreeUnits: '' })); }} />
+                                {errors.incentiveFreeUnits && <span className="field-error">{errors.incentiveFreeUnits}</span>}
+                            </div>
+                            <div className="form-group"><label>₹ per unit above *</label>
+                                <input type="number" min="0" step="0.01" inputMode="decimal" className={`form-control${errors.incentivePerUnit ? ' input-error' : ''}`}
+                                    value={form.incentivePerUnit} placeholder="e.g. 1"
+                                    onChange={e => { setForm({ ...form, incentivePerUnit: e.target.value }); setErrors(prev => ({ ...prev, incentivePerUnit: '' })); }} />
+                                {errors.incentivePerUnit && <span className="field-error">{errors.incentivePerUnit}</span>}
+                            </div>
+                            <div className="form-group"><label>Starts from *</label>
+                                <input type="date" className={`form-control${errors.incentiveStartDate ? ' input-error' : ''}`}
+                                    value={form.incentiveStartDate}
+                                    onChange={e => { setForm({ ...form, incentiveStartDate: e.target.value }); setErrors(prev => ({ ...prev, incentiveStartDate: '' })); }} />
+                                {errors.incentiveStartDate && <span className="field-error">{errors.incentiveStartDate}</span>}
+                            </div>
+                        </div>
                     )}
                     <div className="modal-actions">
                         <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancel</button>

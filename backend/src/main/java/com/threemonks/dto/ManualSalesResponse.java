@@ -16,6 +16,10 @@ public class ManualSalesResponse {
     private String shopName;
     private BigDecimal shotPrice;
     private BigDecimal blendPrice;
+    /** The branch's incentive rule, when on: free units per day, ₹ per unit above, first day. */
+    private Integer incentiveFreeUnits;
+    private BigDecimal incentivePerUnit;
+    private LocalDate incentiveStartDate;
     private List<Day> days;
     private Day totals;
 
@@ -34,6 +38,10 @@ public class ManualSalesResponse {
         /** received − amount; null when nothing received was entered */
         private BigDecimal difference;
         private String note;
+        /** Incentive per operator present that day (half for a half day); null when it doesn't apply. */
+        private BigDecimal incentivePerPerson;
+        /** The admin's override, when set. */
+        private BigDecimal incentiveOverride;
         private String updatedBy;
         private LocalDateTime updatedAt;
     }

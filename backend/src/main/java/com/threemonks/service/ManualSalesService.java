@@ -76,6 +76,9 @@ public class ManualSalesService {
                     .receivedTotal(rTotal)
                     .difference(rTotal == null ? null : rTotal.subtract(m.getAmount()))
                     .note(m.getNote() != null ? m.getNote() : a == null ? null : a.getNote())
+                    .incentivePerPerson(IncentiveService.perPerson(shop, m.getSalesDate(),
+                            (long) m.getShots() + m.getBlends(), m.getIncentiveOverride()))
+                    .incentiveOverride(m.getIncentiveOverride())
                     .updatedBy(m.getUpdatedBy()).updatedAt(m.getUpdatedAt())
                     .build());
             shots += m.getShots();
@@ -91,6 +94,9 @@ public class ManualSalesService {
         return ManualSalesResponse.builder()
                 .shopId(shop.getId()).shopName(shop.getName())
                 .shotPrice(shop.getShotPrice()).blendPrice(shop.getBlendPrice())
+                .incentiveFreeUnits(shop.isIncentiveOn() ? shop.getIncentiveFreeUnits() : null)
+                .incentivePerUnit(shop.isIncentiveOn() ? shop.getIncentivePerUnit() : null)
+                .incentiveStartDate(shop.isIncentiveOn() ? shop.getIncentiveStartDate() : null)
                 .days(days)
                 .totals(ManualSalesResponse.Day.builder()
                         .shots((int) shots).blends((int) blends).amount(amount)
@@ -110,6 +116,13 @@ public class ManualSalesService {
         // Received is optional: both empty = not known (yet); one empty with the other filled = ₹0
         upsert(shop, request.getDate(), request.getShots(), request.getBlends(),
                 request.getReceivedCash(), request.getReceivedUpi(), request.getNote(), user.getUsername());
+        // The incentive override is the admin's call: empty = use the rule. A manager's save keeps it as is.
+        if (user.getRole() == Role.SUPER_ADMIN) {
+            manualRepository.findByShopIdAndSalesDate(shop.getId(), request.getDate()).ifPresent(m -> {
+                m.setIncentiveOverride(request.getIncentiveOverride());
+                manualRepository.save(m);
+            });
+        }
     }
 
     /** Removes one day's sales and amount received (e.g. entered against the wrong date). */

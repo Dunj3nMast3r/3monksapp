@@ -42,6 +42,7 @@ public class EmployeeService {
     private final OrderRepository orderRepository;
     private final OrderEventService orderEventService;
     private final LeaveBalanceService leaveBalanceService;
+    private final IncentiveService incentiveService;
 
     public List<EmployeeResponse> getAllEmployees() {
         return employeeRepository.findAll().stream()
@@ -152,6 +153,7 @@ public class EmployeeService {
         employeeRepository.save(employee);
     }
 
+    @Transactional(readOnly = true)
     public SalarySheetResponse.MonthlySummary getMonthlySalarySheet(Long shopId, String monthStr) {
         YearMonth month = YearMonth.parse(monthStr, DateTimeFormatter.ofPattern("yyyy-MM"));
         LocalDateTime monthStart = BusinessDay.start(month.atDay(1));
@@ -164,6 +166,8 @@ public class EmployeeService {
             employees = employeeRepository.findByActiveTrue();
         }
 
+        // Per-day sales incentive per branch, worked out once for everyone
+        java.util.Map<Long, java.util.Map<LocalDate, IncentiveService.DayIncentive>> incentiveDays = new java.util.HashMap<>();
         List<SalarySheetResponse> sheets = employees.stream().map(emp -> {
             // Get total sales handled by this employee in the month
             BigDecimal totalSales = Optional.ofNullable(
@@ -180,8 +184,11 @@ public class EmployeeService {
             BigDecimal incentiveAmount = totalSales.multiply(incentiveRate).divide(BigDecimal.valueOf(100), 2,
                     RoundingMode.HALF_UP);
 
-            // Total Pay = Salary + Incentive
-            BigDecimal totalPay = emp.getSalary().add(incentiveAmount);
+            // Staff sales incentive from attendance (branches that have it; operators only)
+            BigDecimal salesIncentive = incentiveService.forEmployee(emp, month, incentiveDays);
+
+            // Total Pay = Salary + Incentive + Sales incentive
+            BigDecimal totalPay = emp.getSalary().add(incentiveAmount).add(salesIncentive);
 
             return SalarySheetResponse.builder()
                     .employeeId(emp.getId())
@@ -192,6 +199,7 @@ public class EmployeeService {
                     .totalSalesHandled(totalSales)
                     .totalOrders(totalOrders)
                     .incentiveAmount(incentiveAmount)
+                    .salesIncentive(salesIncentive)
                     .totalPay(totalPay)
                     .month(monthStr)
                     .build();
@@ -201,13 +209,16 @@ public class EmployeeService {
                 BigDecimal::add);
         BigDecimal totalIncentives = sheets.stream().map(SalarySheetResponse::getIncentiveAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalSalesIncentives = sheets.stream().map(SalarySheetResponse::getSalesIncentive)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return SalarySheetResponse.MonthlySummary.builder()
                 .month(monthStr)
                 .employees(sheets)
                 .totalSalaries(totalSalaries)
                 .totalIncentives(totalIncentives)
-                .grandTotal(totalSalaries.add(totalIncentives))
+                .totalSalesIncentives(totalSalesIncentives)
+                .grandTotal(totalSalaries.add(totalIncentives).add(totalSalesIncentives))
                 .build();
     }
 
