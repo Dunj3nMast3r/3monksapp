@@ -20,7 +20,6 @@ public class EmployeeResponse {
     private Station station;
     private String shopName;
     private BigDecimal salary;
-    private BigDecimal incentivePercentage;
     private Boolean active;
     private java.time.LocalDate joinDate;
     /** Paid leave left as of this month; null when the branch doesn't track leave. */

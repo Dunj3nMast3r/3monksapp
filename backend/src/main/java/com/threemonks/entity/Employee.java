@@ -25,9 +25,6 @@ public class Employee {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal salary;
 
-    @Column(precision = 5, scale = 2)
-    private BigDecimal incentivePercentage;
-
     @Column(nullable = false)
     private Boolean active = true;
 

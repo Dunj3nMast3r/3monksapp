@@ -88,8 +88,6 @@ public class EmployeeService {
                 .user(user)
                 .shop(shop)
                 .salary(request.getSalary())
-                .incentivePercentage(
-                        request.getIncentivePercentage() != null ? request.getIncentivePercentage() : BigDecimal.ZERO)
                 .active(true)
                 .joinDate(request.getJoinDate())
                 .build();
@@ -110,9 +108,6 @@ public class EmployeeService {
         employee.setSalary(request.getSalary());
         if (request.getJoinDate() != null) {
             employee.setJoinDate(request.getJoinDate());
-        }
-        if (request.getIncentivePercentage() != null) {
-            employee.setIncentivePercentage(request.getIncentivePercentage());
         }
         User user = employee.getUser();
         applyAssignment(user, shop, request.getRole(), request.getStation());
@@ -178,27 +173,19 @@ public class EmployeeService {
                     orderRepository.getOrderCountByUserAndDateRange(emp.getUser().getId(), monthStart, monthEnd))
                     .orElse(0L);
 
-            // Incentive = Total Sales * Incentive %
-            BigDecimal incentiveRate = emp.getIncentivePercentage() != null ? emp.getIncentivePercentage()
-                    : BigDecimal.ZERO;
-            BigDecimal incentiveAmount = totalSales.multiply(incentiveRate).divide(BigDecimal.valueOf(100), 2,
-                    RoundingMode.HALF_UP);
-
             // Staff sales incentive from attendance (branches that have it; operators only)
             BigDecimal salesIncentive = incentiveService.forEmployee(emp, month, incentiveDays);
 
-            // Total Pay = Salary + Incentive + Sales incentive
-            BigDecimal totalPay = emp.getSalary().add(incentiveAmount).add(salesIncentive);
+            // Total Pay = Salary + Sales incentive
+            BigDecimal totalPay = emp.getSalary().add(salesIncentive);
 
             return SalarySheetResponse.builder()
                     .employeeId(emp.getId())
                     .fullName(emp.getUser().getFullName())
                     .shopName(emp.getShop().getName())
                     .baseSalary(emp.getSalary())
-                    .incentivePercentage(incentiveRate)
                     .totalSalesHandled(totalSales)
                     .totalOrders(totalOrders)
-                    .incentiveAmount(incentiveAmount)
                     .salesIncentive(salesIncentive)
                     .totalPay(totalPay)
                     .month(monthStr)
@@ -207,8 +194,6 @@ public class EmployeeService {
 
         BigDecimal totalSalaries = sheets.stream().map(SalarySheetResponse::getBaseSalary).reduce(BigDecimal.ZERO,
                 BigDecimal::add);
-        BigDecimal totalIncentives = sheets.stream().map(SalarySheetResponse::getIncentiveAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalSalesIncentives = sheets.stream().map(SalarySheetResponse::getSalesIncentive)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -216,9 +201,8 @@ public class EmployeeService {
                 .month(monthStr)
                 .employees(sheets)
                 .totalSalaries(totalSalaries)
-                .totalIncentives(totalIncentives)
                 .totalSalesIncentives(totalSalesIncentives)
-                .grandTotal(totalSalaries.add(totalIncentives).add(totalSalesIncentives))
+                .grandTotal(totalSalaries.add(totalSalesIncentives))
                 .build();
     }
 
@@ -240,7 +224,6 @@ public class EmployeeService {
                 .station(emp.getUser().getStation())
                 .shopName(emp.getShop().getName())
                 .salary(emp.getSalary())
-                .incentivePercentage(emp.getIncentivePercentage())
                 .active(emp.getActive())
                 .joinDate(emp.effectiveJoinDate())
                 .leaveBalance(leaveBalanceService.balanceNow(emp))
