@@ -11,7 +11,7 @@ const STATION_OPTIONS = [
 ];
 const STATION_LABELS = { SHOT: '⚡ Shots', BLEND: '🥤 Blends' };
 
-const EMPTY_FORM = { userId: '', shopId: '', role: 'SHOP_OPERATOR', station: '', salary: '', incentivePercentage: '', joinDate: '' };
+const EMPTY_FORM = { userId: '', shopId: '', role: 'SHOP_OPERATOR', station: '', salary: '', joinDate: '' };
 
 const EmployeesPage = () => {
     const [employees, setEmployees] = useState([]);
@@ -56,7 +56,7 @@ const EmployeesPage = () => {
         setEditing(e);
         setForm({
             ...EMPTY_FORM, userId: e.userId, shopId: e.shopId, role: e.role, station: e.station || '',
-            salary: e.salary || '', incentivePercentage: e.incentivePercentage || '',
+            salary: e.salary || '',
             joinDate: e.joinDate || '',
         });
         setErrors({});
@@ -71,8 +71,6 @@ const EmployeesPage = () => {
         if (!form.salary) errs.salary = 'Salary is required';
         else if (isNaN(form.salary) || parseFloat(form.salary) < 1) errs.salary = 'Salary must be at least ₹1';
         else if (parseFloat(form.salary) > 9999999.99) errs.salary = 'Salary cannot exceed ₹99,99,999.99';
-        if (form.incentivePercentage && (isNaN(form.incentivePercentage) || parseFloat(form.incentivePercentage) < 0)) errs.incentivePercentage = 'Incentive cannot be negative';
-        if (form.incentivePercentage && parseFloat(form.incentivePercentage) > 100) errs.incentivePercentage = 'Incentive cannot exceed 100%';
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -87,7 +85,6 @@ const EmployeesPage = () => {
                 role: form.role,
                 station: form.role === 'SHOP_OPERATOR' ? (form.station || null) : null,
                 salary: parseFloat(form.salary),
-                incentivePercentage: form.incentivePercentage ? parseFloat(form.incentivePercentage) : 0,
                 // Empty on a new employee = today
                 joinDate: form.joinDate || null,
             };
@@ -158,7 +155,7 @@ const EmployeesPage = () => {
             ) : (
                 <div className="card"><div className="table-wrapper">
                     <table>
-                        <thead><tr><th>Name</th><th>Role</th><th>Shop</th><th>Station</th><th>Salary</th><th>Incentive %</th><th>Joined</th><th>Leave left</th><th>Status</th><th>Actions</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Role</th><th>Shop</th><th>Station</th><th>Salary</th><th>Joined</th><th>Leave left</th><th>Status</th><th>Actions</th></tr></thead>
                         <tbody>{visibleEmployees.map(e => (
                             <tr key={e.id}>
                                 <td style={{ fontWeight: 500 }}>{e.fullName}</td>
@@ -166,7 +163,6 @@ const EmployeesPage = () => {
                                 <td>{e.shopName}</td>
                                 <td>{e.role === 'SHOP_OPERATOR' ? (STATION_LABELS[e.station] || 'Both') : '-'}</td>
                                 <td>{formatCurrency(e.salary)}</td>
-                                <td>{e.incentivePercentage}%</td>
                                 <td style={{ whiteSpace: 'nowrap' }}>{e.joinDate || '-'}</td>
                                 <td title="Paid leave left this month">{e.leaveBalance != null ? Number(e.leaveBalance) : '-'}</td>
                                 <td><span className={`badge ${e.active ? 'badge-success' : 'badge-danger'}`}>{e.active ? 'Active' : 'Inactive'}</span></td>
@@ -226,17 +222,10 @@ const EmployeesPage = () => {
                             <span className="form-hint">The operator only sees, and gets alerts for, this station's queue.</span>
                         </div>
                     )}
-                    <div className="grid-2">
-                        <div className="form-group">
+                    <div className="form-group">
                             <label>Monthly Salary (₹) *</label>
                             <input className={`form-control${errors.salary ? ' input-error' : ''}`} type="number" step="0.01" min="1" max="9999999.99" value={form.salary} onChange={e => { setForm({ ...form, salary: e.target.value }); setErrors(prev => ({ ...prev, salary: '' })); }} placeholder="e.g. 15000" />
                             {errors.salary && <span className="field-error">{errors.salary}</span>}
-                        </div>
-                        <div className="form-group">
-                            <label>Incentive %</label>
-                            <input className={`form-control${errors.incentivePercentage ? ' input-error' : ''}`} type="number" step="0.01" min="0" max="100" value={form.incentivePercentage} onChange={e => { setForm({ ...form, incentivePercentage: e.target.value }); setErrors(prev => ({ ...prev, incentivePercentage: '' })); }} placeholder="e.g. 2" />
-                            {errors.incentivePercentage && <span className="field-error">{errors.incentivePercentage}</span>}
-                        </div>
                     </div>
                     <div className="form-group">
                         <label>Joining date</label>
@@ -259,7 +248,7 @@ const EmployeesPage = () => {
                     <div>
                         <div className="table-wrapper">
                             <table>
-                                <thead><tr><th>Name</th><th>Shop</th><th>Base Salary</th><th>Sales</th><th>Orders</th><th>Incentive</th><th title="Staff sales incentive from attendance (units sold above the daily free units)">Sales incentive</th><th>Total Pay</th></tr></thead>
+                                <thead><tr><th>Name</th><th>Shop</th><th>Base Salary</th><th>Sales</th><th>Orders</th><th title="Staff sales incentive from attendance (units sold above the daily free units)">Sales incentive</th><th>Total Pay</th></tr></thead>
                                 <tbody>
                                     {salarySheet.employees?.map((s, i) => (
                                         <tr key={i}>
@@ -268,7 +257,6 @@ const EmployeesPage = () => {
                                             <td>{formatCurrency(s.baseSalary)}</td>
                                             <td>{formatCurrency(s.totalSalesHandled)}</td>
                                             <td>{s.totalOrders}</td>
-                                            <td>{formatCurrency(s.incentiveAmount)}</td>
                                             <td>{formatCurrency(s.salesIncentive)}</td>
                                             <td style={{ fontWeight: 600 }}>{formatCurrency(s.totalPay)}</td>
                                         </tr>
@@ -278,7 +266,6 @@ const EmployeesPage = () => {
                                     <td colSpan={2}>TOTAL</td>
                                     <td>{formatCurrency(salarySheet.totalSalaries)}</td>
                                     <td colSpan={2}></td>
-                                    <td>{formatCurrency(salarySheet.totalIncentives)}</td>
                                     <td>{formatCurrency(salarySheet.totalSalesIncentives)}</td>
                                     <td>{formatCurrency(salarySheet.grandTotal)}</td>
                                 </tr></tfoot>
