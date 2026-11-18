@@ -62,8 +62,9 @@ public class UserService {
         // Validate role-based user creation
         validateUserCreation(request, currentUser);
 
+        // An admin works across every branch and belongs to none
         Shop shop = null;
-        if (request.getShopId() != null) {
+        if (request.getShopId() != null && request.getRole() != Role.SUPER_ADMIN) {
             shop = shopRepository.findById(request.getShopId())
                     .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", request.getShopId()));
         }

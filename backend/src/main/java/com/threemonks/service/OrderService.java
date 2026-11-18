@@ -47,6 +47,10 @@ public class OrderService {
 
     @Transactional
     public OrderResponse createOrder(OrderRequest request, UserPrincipal currentUser) {
+        // An admin has no branch of their own: the order must say which branch it is for
+        if (currentUser.getRole() == Role.SUPER_ADMIN && request.getShopId() == null) {
+            throw new BadRequestException("Select the branch for this order");
+        }
         // Determine shop
         Long shopId = resolveShopId(request.getShopId(), currentUser);
         Shop shop = shopRepository.findById(shopId)

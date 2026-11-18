@@ -29,6 +29,13 @@ public class DatabaseMigration implements CommandLineRunner {
         classifyRawMaterials();
         backfillJoinDates();
         weekOffToLeave();
+        unlinkAdmins();
+    }
+
+    // An admin works across every branch and belongs to none
+    private void unlinkAdmins() {
+        int n = jdbcTemplate.update("UPDATE users SET shop_id = NULL, station = NULL WHERE role = 'SUPER_ADMIN' AND shop_id IS NOT NULL");
+        if (n > 0) logger.info("Removed the branch from {} admin account(s)", n);
     }
 
     // No separate weekly off any more: days marked Week off become Leave (and use the monthly allowance)
