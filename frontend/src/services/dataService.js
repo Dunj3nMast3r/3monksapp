@@ -114,6 +114,7 @@ export const orderService = {
     getOrder: (id) => api.get(`/api/orders/${id}`),
     getOrderByNumber: (num) => api.get(`/api/orders/number/${num}`),
     getShopOrders: (shopId) => api.get('/api/orders', { params: { shopId } }),
+    getOrderHistory: (params) => api.get('/api/orders/history', { params }),
     getTodayOrders: (shopId) => api.get('/api/orders/today', { params: { shopId } }),
     getPendingOrders: (shopId) => api.get('/api/orders/pending', { params: { shopId } }),
     getOrdersByRange: (shopId, from, to) => api.get('/api/orders/range', { params: { shopId, from, to } }),

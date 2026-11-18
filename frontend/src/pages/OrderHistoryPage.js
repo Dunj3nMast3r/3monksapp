@@ -6,28 +6,47 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 
+const PAGE_SIZE = 25;
+
+// Periods by business day (the day runs to 3 AM, as everywhere else in the app)
+const PERIODS = [
+    { key: 'today', label: 'Today', range: () => [getISTDateString(), getISTDateString()] },
+    { key: 'yesterday', label: 'Yesterday', range: () => [getISTDateString(1), getISTDateString(1)] },
+    { key: 'week', label: 'Last 7 days', range: () => [getISTDateString(6), getISTDateString()] },
+    { key: 'month', label: 'This month', range: () => [`${getISTMonthString()}-01`, getISTDateString()] },
+    { key: 'all', label: 'All', range: () => [null, null] },
+];
+const showDate = (d) => `${d.slice(8)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+
 const OrderHistoryPage = () => {
     const { user, isAdmin } = useAuth();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState('today');
+    const [page, setPage] = useState(0);
+    const [paging, setPaging] = useState({ totalElements: 0, totalPages: 0 });
     const [confirmCancel, setConfirmCancel] = useState(null);
     const [cancelling, setCancelling] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
 
-    useEffect(() => { fetchOrders(); }, [view]); // eslint-disable-line
+    useEffect(() => { fetchOrders(); }, [view, page]); // eslint-disable-line
+
+    const period = PERIODS.find(p => p.key === view);
+    const [from, to] = period.range();
+    const pickView = (key) => { setView(key); setPage(0); };
 
     const fetchOrders = async () => {
         setLoading(true);
         try {
-            let res;
-            if (view === 'today') {
-                res = await orderService.getTodayOrders(user.shopId);
-            } else {
-                res = await orderService.getShopOrders(user.shopId);
-            }
-            setOrders(res.data.data || []);
+            const res = await orderService.getOrderHistory({
+                shopId: user.shopId || undefined,
+                from: from || undefined, to: to || undefined,
+                page, size: PAGE_SIZE,
+            });
+            const data = res.data.data || {};
+            setOrders(data.orders || []);
+            setPaging({ totalElements: data.totalElements || 0, totalPages: data.totalPages || 0 });
         } catch (err) {
             toast.error('Failed to load orders');
         } finally {
@@ -57,16 +76,18 @@ const OrderHistoryPage = () => {
     const handleDownload = async () => {
         setDownloading(true);
         try {
+            // The chosen period; "All" downloads this month, as before
             const today = getISTDateString();
-            const from = view === 'today' ? today : getISTMonthString() + '-01';
-            const res = await exportService.downloadOrders(from, today);
+            const fromDate = from || `${getISTMonthString()}-01`;
+            const toDate = to || today;
+            const res = await exportService.downloadOrders(fromDate, toDate);
             const blob = new Blob([res.data], {
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `orders_${from}_to_${today}.xlsx`;
+            link.download = `orders_${fromDate}_to_${toDate}.xlsx`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -83,9 +104,10 @@ const OrderHistoryPage = () => {
         <div>
             <div className="page-header">
                 <h1>Order History</h1>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className={`btn btn-sm ${view === 'today' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setView('today')}>Today</button>
-                    <button className={`btn btn-sm ${view === 'all' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setView('all')}>All</button>
+                <div className="history-periods">
+                    {PERIODS.map(p => (
+                        <button key={p.key} className={`btn btn-sm ${view === p.key ? 'btn-primary' : 'btn-outline'}`} onClick={() => pickView(p.key)}>{p.label}</button>
+                    ))}
                     {isAdmin() && (
                         <button className="btn btn-sm btn-outline" onClick={handleDownload} disabled={downloading}>
                             {downloading ? '⏳' : '📥'} Excel
@@ -93,6 +115,11 @@ const OrderHistoryPage = () => {
                     )}
                 </div>
             </div>
+
+            <p className="form-hint history-summary">
+                {from ? (from === to ? showDate(from) : `${showDate(from)} – ${showDate(to)}`) : 'All orders'}
+                {!loading && ` · ${paging.totalElements} order${paging.totalElements === 1 ? '' : 's'}`}
+            </p>
 
             {loading ? (
                 <div className="loading"><div className="spinner"></div></div>
@@ -144,6 +171,13 @@ const OrderHistoryPage = () => {
                             </tbody>
                         </table>
                     </div>
+                    {paging.totalPages > 1 && (
+                        <div className="history-pager">
+                            <button className="btn btn-sm btn-outline" disabled={page === 0} onClick={() => setPage(page - 1)}>← Newer</button>
+                            <span>Page {page + 1} of {paging.totalPages}</span>
+                            <button className="btn btn-sm btn-outline" disabled={page + 1 >= paging.totalPages} onClick={() => setPage(page + 1)}>Older →</button>
+                        </div>
+                    )}
                 </div>
             )}
 

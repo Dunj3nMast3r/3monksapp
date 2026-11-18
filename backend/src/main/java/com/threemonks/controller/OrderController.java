@@ -77,6 +77,17 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(orderService.getPendingOrders(shopId, currentUser)));
     }
 
+    @GetMapping("/history")
+    public ResponseEntity<ApiResponse<OrderPageResponse>> getOrderHistory(
+            @RequestParam(required = false) Long shopId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(orderService.getOrderHistory(shopId, from, to, page, size, currentUser)));
+    }
+
     @GetMapping("/range")
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getOrdersByRange(
             @RequestParam(required = false) Long shopId,
