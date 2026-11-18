@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { orderService, exportService } from '../services/dataService';
+import { orderService, exportService, adminService } from '../services/dataService';
 import { formatCurrency, formatDateTime, getISTDateString, getISTMonthString } from '../utils/helpers';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
@@ -19,18 +19,28 @@ const PERIODS = [
 const showDate = (d) => `${d.slice(8)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 
 const OrderHistoryPage = () => {
-    const { user, isAdmin } = useAuth();
+    const { isAdmin } = useAuth();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState('today');
     const [page, setPage] = useState(0);
     const [paging, setPaging] = useState({ totalElements: 0, totalPages: 0 });
+    // Admins pick a branch ('' = all branches); everyone else always sees their own branch
+    const [shops, setShops] = useState([]);
+    const [shopFilter, setShopFilter] = useState('');
+
+    useEffect(() => {
+        if (!isAdmin()) return;
+        adminService.getShops()
+            .then(res => setShops((res.data.data || []).slice().sort((a, b) => a.name.localeCompare(b.name))))
+            .catch(() => {});
+    }, []); // eslint-disable-line
     const [confirmCancel, setConfirmCancel] = useState(null);
     const [cancelling, setCancelling] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
 
-    useEffect(() => { fetchOrders(); }, [view, page]); // eslint-disable-line
+    useEffect(() => { fetchOrders(); }, [view, page, shopFilter]); // eslint-disable-line
 
     const period = PERIODS.find(p => p.key === view);
     const [from, to] = period.range();
@@ -40,7 +50,8 @@ const OrderHistoryPage = () => {
         setLoading(true);
         try {
             const res = await orderService.getOrderHistory({
-                shopId: user.shopId || undefined,
+                // The server works out a manager's or staff member's branch itself
+                shopId: isAdmin() && shopFilter ? shopFilter : undefined,
                 from: from || undefined, to: to || undefined,
                 page, size: PAGE_SIZE,
             });
@@ -116,6 +127,14 @@ const OrderHistoryPage = () => {
                 </div>
             </div>
 
+            {isAdmin() && shops.length > 1 && (
+                <div className="form-group history-branch">
+                    <select className="form-control" value={shopFilter} onChange={e => { setShopFilter(e.target.value); setPage(0); }}>
+                        <option value="">All branches</option>
+                        {shops.map(s => <option key={s.id} value={s.id}>{s.name}{s.active === false ? ' (inactive)' : ''}</option>)}
+                    </select>
+                </div>
+            )}
             <p className="form-hint history-summary">
                 {from ? (from === to ? showDate(from) : `${showDate(from)} – ${showDate(to)}`) : 'All orders'}
                 {!loading && ` · ${paging.totalElements} order${paging.totalElements === 1 ? '' : 's'}`}
