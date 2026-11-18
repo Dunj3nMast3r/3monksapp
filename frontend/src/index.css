@@ -5490,3 +5490,21 @@ tr:last-child td {
     font-weight: 500;
     white-space: nowrap;
 }
+
+/* Order History: period buttons wrap on a phone; pager under the table */
+.history-periods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.history-summary {
+    margin: 0 0 12px;
+}
+.history-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 14px;
+}

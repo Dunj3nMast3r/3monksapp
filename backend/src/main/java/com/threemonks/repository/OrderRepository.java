@@ -2,6 +2,8 @@ package com.threemonks.repository;
 
 import com.threemonks.entity.Order;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -30,6 +32,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         List<Order> findByShopIdAndOrderDateBetween(Long shopId, LocalDateTime start, LocalDateTime end);
 
         List<Order> findByOrderDateBetween(LocalDateTime start, LocalDateTime end);
+
+        /** Order History: one page of a branch's orders in a period, newest first. */
+        @Query(value = "SELECT o FROM Order o WHERE o.shop.id = :shopId AND o.orderDate BETWEEN :start AND :end ORDER BY o.orderDate DESC, o.id DESC",
+                        countQuery = "SELECT COUNT(o) FROM Order o WHERE o.shop.id = :shopId AND o.orderDate BETWEEN :start AND :end")
+        Page<Order> findHistoryPage(@Param("shopId") Long shopId, @Param("start") LocalDateTime start,
+                        @Param("end") LocalDateTime end, Pageable pageable);
+
+        /** Order History for admins: every branch. */
+        @Query(value = "SELECT o FROM Order o WHERE o.orderDate BETWEEN :start AND :end ORDER BY o.orderDate DESC, o.id DESC",
+                        countQuery = "SELECT COUNT(o) FROM Order o WHERE o.orderDate BETWEEN :start AND :end")
+        Page<Order> findHistoryPageAllShops(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end,
+                        Pageable pageable);
 
         @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.shop.id = :shopId AND o.orderDate BETWEEN :start AND :end AND o.status = 'COMPLETED'")
         BigDecimal getTotalSalesByShopAndDateRange(@Param("shopId") Long shopId, @Param("start") LocalDateTime start,

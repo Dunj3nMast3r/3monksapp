@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -181,6 +183,38 @@ public class OrderService {
         return orderRepository.findPendingOrdersByShopId(resolvedShopId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Order History, a page at a time, newest first. from/to are business days (either may be
+     * empty: no limit on that side). A manager or staff member sees their own branch; an admin
+     * sees one branch, or every branch when none is given.
+     */
+    @Transactional(readOnly = true)
+    public OrderPageResponse getOrderHistory(Long shopId, LocalDate from, LocalDate to, int page, int size,
+            UserPrincipal currentUser) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new BadRequestException("'From' date cannot be after 'To' date");
+        }
+        int pageSize = Math.min(Math.max(size, 1), 100);
+        PageRequest pageable = PageRequest.of(Math.max(page, 0), pageSize);
+        LocalDateTime start = from != null ? BusinessDay.start(from) : LocalDateTime.of(2000, 1, 1, 0, 0);
+        LocalDateTime end = to != null ? BusinessDay.end(to) : LocalDateTime.of(2999, 12, 31, 23, 59);
+        Page<Order> result;
+        if (currentUser.getRole() == Role.SUPER_ADMIN && shopId == null) {
+            result = orderRepository.findHistoryPageAllShops(start, end, pageable);
+        } else {
+            Long resolved = currentUser.getRole() == Role.SUPER_ADMIN ? shopId : currentUser.getShopId();
+            validateShopAccess(resolved, currentUser);
+            result = orderRepository.findHistoryPage(resolved, start, end, pageable);
+        }
+        return OrderPageResponse.builder()
+                .orders(result.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
+                .page(result.getNumber())
+                .size(pageSize)
+                .totalElements(result.getTotalElements())
+                .totalPages(result.getTotalPages())
+                .build();
     }
 
     public List<OrderResponse> getOrdersByDateRange(Long shopId, LocalDateTime start, LocalDateTime end,
