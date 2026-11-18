@@ -5508,3 +5508,7 @@ tr:last-child td {
     margin-top: 12px;
     font-size: 14px;
 }
+.history-branch {
+    max-width: 320px;
+    margin-bottom: 8px;
+}
