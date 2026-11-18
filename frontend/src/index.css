@@ -5512,3 +5512,9 @@ tr:last-child td {
     max-width: 320px;
     margin-bottom: 8px;
 }
+
+/* Admin: which branch an order is for */
+.admin-branch-picker {
+    max-width: 320px;
+    margin-bottom: 12px;
+}

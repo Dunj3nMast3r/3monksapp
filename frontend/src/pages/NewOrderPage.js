@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { publicService, orderService } from '../services/dataService';
 import { formatCurrency, getParcelCharge, PARCEL_CHARGES } from '../utils/helpers';
 import Receipt from '../components/Receipt';
+import { useAdminBranch } from '../components/AdminBranchPicker';
 import toast from 'react-hot-toast';
 import {
     isBluetoothAvailable,
@@ -16,6 +17,10 @@ import {
 
 const NewOrderPage = () => {
     const { user } = useAuth();
+    const isAdmin = user?.role === 'SUPER_ADMIN';
+    // Admins pick the branch; everyone else works for their own
+    const [adminShopId, branchPicker] = useAdminBranch(isAdmin);
+    const shopId = isAdmin ? adminShopId : user?.shopId;
     const [products, setProducts] = useState([]);
     const [fruits, setFruits] = useState([]);
     const [mode, setMode] = useState('BLEND');
@@ -188,10 +193,11 @@ const NewOrderPage = () => {
 
     const handleSubmit = async () => {
         if (cart.length === 0) { toast.error('Add items first'); return; }
+        if (!shopId) { toast.error('Select the branch for this order'); return; }
         setLoading(true);
         try {
             const res = await orderService.createOrder({
-                shopId: user.shopId,
+                shopId: Number(shopId),
                 items: cart.map(item => ({
                     productId: item.productId,
                     quantity: item.quantity,
@@ -316,6 +322,7 @@ const NewOrderPage = () => {
     // === ORDER FORM VIEW ===
     return (
         <div className="quick-order-page">
+            {branchPicker}
             <div className="new-order-grid">
                 {/* Left: Fruit-based selector */}
                 <div>

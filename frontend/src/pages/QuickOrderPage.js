@@ -4,6 +4,7 @@ import { publicService, orderService } from '../services/dataService';
 import useOrderEvents from '../hooks/useOrderEvents';
 import { formatCurrency, getParcelCharge, PARCEL_CHARGES } from '../utils/helpers';
 import Receipt from '../components/Receipt';
+import { useAdminBranch } from '../components/AdminBranchPicker';
 import toast from 'react-hot-toast';
 import {
     isBluetoothAvailable,
@@ -17,6 +18,10 @@ import {
 
 const QuickOrderPage = () => {
     const { user } = useAuth();
+    const isAdmin = user?.role === 'SUPER_ADMIN';
+    // Admins pick the branch; everyone else works for their own
+    const [adminShopId, branchPicker] = useAdminBranch(isAdmin);
+    const shopId = isAdmin ? adminShopId : user?.shopId;
     const [products, setProducts] = useState([]);
     const [fruits, setFruits] = useState([]);
     const [mode, setMode] = useState('BLEND');
@@ -36,13 +41,14 @@ const QuickOrderPage = () => {
     const receiptRef = useRef();
 
     const fetchPendingOrders = useCallback(async () => {
+        if (!shopId) { setPendingOrders([]); return; }
         try {
-            const res = await orderService.getPendingOrders(user?.shopId);
+            const res = await orderService.getPendingOrders(shopId);
             setPendingOrders(res.data.data || []);
         } catch (_) { /* silent */ }
-    }, [user?.shopId]);
+    }, [shopId]);
     // Queue panel updates instantly on live order events; polling stays as backup
-    const live = useOrderEvents(user?.shopId, fetchPendingOrders);
+    const live = useOrderEvents(shopId || null, fetchPendingOrders, !!shopId);
 
     useEffect(() => {
         Promise.all([
@@ -225,10 +231,11 @@ const QuickOrderPage = () => {
 
     const handleSubmit = async () => {
         if (cart.length === 0) { toast.error('Add items first'); return; }
+        if (!shopId) { toast.error('Select the branch for this order'); return; }
         setLoading(true);
         try {
             const res = await orderService.createOrder({
-                shopId: user.shopId,
+                shopId: Number(shopId),
                 items: cart.map(item => ({
                     productId: item.productId,
                     quantity: item.quantity,
@@ -357,6 +364,7 @@ const QuickOrderPage = () => {
     // === QUICK ORDER VIEW ===
     return (
         <div className="quick-order-page">
+            {branchPicker}
             {/* Fruit Codes Strip — portrait: above entire grid; hidden in landscape */}
             <div className="quick-order-grid">
                 {/* Left: Fruit-based selector (no numpad) */}
