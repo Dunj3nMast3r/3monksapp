@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { orderService, exportService, adminService } from '../services/dataService';
 import { formatCurrency, formatDateTime, getISTDateString, getISTMonthString } from '../utils/helpers';
@@ -15,6 +15,8 @@ const PERIODS = [
     { key: 'week', label: 'Last 7 days', range: () => [getISTDateString(6), getISTDateString()] },
     { key: 'month', label: 'This month', range: () => [`${getISTMonthString()}-01`, getISTDateString()] },
     { key: 'all', label: 'All', range: () => [null, null] },
+    // Any two dates, picked below the buttons
+    { key: 'custom', label: 'Date range', range: null },
 ];
 const showDate = (d) => `${d.slice(8)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 
@@ -40,13 +42,27 @@ const OrderHistoryPage = () => {
     const [downloading, setDownloading] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
 
-    useEffect(() => { fetchOrders(); }, [view, page, shopFilter]); // eslint-disable-line
+    // Only the latest request may fill the table (changing From then To sends two)
+    const latestRequest = useRef(0);
+
+    // Date range: last 7 days to start with, then whatever is picked
+    const [rangeFrom, setRangeFrom] = useState(() => getISTDateString(6));
+    const [rangeTo, setRangeTo] = useState(() => getISTDateString());
+    const rangeError = view === 'custom' && (!rangeFrom || !rangeTo ? 'Pick both dates'
+        : rangeFrom > rangeTo ? "'From' date cannot be after 'To' date" : '');
+
+    useEffect(() => {
+        if (rangeError) { latestRequest.current++; setOrders([]); setPaging({ totalElements: 0, totalPages: 0 }); setLoading(false); return; }
+        fetchOrders();
+    }, [view, page, shopFilter, rangeFrom, rangeTo]); // eslint-disable-line
 
     const period = PERIODS.find(p => p.key === view);
-    const [from, to] = period.range();
+    const [from, to] = view === 'custom' ? [rangeFrom, rangeTo] : period.range();
     const pickView = (key) => { setView(key); setPage(0); };
+    const pickRange = (f, t) => { setRangeFrom(f); setRangeTo(t); setPage(0); };
 
     const fetchOrders = async () => {
+        const requestNo = ++latestRequest.current;
         setLoading(true);
         try {
             const res = await orderService.getOrderHistory({
@@ -55,13 +71,14 @@ const OrderHistoryPage = () => {
                 from: from || undefined, to: to || undefined,
                 page, size: PAGE_SIZE,
             });
+            if (requestNo !== latestRequest.current) return;
             const data = res.data.data || {};
             setOrders(data.orders || []);
             setPaging({ totalElements: data.totalElements || 0, totalPages: data.totalPages || 0 });
         } catch (err) {
-            toast.error('Failed to load orders');
+            if (requestNo === latestRequest.current) toast.error('Failed to load orders');
         } finally {
-            setLoading(false);
+            if (requestNo === latestRequest.current) setLoading(false);
         }
     };
 
@@ -85,6 +102,7 @@ const OrderHistoryPage = () => {
     };
 
     const handleDownload = async () => {
+        if (rangeError) { toast.error(rangeError); return; }
         setDownloading(true);
         try {
             // The chosen period; "All" downloads this month, as before
@@ -127,6 +145,21 @@ const OrderHistoryPage = () => {
                 </div>
             </div>
 
+            {view === 'custom' && (
+                <div className="history-range">
+                    <div className="form-group">
+                        <label>From</label>
+                        <input type="date" className={`form-control${rangeError ? ' input-error' : ''}`} value={rangeFrom}
+                            max={getISTDateString()} onChange={e => pickRange(e.target.value, rangeTo)} />
+                    </div>
+                    <div className="form-group">
+                        <label>To</label>
+                        <input type="date" className={`form-control${rangeError ? ' input-error' : ''}`} value={rangeTo}
+                            max={getISTDateString()} onChange={e => pickRange(rangeFrom, e.target.value)} />
+                    </div>
+                    {rangeError && <span className="field-error">{rangeError}</span>}
+                </div>
+            )}
             {isAdmin() && shops.length > 1 && (
                 <div className="form-group history-branch">
                     <select className="form-control" value={shopFilter} onChange={e => { setShopFilter(e.target.value); setPage(0); }}>
@@ -136,8 +169,9 @@ const OrderHistoryPage = () => {
                 </div>
             )}
             <p className="form-hint history-summary">
-                {from ? (from === to ? showDate(from) : `${showDate(from)} – ${showDate(to)}`) : 'All orders'}
-                {!loading && ` · ${paging.totalElements} order${paging.totalElements === 1 ? '' : 's'}`}
+                {rangeError ? 'Choose the dates above'
+                    : from ? (from === to ? showDate(from) : `${showDate(from)} – ${showDate(to)}`) : 'All orders'}
+                {!loading && !rangeError && ` · ${paging.totalElements} order${paging.totalElements === 1 ? '' : 's'}`}
             </p>
 
             {loading ? (

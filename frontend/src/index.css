@@ -5518,3 +5518,26 @@ tr:last-child td {
     max-width: 320px;
     margin-bottom: 12px;
 }
+
+/* Order History: From / To for a date range */
+.history-range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0 12px;
+    margin-bottom: 4px;
+}
+.history-range .form-group {
+    flex: 1 1 140px;
+    max-width: 200px;
+}
+.history-range .field-error {
+    flex-basis: 100%;
+    margin: -8px 0 8px;
+}
+
+/* On a phone the page header makes buttons full width; keep the period buttons compact */
+.page-header .history-periods .btn {
+    width: auto;
+    flex: 0 0 auto;
+}
